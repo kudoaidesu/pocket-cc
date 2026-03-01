@@ -1,5 +1,5 @@
 {
-  "name": "claude-crew",
+  "name": "pocket-cc",
   "version": "0.1.0",
   "description": "Issue駆動 × AI駆動の自律型開発ワークフロー",
   "type": "module",
