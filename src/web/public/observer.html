@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Observer - Claude Crew</title>
+<title>Observer - pocket-cc</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -33,6 +33,11 @@ svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:ro
 .header-sub{font-size:11px;color:var(--muted);font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px}
 .project-select{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;font-family:var(--font-mono);cursor:pointer;max-width:140px;min-height:36px}
 .project-select:focus{outline:none;border-color:var(--accent)}
+.header-refresh{background:none;border:none;color:var(--muted);cursor:pointer;padding:8px;display:flex;align-items:center;border-radius:6px;transition:all .15s}
+.header-refresh:hover{color:var(--text);background:var(--surface-hover)}
+.header-refresh svg.ic{font-size:16px}
+.header-refresh.spinning svg.ic{animation:spin .6s linear infinite}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 
 /* ── メインコンテナ ── */
 .main{flex:1;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch}
@@ -86,6 +91,8 @@ svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:ro
 .layer-tab{flex:1;min-width:0;padding:10px 6px;text-align:center;font-size:12px;font-family:var(--font-mono);color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .1s;white-space:nowrap;-webkit-tap-highlight-color:transparent}
 .layer-tab:hover{color:var(--text);background:var(--surface-hover)}
 .layer-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.layer-tab.refreshing{opacity:.5;pointer-events:none}
+.layer-tab.refreshing .tab-icon{animation:spin .6s linear infinite}
 .layer-tab .tab-icon{display:block;margin:0 auto 2px;font-size:16px}
 .layer-tab .tab-label{font-size:11px}
 .layer-tab .tab-count{font-size:9px;color:var(--muted);margin-left:2px}
@@ -105,6 +112,9 @@ svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:ro
 .node-type-badge.subagent{background:var(--blue-bg);color:var(--blue);border:1px solid rgba(137,180,250,.25)}
 .parent-instruction{margin:12px 16px 0;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;border-left:3px solid var(--accent)}
 .parent-instruction-label{font-size:10px;font-family:var(--font-mono);color:var(--accent);text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:4px}
+.parent-instruction-label .translate-btn{margin-left:auto;font-size:10px;font-family:var(--font-mono);background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:1px 7px;cursor:pointer;transition:all .15s;text-transform:none}
+.parent-instruction-label .translate-btn:hover{color:var(--accent);border-color:var(--accent-border)}
+.parent-instruction-label .translate-btn:disabled{opacity:.5;cursor:default}
 .parent-instruction-text{font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap;word-break:break-word;max-height:200px;overflow-y:auto}
 
 /* Layer 1: Interface */
@@ -170,6 +180,9 @@ svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:ro
   </button>
   <span class="header-title" id="headerTitle">Observer</span>
   <span class="header-sub" id="headerSub"></span>
+  <button class="header-refresh" id="refreshBtn" onclick="refresh()" title="更新">
+    <svg class="ic" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+  </button>
   <select class="project-select" id="projectSelect" onchange="onProjectChange()"></select>
 </div>
 
@@ -222,11 +235,98 @@ function ic(name, size) {
   return `<svg class="ic" viewBox="0 0 24 24" ${s}>${ICONS[name] || ''}</svg>`
 }
 
+// ── URL Hash ルーティング ─────────────────────
+// 形式: #sessions / #tree/{sid} / #detail/{sid} / #detail/{sid}/{agentId}?layer=execution&label=...&badge=...
+function stateToHash(state) {
+  const params = new URLSearchParams()
+  if (state.label) params.set('label', state.label)
+  if (state.badge) params.set('badge', state.badge)
+  if (state.level === 'detail' && currentLayer && currentLayer !== 'interface') {
+    params.set('layer', currentLayer)
+  }
+  const qs = params.toString()
+  const suffix = qs ? '?' + qs : ''
+
+  switch (state.level) {
+    case 'tree':
+      return `#tree/${state.sessionId}${suffix}`
+    case 'detail':
+      return state.agentId
+        ? `#detail/${state.sessionId}/${state.agentId}${suffix}`
+        : `#detail/${state.sessionId}${suffix}`
+    default:
+      return '#sessions'
+  }
+}
+
+function hashToState(hash) {
+  if (!hash || hash === '#' || hash === '#sessions') {
+    return { level: 'sessions' }
+  }
+  const [pathPart, qsPart] = hash.slice(1).split('?')
+  const params = new URLSearchParams(qsPart || '')
+  const parts = pathPart.split('/')
+  const label = params.get('label') || ''
+  const badge = params.get('badge') || ''
+  const layer = params.get('layer') || ''
+
+  if (parts[0] === 'tree' && parts[1]) {
+    return { level: 'tree', sessionId: parts[1] }
+  }
+  if (parts[0] === 'detail' && parts[1]) {
+    return {
+      level: 'detail',
+      sessionId: parts[1],
+      agentId: parts[2] || null,
+      label: label || (parts[2] ? parts[2].slice(0, 12) + '...' : 'Root'),
+      badge,
+      _layer: layer,
+    }
+  }
+  return { level: 'sessions' }
+}
+
+function syncHash() {
+  const state = navStack[navStack.length - 1]
+  if (!state) return
+  const newHash = stateToHash(state)
+  if (location.hash !== newHash) {
+    history.replaceState(null, '', newHash)
+  }
+}
+
 // ── 初期化 ────────────────────────────────────
 async function init() {
   await loadProjects()
-  navigate({ level: 'sessions' })
+  // URLハッシュから復帰、なければセッション一覧
+  const restored = hashToState(location.hash)
+  if (restored._layer) {
+    currentLayer = restored._layer
+    delete restored._layer
+  }
+  navigate(restored)
 }
+
+window.addEventListener('hashchange', () => {
+  const state = hashToState(location.hash)
+  if (state._layer) {
+    currentLayer = state._layer
+    delete state._layer
+  }
+  // navStack をリセットして再描画
+  navStack.length = 0
+  // tree/detail の場合、sessionsを先にスタックに入れておく（戻る用）
+  if (state.level === 'detail' && state.sessionId) {
+    navStack.push({ level: 'sessions' })
+    // tree経由で来た可能性があるので tree もスタックに入れる
+    if (state.agentId) {
+      navStack.push({ level: 'tree', sessionId: state.sessionId })
+    }
+  } else if (state.level === 'tree') {
+    navStack.push({ level: 'sessions' })
+  }
+  navigate(state)
+})
 
 async function loadProjects() {
   try {
@@ -259,16 +359,42 @@ function onProjectChange() {
   navigate({ level: 'sessions' })
 }
 
+// ── Refresh ───────────────────────────────────
+async function refresh() {
+  const btn = document.getElementById('refreshBtn')
+  btn.classList.add('spinning')
+  try {
+    const state = navStack[navStack.length - 1]
+    if (!state) return
+    switch (state.level) {
+      case 'sessions':
+        await renderSessions()
+        break
+      case 'tree':
+        await renderTree(state.sessionId)
+        break
+      case 'detail':
+        await renderDetail(state.sessionId, state.agentId, true)
+        break
+    }
+  } finally {
+    btn.classList.remove('spinning')
+  }
+}
+
 // ── Navigation ────────────────────────────────
 function navigate(state) {
   navStack.push(state)
   render(state)
+  syncHash()
 }
 
 function goBack() {
   if (navStack.length > 1) {
     navStack.pop()
-    render(navStack[navStack.length - 1])
+    const state = navStack[navStack.length - 1]
+    render(state)
+    syncHash()
   } else {
     window.location.href = '/'
   }
@@ -423,10 +549,10 @@ function openNode(sessionId, agentId, label, badge) {
 let currentNodeData = null
 let currentLayer = 'interface'
 
-async function renderDetail(sessionId, agentId) {
+async function renderDetail(sessionId, agentId, keepLayer) {
   const main = document.getElementById('main')
   main.innerHTML = '<div class="skeleton"></div><div class="skeleton" style="height:40px"></div><div class="skeleton"></div>'
-  currentLayer = 'interface'
+  if (!keepLayer) currentLayer = 'interface'
   updateLayerTabs()
 
   // subagentType をクエリパラメータで渡す
@@ -444,7 +570,59 @@ async function renderDetail(sessionId, agentId) {
   }
 }
 
+let _originalInstruction = null
+let _translatedInstruction = null
+let _showingTranslation = false
+
+async function toggleTranslation() {
+  const btn = document.getElementById('translateBtn')
+  const textEl = document.getElementById('instructionText')
+  if (!btn || !textEl) return
+
+  if (_showingTranslation) {
+    textEl.textContent = _originalInstruction
+    btn.textContent = '翻訳'
+    _showingTranslation = false
+    return
+  }
+
+  if (_translatedInstruction) {
+    textEl.textContent = _translatedInstruction
+    btn.textContent = '原文'
+    _showingTranslation = true
+    return
+  }
+
+  btn.textContent = '翻訳中...'
+  btn.disabled = true
+  try {
+    const res = await fetch('/api/observe/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: _originalInstruction }),
+    })
+    const data = await res.json()
+    if (data.translated) {
+      _translatedInstruction = data.translated
+      textEl.textContent = _translatedInstruction
+      btn.textContent = '原文'
+      _showingTranslation = true
+    } else {
+      btn.textContent = '翻訳'
+    }
+  } catch {
+    btn.textContent = '翻訳'
+  } finally {
+    btn.disabled = false
+  }
+}
+
 function renderContextBanner(data, state) {
+  // 翻訳キャッシュをリセット
+  _originalInstruction = data.meta?.parentInstruction || null
+  _translatedInstruction = null
+  _showingTranslation = false
+
   const banner = document.getElementById('contextBanner')
   const meta = data.meta || {}
   const isSubagent = meta.nodeType === 'subagent'
@@ -472,9 +650,12 @@ function renderContextBanner(data, state) {
 
   // 親からの指示
   if (isSubagent && meta.parentInstruction) {
-    html += `<div class="parent-instruction">
-      <div class="parent-instruction-label">${ic('arrow-down-right', 12)} 親からの指示</div>
-      <div class="parent-instruction-text">${esc(meta.parentInstruction)}</div>
+    html += `<div class="parent-instruction" id="parentInstructionCard">
+      <div class="parent-instruction-label">
+        ${ic('arrow-down-right', 12)} 親からの指示
+        <button class="translate-btn" id="translateBtn" onclick="toggleTranslation()">翻訳</button>
+      </div>
+      <div class="parent-instruction-text" id="instructionText">${esc(meta.parentInstruction)}</div>
     </div>`
   }
 
@@ -482,10 +663,37 @@ function renderContextBanner(data, state) {
   banner.style.display = ''
 }
 
-function switchLayer(layer) {
+async function switchLayer(layer) {
+  const isRefresh = (layer === currentLayer)
   currentLayer = layer
   updateLayerTabs()
+
+  if (isRefresh) {
+    // 同じタブを再タップ → データ再取得
+    const state = navStack[navStack.length - 1]
+    if (state?.level === 'detail') {
+      const tab = document.querySelector(`.layer-tab[data-layer="${layer}"]`)
+      if (tab) tab.classList.add('refreshing')
+      const main = document.getElementById('main')
+      const agentParam = state.agentId ? `&agentId=${state.agentId}` : ''
+      const typeParam = state.badge ? `&subagentType=${encodeURIComponent(state.badge)}` : ''
+      try {
+        const res = await fetch(`/api/observe/node/${state.sessionId}?project=${encodeURIComponent(currentProject)}${agentParam}${typeParam}`)
+        currentNodeData = await res.json()
+        updateLayerTabCounts()
+        renderLayer(layer)
+      } catch (e) {
+        main.innerHTML = `<div class="empty-state">${ic('alert-triangle', 32)}<div>更新エラー</div></div>`
+      } finally {
+        if (tab) tab.classList.remove('refreshing')
+      }
+      syncHash()
+      return
+    }
+  }
+
   renderLayer(layer)
+  syncHash()
 }
 
 function updateLayerTabs() {

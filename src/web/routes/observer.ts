@@ -12,6 +12,7 @@ import { createInterface } from 'node:readline'
 import { isValidSessionId, isProjectPathAllowed } from '../path-guard.js'
 import { cwdToProjectDir, cleanPreview } from './chat.js'
 import { detectDanger } from '../danger-detect.js'
+import { runClaudeCli } from '../../llm/claude-cli.js'
 
 // ── 型定義 ──────────────────────────────────────────
 
@@ -645,5 +646,24 @@ observerRoutes.get('/node/:sessionId', async (c) => {
     return c.json(detail)
   } catch (e) {
     return c.json({ error: `Failed to extract detail: ${e}` }, 500)
+  }
+})
+
+// POST /api/observe/translate — テキストを日本語に翻訳
+observerRoutes.post('/translate', async (c) => {
+  const body = await c.req.json<{ text: string }>()
+  if (!body.text) return c.json({ error: 'text is required' }, 400)
+
+  try {
+    const result = await runClaudeCli({
+      prompt: `以下のテキストを自然な日本語に翻訳してください。翻訳文のみを出力してください（説明や前置きは不要）:\n\n${body.text}`,
+      model: 'claude-haiku-4-5-20251001',
+      skipPermissions: true,
+      allowedTools: [],
+      timeoutMs: 30_000,
+    })
+    return c.json({ translated: result.content.trim() })
+  } catch (e) {
+    return c.json({ error: `Translation failed: ${e}` }, 500)
   }
 })
