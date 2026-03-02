@@ -1,0 +1,3065 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>pocket-cc</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#1e1e2e;--surface:#252536;--surface-hover:#2a2a3d;
+  --border:#333346;--border-light:#3e3e56;
+  --text:#cdd6f4;--text-bright:#fff;--muted:#6c7086;
+  --accent:#c084fc;--accent-dim:rgba(192,132,252,.12);--accent-border:rgba(192,132,252,.25);
+  --user-bg:#2a2a3d;--user-border:#3e3e56;
+  --warning:#f9e2af;--warning-bg:rgba(249,226,175,.08);
+  --danger:#f38ba8;--danger-bg:rgba(243,139,168,.08);
+  --success:#a6e3a1;--success-bg:rgba(166,227,161,.08);
+  --diff-add:rgba(166,227,161,.12);--diff-del:rgba(243,139,168,.12);
+  --diff-add-text:#a6e3a1;--diff-del-text:#f38ba8;
+  --blue:#89b4fa;--blue-bg:rgba(137,180,250,.12);
+  --font-sans:-apple-system,system-ui,'Segoe UI','Helvetica Neue',sans-serif;
+  --font-mono:'SF Mono',Menlo,'Cascadia Code','JetBrains Mono',Consolas,monospace;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font-sans);font-size:14px;line-height:1.6}
+body{display:flex;flex-direction:column;height:100dvh}
+svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none;vertical-align:-.125em;flex-shrink:0}
+
+/* ── ヘッダー ── */
+.header{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.header-logo{display:flex;align-items:center;gap:6px;color:var(--accent);font-weight:700;font-size:13px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .1s;padding:4px 0}
+.header-logo:active{opacity:.7}
+.header-logo svg.ic{font-size:18px}
+.header-logo-chevron{color:var(--muted);display:flex;align-items:center;margin-left:2px}
+.header-logo-chevron svg.ic{font-size:10px}
+.header-spacer{flex:1}
+.header-btn{background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:10px 14px;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;min-height:42px}
+.header-btn:hover{color:var(--text);border-color:var(--border-light);background:var(--surface-hover)}
+.header-btn.active{color:var(--accent);border-color:var(--accent-border)}
+.header-btn svg.ic{font-size:18px}
+
+/* ── タブアクションパネル ── */
+.tab-bar-wrap{position:relative;flex-shrink:0}
+.tap-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:7}
+.tap-overlay.open{display:block}
+.tab-action-panel{display:none;position:absolute;left:0;right:0;top:100%;background:var(--surface);border:1px solid var(--border-light);border-top:none;border-radius:0 0 10px 10px;box-shadow:0 12px 32px rgba(0,0,0,.6);z-index:8;padding:12px 14px;animation:tapSlideDown .15s ease-out}
+.tab-action-panel.open{display:block}
+@keyframes tapSlideDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.tap-info{display:flex;flex-direction:column;gap:6px;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border);font-size:12px}
+.tap-field{display:flex;align-items:baseline;gap:8px;min-height:18px}
+.tap-label{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.3px;flex-shrink:0;min-width:52px}
+.tap-val{color:var(--text);word-break:break-all;line-height:1.3}
+.tap-val.muted{color:var(--muted)}
+.tap-val .tap-status{font-weight:600}
+.tap-val .tap-status.s-idle{color:var(--success)}
+.tap-val .tap-status.s-active{color:var(--accent)}
+.tap-summary{white-space:pre-line;line-height:1.5;font-size:12px;color:var(--text)}
+.tap-summary .typing-dots{display:inline-flex}
+.tap-name-row{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
+.tap-name-suggest{color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tap-name-apply{background:none;border:1px solid var(--accent-border);color:var(--accent);border-radius:6px;padding:2px 8px;font-size:10px;cursor:pointer;flex-shrink:0;transition:all .1s}
+.tap-name-apply:hover{background:var(--accent-dim)}
+.tap-name-edit{background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:2px 8px;font-size:10px;cursor:pointer;flex-shrink:0;transition:all .1s}
+.tap-name-edit:hover{color:var(--text);border-color:var(--border-light)}
+.tap-dismiss{background:none;border:none;color:var(--muted);cursor:pointer;padding:6px;margin-left:auto;display:flex;align-items:center;flex-shrink:0;border-radius:4px;transition:all .1s}
+.tap-dismiss:hover{color:var(--text);background:var(--surface-hover)}
+.tap-actions{display:flex;align-items:center;gap:6px}
+.tap-action-btn{display:flex;align-items:center;justify-content:center;gap:5px;padding:8px 14px;min-height:40px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;cursor:pointer;transition:all .1s;white-space:nowrap}
+.tap-action-btn:hover{background:var(--surface-hover);border-color:var(--border-light)}
+.tap-action-btn:active{transform:scale(.96)}
+.tap-action-btn:disabled{opacity:.3;cursor:default;transform:none}
+.tap-action-btn svg.ic{font-size:14px}
+.tap-action-btn.danger{color:var(--danger);margin-left:auto}
+.tap-action-btn.danger:hover{background:var(--danger-bg);border-color:rgba(243,139,168,.3)}
+.tab .tab-chevron{color:var(--muted);display:flex;align-items:center;flex-shrink:0;transition:transform .15s}
+.tab .tab-chevron.panel-open{transform:rotate(180deg)}
+.model-select{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;font-family:var(--font-mono);cursor:pointer;min-width:0;flex-shrink:1;min-height:42px}
+.model-select:focus{outline:none;border-color:var(--accent)}
+
+/* ── セッションタブバー ── */
+.tab-bar{display:flex;align-items:center;gap:0;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tab-bar::-webkit-scrollbar{display:none}
+.tab{display:flex;align-items:center;gap:6px;padding:8px 14px;font-size:13px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .1s;min-width:0;max-width:180px;flex-shrink:0}
+.tab:hover{color:var(--text);background:var(--surface-hover)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab .tab-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tab .tab-dot{width:6px;height:6px;border-radius:50%;background:var(--tab-mode-color, var(--accent));flex-shrink:0;transition:background .2s}
+.tab .tab-dot.streaming{animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.tab .tab-close{color:var(--muted);cursor:pointer;padding:0 2px;border-radius:3px;transition:all .1s;flex-shrink:0;display:flex;align-items:center}
+.tab .tab-close:hover{color:var(--danger);background:var(--danger-bg)}
+.tab .tab-close svg.ic{font-size:11px}
+.tab-add{display:flex;align-items:center;justify-content:center;padding:8px 14px;color:var(--muted);cursor:pointer;transition:all .1s;flex-shrink:0}
+.tab-add:hover{color:var(--accent);background:var(--surface-hover)}
+.tab-add svg.ic{font-size:14px}
+
+/* ── メッセージコンテナ ── */
+#sessionsContainer{flex:1;overflow:hidden;position:relative;min-height:0}
+.messages{position:absolute;inset:0;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch;display:none;flex-direction:column;gap:16px}
+.messages.active{display:flex}
+
+/* ── ユーザーメッセージ ── */
+.msg.user{display:flex;justify-content:flex-end}
+.msg.user .bubble{background:var(--user-bg);border:1px solid var(--user-border);border-radius:12px 12px 2px 12px;padding:10px 14px;max-width:85%;white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.5;color:var(--text-bright)}
+
+/* ── 割り込みインジケーター ── */
+.msg.interrupt{display:flex;justify-content:center;padding:4px 0}
+.msg.interrupt .interrupt-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:6px;background:var(--surface);border:1px solid var(--border);font-size:11px;color:var(--muted)}
+.msg.interrupt .interrupt-badge svg{flex-shrink:0}
+.msg.system-notice{display:flex;justify-content:center;padding:4px 0}
+.msg.system-notice .notice-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:6px;background:var(--accent-dim);border:1px solid var(--accent-border);font-size:11px;color:var(--accent)}
+
+/* ── アシスタントメッセージ ── */
+.msg.assistant{display:flex;flex-direction:column;gap:8px}
+.msg.assistant .content{color:var(--text);word-break:break-word;font-size:14px;line-height:1.7}
+
+/* ── マークダウン ── */
+.msg.assistant .content h1{font-size:20px;font-weight:700;margin:16px 0 8px;color:var(--text-bright)}
+.msg.assistant .content h2{font-size:17px;font-weight:700;margin:14px 0 6px;color:var(--text-bright)}
+.msg.assistant .content h3{font-size:15px;font-weight:700;margin:12px 0 4px;color:var(--text-bright)}
+.msg.assistant .content p{margin:6px 0}
+.msg.assistant .content ul,.msg.assistant .content ol{padding-left:20px;margin:6px 0}
+.msg.assistant .content li{margin:2px 0}
+.msg.assistant .content li::marker{color:var(--muted)}
+.msg.assistant .content strong{color:var(--text-bright);font-weight:600}
+.msg.assistant .content em{color:var(--muted);font-style:italic}
+.msg.assistant .content hr{border:none;border-top:1px solid var(--border);margin:12px 0}
+.msg.assistant .content a{color:var(--accent);text-decoration:none}
+.msg.assistant .content a:hover{text-decoration:underline}
+
+/* ── コードブロック ── */
+.msg.assistant .content pre{position:relative;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;overflow-x:auto;margin:8px 0;font-size:13px;line-height:1.5}
+.msg.assistant .content code{font-family:var(--font-mono);font-size:13px}
+.msg.assistant .content p code,
+.msg.assistant .content li code{background:rgba(192,132,252,.12);color:var(--accent);padding:2px 6px;border-radius:4px;font-size:12px}
+.msg.assistant .content pre code{background:none;padding:0;border-radius:0;font-size:13px;color:var(--text)}
+.code-copy-btn{position:absolute;top:8px;right:8px;background:var(--surface);color:var(--muted);border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:11px;font-family:var(--font-mono);cursor:pointer;opacity:0;transition:opacity .15s}
+pre:hover .code-copy-btn{opacity:1}
+.code-copy-btn:hover{color:var(--accent);border-color:var(--accent-border)}
+.code-copy-btn.copied{color:var(--success);border-color:var(--success)}
+
+/* ── テーブル ── */
+.msg.assistant .content table{border-collapse:collapse;width:100%;margin:8px 0;font-size:13px;font-family:var(--font-mono)}
+.msg.assistant .content th{background:var(--surface);color:var(--text-bright);font-weight:600;text-align:left;padding:6px 10px;border:1px solid var(--border)}
+.msg.assistant .content td{padding:6px 10px;border:1px solid var(--border)}
+.msg.assistant .content tr:nth-child(even) td{background:var(--surface)}
+
+/* ── 引用 ── */
+.msg.assistant .content blockquote{border-left:3px solid var(--accent);padding:4px 12px;margin:8px 0;color:var(--muted);background:var(--accent-dim);border-radius:0 6px 6px 0}
+
+/* ── ツール実行パネル ── */
+.tool-detail{margin:4px 0;border:1px solid var(--border);border-radius:8px;overflow:hidden;font-family:var(--font-mono);font-size:12px;background:var(--surface)}
+.tool-detail-header{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;user-select:none;transition:background .1s}
+.tool-detail-header:hover{background:var(--surface-hover)}
+.tool-detail-header .tool-chevron{color:var(--muted);transition:transform .15s;width:12px;display:flex;align-items:center}
+.tool-detail-header .tool-chevron svg.ic{font-size:10px}
+.tool-detail-header .tool-chevron.open{transform:rotate(90deg)}
+.tool-detail-header .tool-icon-label{display:flex;align-items:center;gap:6px}
+.tool-detail-header .tool-icon{color:var(--muted);display:flex;align-items:center}
+.tool-detail-header .tool-icon svg.ic{font-size:13px}
+.tool-detail-header .tool-name{color:var(--accent);font-weight:600;font-size:12px}
+.tool-detail-header .tool-file{color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
+.tool-detail-header .tool-status{color:var(--success);display:flex;align-items:center}
+.tool-detail-header .tool-status svg.ic{font-size:12px}
+.tool-detail-body{display:none;padding:10px 12px;background:var(--bg);border-top:1px solid var(--border);max-height:300px;overflow:auto;white-space:pre-wrap;word-break:break-all;color:var(--text);line-height:1.4;font-size:12px}
+.tool-detail-body.open{display:block}
+
+/* diff */
+.diff-line{padding:1px 6px;font-family:var(--font-mono);font-size:12px}
+.diff-add{background:var(--diff-add);color:var(--diff-add-text)}
+.diff-del{background:var(--diff-del);color:var(--diff-del-text)}
+.diff-hunk{color:var(--accent);font-weight:600;margin-top:4px;font-size:11px}
+
+/* ── 警告バッジ ── */
+.warning-badge{display:flex;align-items:center;gap:8px;background:var(--warning-bg);color:var(--warning);border:1px solid rgba(249,226,175,.2);border-radius:8px;padding:8px 12px;font-size:12px;margin:4px 0}
+.warning-badge svg.ic{font-size:14px;flex-shrink:0}
+
+/* ── コスト表示 ── */
+.meta{font-size:11px;color:var(--muted);margin-top:2px;display:flex;gap:12px;font-family:var(--font-mono)}
+
+/* ── Git ステータスバー（VSCode風）── */
+.git-statusbar{display:flex;align-items:center;gap:0;margin:-12px -16px 10px;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;overflow:hidden;background:var(--bg)}
+.git-statusbar:active{opacity:.75}
+.git-statusbar-left{display:flex;align-items:center;gap:5px;padding:5px 12px;font-size:12px;font-family:var(--font-mono);color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;transition:background .1s;flex:1;min-width:0}
+.git-statusbar-left:hover{background:var(--surface-hover);color:var(--text)}
+.git-statusbar-right{display:flex;align-items:center;gap:0;flex-shrink:0}
+.git-statusbar-pill{display:flex;align-items:center;gap:4px;padding:5px 10px;font-size:12px;font-family:var(--font-mono);color:var(--muted);white-space:nowrap;transition:background .1s;border-left:1px solid var(--border)}
+.git-statusbar-pill:hover{background:var(--surface-hover);color:var(--text)}
+.git-statusbar-pill.warn{color:var(--warning)}
+.git-statusbar-pill.danger{color:var(--danger)}
+.git-statusbar-pill.compact-running{animation:pulse-compact 1.5s ease-in-out infinite}
+@keyframes pulse-compact{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── 入力エリア ── */
+.input-area{border-top:1px solid var(--border);background:var(--surface);padding:12px 16px;padding-bottom:calc(12px + env(safe-area-inset-bottom));flex-shrink:0}
+.input-box{border:2px solid var(--mode-color, var(--border));border-radius:10px;background:var(--bg);overflow:hidden;transition:border-color .15s}
+.input-box:focus-within{border-color:var(--mode-color, var(--accent-border))}
+.input-box.streaming{animation:pulse-border 1.5s ease-in-out infinite}
+@keyframes pulse-border{0%,100%{border-color:var(--mode-color, var(--border))}50%{border-color:transparent}}
+.input-box textarea{width:100%;background:transparent;color:var(--text);border:none;padding:10px 14px;font-size:14px;font-family:var(--font-sans);resize:none;min-height:40px;max-height:150px;line-height:1.4}
+.input-box textarea:focus{outline:none}
+.input-box textarea::placeholder{color:var(--muted)}
+.input-footer{display:flex;align-items:center;gap:6px;padding:6px 8px 8px}
+.input-footer button{width:38px;height:38px;border:none;border-radius:8px;background:transparent;color:var(--muted);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .1s}
+.input-footer button:hover{background:var(--accent-dim);color:var(--accent)}
+.input-footer button:disabled{opacity:.3;cursor:not-allowed}
+.input-footer button.send-btn{background:var(--accent);color:var(--bg);border-radius:8px;width:42px;height:42px;font-size:18px}
+.input-footer button.send-btn:hover{opacity:.9}
+.input-footer button.send-btn:disabled{opacity:.3}
+.input-footer button.abort-btn{display:none;background:var(--danger-bg);color:var(--danger);width:42px;height:42px;border-radius:8px;font-size:18px}
+.input-footer button.abort-btn:hover{background:rgba(243,139,168,.2)}
+.attachments{display:none;flex-wrap:wrap;gap:6px;padding:8px 10px 4px}
+.attachments:not(:empty){display:flex}
+.attach-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:var(--font-mono);color:var(--text);max-width:200px}
+.attach-chip .attach-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.attach-chip .attach-remove{background:none;border:none;color:var(--muted);cursor:pointer;padding:0;margin:0;width:auto;height:auto;font-size:12px;display:flex;align-items:center}
+.attach-chip .attach-remove:hover{color:var(--danger)}
+.attach-chip .attach-thumb{width:24px;height:24px;border-radius:3px;object-fit:cover}
+
+/* ── トースト通知 ── */
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.5);font-size:13px;color:var(--text);max-width:90vw;min-width:200px;animation:fadeIn .15s}
+.toast h3{margin:0 0 8px;font-size:14px;color:var(--accent)}
+.toast p{margin:4px 0;color:var(--muted)}
+.toast .toast-value{color:var(--text-bright);font-weight:600}
+@keyframes fadeIn{from{opacity:0;transform:translate(-50%,-50%) scale(.95)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+.toast-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:199}
+
+/* ── ローディング ── */
+.typing{display:flex;align-items:center;gap:6px;padding:8px 0;color:var(--muted);font-size:13px}
+.typing-dots{display:flex;gap:3px}
+.typing-dots span{width:7px;height:7px;background:var(--accent);border-radius:50%;animation:bounce .6s infinite alternate;opacity:1}
+.typing-dots span:nth-child(2){animation-delay:.2s}
+.typing-dots span:nth-child(3){animation-delay:.4s}
+@keyframes bounce{to{opacity:.3;transform:translateY(-4px)}}
+
+/* ── ドロワー ── */
+.drawer{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:10;display:none;backdrop-filter:blur(2px)}
+.drawer.open{display:block}
+.drawer-content{position:absolute;bottom:0;left:0;right:0;background:var(--surface);border-radius:14px 14px 0 0;padding:0 16px 16px;padding-bottom:calc(16px + env(safe-area-inset-bottom));max-height:70vh;overflow-y:auto;border:1px solid var(--border)}
+
+/* ドロワータブ */
+.drawer-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:1;padding-top:16px;margin-bottom:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none;mask-image:linear-gradient(to right,#000 calc(100% - 24px),transparent);-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 24px),transparent)}
+.drawer-tabs::-webkit-scrollbar{display:none}
+.drawer-tab{padding:8px 14px;font-size:13px;color:var(--muted);cursor:pointer;border:none;background:none;font-family:var(--font-sans);border-bottom:2px solid transparent;font-weight:500;transition:color .1s;white-space:nowrap;flex-shrink:0}
+.drawer-tab:hover{color:var(--text)}
+.drawer-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.drawer-tab-content{display:none}
+.drawer-tab-content.active{display:block}
+
+/* プロジェクトアイテム */
+.project-item{display:flex;flex-direction:column;padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:all .1s}
+.project-item:hover{border-color:var(--border-light);background:var(--surface-hover)}
+.project-item.active{border-color:var(--accent-border);background:var(--accent-dim)}
+.project-item .name{font-weight:600;font-size:13px;color:var(--text-bright)}
+.project-item .path{font-size:11px;color:var(--muted);margin-top:2px;font-family:var(--font-mono)}
+.project-delete{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 2px;margin-left:auto;line-height:1;opacity:.5;transition:opacity .1s}
+.project-delete:hover{opacity:1;color:#e55}
+
+/* セッションアイテム */
+.session-item{display:flex;flex-direction:column;padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:all .1s}
+.session-item:hover{border-color:var(--border-light);background:var(--surface-hover)}
+.session-item.active{border-color:var(--accent-border);background:var(--accent-dim)}
+.session-item .preview{font-size:13px;color:var(--text-bright);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.session-item .session-meta{display:flex;gap:8px;font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--font-mono)}
+.load-more-btn{width:100%;padding:10px;margin-top:6px;background:var(--surface-hover);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;cursor:pointer;font-family:var(--font-sans);transition:all .1s}
+.load-more-btn:hover{background:var(--border);color:var(--text)}
+
+/* ── 設定パネル ── */
+.settings-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:15;display:none;backdrop-filter:blur(2px)}
+.settings-overlay.open{display:flex;align-items:center;justify-content:center}
+.settings-panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:min(320px,90vw);box-shadow:0 12px 40px rgba(0,0,0,.4);animation:tapSlideDown .15s}
+.settings-header{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border)}
+.settings-title{font-size:15px;font-weight:700;color:var(--text-bright);flex:1}
+.settings-body{padding:8px 0}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;min-height:48px}
+.settings-label{font-size:14px;color:var(--text)}
+.settings-toggle{background:var(--surface-hover);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;min-width:72px;text-align:center;transition:all .15s;font-family:var(--font-sans);display:flex;align-items:center;gap:6px;justify-content:center}
+.settings-toggle:hover{border-color:var(--border-light);background:var(--accent-dim);color:var(--accent)}
+[data-theme="light"] .settings-panel{box-shadow:0 12px 40px rgba(0,0,0,.15)}
+
+/* ── 機能メニュー ── */
+.features-menu{position:absolute;top:100%;right:0;margin-top:4px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,.3);z-index:12;animation:tapSlideDown .12s;display:none}
+.features-menu.open{display:block}
+.features-menu-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;color:var(--text);font-size:13px;cursor:pointer;transition:background .1s;border:none;background:none;width:100%;text-align:left;font-family:var(--font-sans)}
+.features-menu-item:hover{background:var(--surface-hover)}
+.features-menu-item svg.ic{font-size:16px;color:var(--muted);flex-shrink:0}
+.features-menu-item .fm-label{flex:1}
+.features-menu-item .fm-badge{font-size:10px;color:var(--muted);background:var(--surface-hover);padding:1px 6px;border-radius:4px}
+[data-theme="light"] .features-menu{box-shadow:0 8px 24px rgba(0,0,0,.1)}
+
+/* ── タブアクションパネル: モードセレクター ── */
+.tap-mode-section{padding:8px 14px;border-bottom:1px solid var(--border)}
+.tap-mode-label{font-size:10px;text-transform:uppercase;color:var(--muted);letter-spacing:.05em;margin-bottom:6px}
+.tap-mode-row{display:flex;gap:6px;flex-wrap:wrap}
+.tap-mode-btn{display:flex;align-items:center;gap:4px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}
+.tap-mode-btn:hover{border-color:var(--border-light);color:var(--text)}
+.tap-mode-btn.active{color:var(--mode-btn-color);border-color:var(--mode-btn-color);background:var(--surface-hover)}
+.tap-mode-btn svg.ic{font-size:12px}
+
+/* ── ソースビューア ── */
+.source-viewer{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:20;backdrop-filter:blur(2px)}
+.source-viewer-content{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--bg);display:flex;flex-direction:column}
+.source-viewer-header{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+/* ── ファイルツリー ── */
+.file-item{display:flex;align-items:center;gap:6px;padding:8px 10px;font-size:13px;font-family:var(--font-mono);color:var(--text);cursor:pointer;border-radius:6px;transition:background .1s}
+.file-item:hover{background:var(--surface-hover)}
+.file-item.dir{color:var(--accent)}
+.file-item .file-size{font-size:11px;color:var(--muted);margin-left:auto}
+/* ── Git ステータス ── */
+.git-branch{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);margin-bottom:8px}
+.git-stat{display:flex;align-items:center;gap:6px;padding:6px 10px;font-size:13px;font-family:var(--font-mono);color:var(--text);border-bottom:1px solid var(--border)}
+.git-stat .badge{display:inline-flex;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600}
+.git-stat .badge.modified{background:var(--warning-bg);color:var(--warning)}
+.git-stat .badge.added{background:rgba(166,227,161,.15);color:var(--success)}
+.git-stat .badge.deleted{background:var(--danger-bg);color:var(--danger)}
+.git-stat .badge.untracked{background:rgba(137,180,250,.15);color:#89b4fa}
+/* ── サービス一覧 ── */
+.service-item{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--surface)}
+.service-item .port-badge{background:var(--accent-dim);color:var(--accent);padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600;font-family:var(--font-mono)}
+.service-item .open-btn{margin-left:auto;background:var(--accent);color:var(--bg);border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-family:var(--font-mono);white-space:nowrap}
+.service-item .open-btn:hover{opacity:.9}
+.link-item{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:all .1s;-webkit-tap-highlight-color:transparent}
+.link-item:hover,.link-item:active{border-color:var(--border-light);background:var(--surface-hover)}
+.link-item .link-info{flex:1;min-width:0}
+.link-item .link-title{font-size:13px;color:var(--text-bright);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.link-item .link-url{font-size:11px;color:var(--muted);font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.link-item .link-delete{color:var(--muted);background:none;border:none;cursor:pointer;padding:6px;border-radius:4px;display:flex;align-items:center;flex-shrink:0;transition:color .1s}
+.link-item .link-delete:hover{color:var(--danger)}
+
+/* ── レスポンシブ ── */
+@media(max-width:480px){
+  .header{gap:4px;padding:8px 10px}
+  .header-btn{padding:8px 10px;font-size:13px;min-height:40px}
+  .header-btn .btn-label{display:inline}
+  .model-select{font-size:13px;padding:8px 10px;min-height:40px}
+  .tab{padding:6px 10px;font-size:12px;max-width:140px}
+  .input-area{padding:8px 10px;padding-bottom:calc(8px + env(safe-area-inset-bottom))}
+  .input-footer{gap:4px;padding:4px 6px 6px}
+  .input-footer button{width:36px;height:36px}
+  .input-footer button.send-btn{width:40px;height:40px}
+  .messages{padding:10px}
+}
+
+/* ── Compacting バナー ── */
+.compact-banner{display:none;align-items:center;gap:8px;padding:6px 12px;background:var(--warning-bg);border-top:1px solid rgba(249,226,175,.15);font-size:12px;color:var(--warning);flex-shrink:0}
+.compact-banner.active{display:flex}
+.compact-banner svg.ic{font-size:13px;flex-shrink:0}
+
+/* ── コマンドメニュー ── */
+.cmd-menu{display:none;position:absolute;bottom:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px 10px 0 0;padding:6px 0;max-height:220px;overflow-y:auto;z-index:5;box-shadow:0 -4px 16px rgba(0,0,0,.3)}
+.cmd-menu.open{display:block}
+.cmd-item{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;transition:background .1s;font-size:13px}
+.cmd-item:hover,.cmd-item.focused{background:var(--surface-hover)}
+.cmd-item svg.ic{font-size:15px;color:var(--accent);flex-shrink:0}
+.cmd-item .cmd-name{color:var(--text-bright);font-weight:600}
+.cmd-item .cmd-desc{color:var(--muted);font-size:12px;margin-left:auto}
+
+/* ── ツール承認UI (モバイル) ── */
+.tool-approve{margin:4px 0;border:1px solid var(--warning);border-radius:8px;overflow:hidden;background:var(--warning-bg);font-size:12px}
+.tool-approve-header{display:flex;align-items:center;gap:8px;padding:10px 12px;color:var(--warning)}
+.tool-approve-header svg.ic{font-size:15px;flex-shrink:0}
+.tool-approve-header .tool-approve-name{font-weight:700}
+.tool-approve-body{padding:8px 12px;background:var(--bg);border-top:1px solid rgba(249,226,175,.15);font-size:12px;color:var(--text);max-height:150px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+.tool-approve-actions{display:flex;gap:8px;padding:8px 12px;border-top:1px solid rgba(249,226,175,.15)}
+.tool-approve-actions button{flex:1;padding:8px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer}
+.tool-approve-actions .btn-allow{background:var(--success);color:var(--bg)}
+.tool-approve-actions .btn-deny{background:var(--danger-bg);color:var(--danger);border:1px solid rgba(243,139,168,.3)}
+
+/* ── ライトテーマ (Catppuccin Latte) ── */
+[data-theme="light"]{
+  --bg:#eff1f5;--surface:#ffffff;--surface-hover:#f2f4f8;
+  --border:#dce0e8;--border-light:#ccd0da;
+  --text:#4c4f69;--text-bright:#1e1e2e;--muted:#8c8fa1;
+  --accent:#8839ef;--accent-dim:rgba(136,57,239,.08);--accent-border:rgba(136,57,239,.2);
+  --user-bg:#e6e9ef;--user-border:#ccd0da;
+  --warning:#df8e1d;--warning-bg:rgba(223,142,29,.08);
+  --danger:#d20f39;--danger-bg:rgba(210,15,57,.06);
+  --success:#40a02b;--success-bg:rgba(64,160,43,.06);
+  --diff-add:rgba(64,160,43,.1);--diff-del:rgba(210,15,57,.1);
+  --diff-add-text:#40a02b;--diff-del-text:#d20f39;
+  --blue:#1e66f5;--blue-bg:rgba(30,102,245,.08);
+}
+[data-theme="light"] .tab-action-panel{box-shadow:0 12px 32px rgba(0,0,0,.12)}
+[data-theme="light"] .tap-overlay{background:rgba(0,0,0,.2)}
+[data-theme="light"] .drawer-content{box-shadow:-4px 0 24px rgba(0,0,0,.1)}
+[data-theme="light"] .cmd-menu{box-shadow:0 -4px 16px rgba(0,0,0,.08)}
+[data-theme="light"] .tool-approve-body{border-top-color:rgba(223,142,29,.15)}
+[data-theme="light"] .tool-approve-actions{border-top-color:rgba(223,142,29,.15)}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo" id="headerLogo" onclick="openDrawer()" title="Menu"></div>
+  <div class="header-spacer"></div>
+  <div style="position:relative">
+    <button class="header-btn" id="featuresBtn" onclick="toggleFeaturesMenu()" title="Features"></button>
+    <div class="features-menu" id="featuresMenu">
+      <button class="features-menu-item" onclick="closeFeaturesMenu();window.location='/observer'">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+        <span class="fm-label">Observer</span>
+      </button>
+    </div>
+  </div>
+  <button class="header-btn" id="settingsBtn" onclick="openSettingsPanel()" title="Settings"></button>
+</div>
+<div class="tab-bar-wrap">
+  <div class="tab-bar" id="tabBar">
+    <div class="tab-add" id="tabAddBtn" onclick="createNewTab()" title="New Chat"></div>
+  </div>
+  <div id="tapOverlay" class="tap-overlay" onclick="closeTabActionPanel()"></div>
+  <div id="tabActionPanel" class="tab-action-panel">
+    <div class="tap-info" id="tapInfo"></div>
+    <div class="tap-actions" id="tapActions"></div>
+  </div>
+</div>
+
+<div id="sessionsContainer"></div>
+
+<div class="input-area" style="position:relative">
+  <div class="compact-banner" id="compactBanner"></div>
+  <div id="gitBar" class="git-statusbar">
+    <div class="git-statusbar-left" onclick="openDrawer('git')" title="Git status"><span id="gitBarBranch" style="opacity:.5">—</span></div>
+    <div class="git-statusbar-right" id="gitBarRight"></div>
+    <div class="git-statusbar-pill" id="tokenPill" onclick="event.stopPropagation();triggerCompact()" title="Context usage — tap to compact" style="display:none"></div>
+  </div>
+  <div class="cmd-menu" id="cmdMenu"></div>
+  <input type="file" id="fileInput" multiple style="display:none">
+  <div class="input-box">
+    <textarea id="input" rows="1" placeholder="Ask Claude anything..." enterkeyhint="enter" data-i18n-placeholder="chat.placeholder"></textarea>
+    <div class="input-footer">
+      <button id="cmdBtn" onclick="toggleCmdMenu()" title="Commands (/)"></button>
+      <button id="filesBtn" onclick="document.getElementById('fileInput').click()" title="Upload file"></button>
+      <select id="model" class="model-select" onchange="onModelChange()">
+        <option value="default">default (auto)</option>
+        <option value="claude-sonnet-4-6" selected>claude-sonnet-4-6</option>
+        <option value="claude-opus-4-6">claude-opus-4-6</option>
+        <option value="claude-haiku-4-5">claude-haiku-4-5</option>
+        <option value="sonnet">sonnet (alias)</option>
+        <option value="opus">opus (alias)</option>
+        <option value="haiku">haiku (alias)</option>
+      </select>
+      <span style="flex:1"></span>
+      <button class="abort-btn" id="abort" onclick="abortCurrentTab()" title="Stop"></button>
+      <button class="send-btn" id="send" onclick="sendMessage()" title="Send (Enter)"></button>
+    </div>
+  </div>
+  <div class="attachments" id="attachments"></div>
+</div>
+
+<div class="drawer" id="drawer" onclick="closeDrawer()">
+  <div class="drawer-content" onclick="event.stopPropagation()">
+    <div class="drawer-tabs">
+      <button class="drawer-tab active" data-tab="sessions" onclick="switchDrawerTab('sessions')" data-i18n="drawer.sessions">Sessions</button>
+      <button class="drawer-tab" data-tab="files" onclick="switchDrawerTab('files')" data-i18n="drawer.files">Files</button>
+      <button class="drawer-tab" data-tab="git" onclick="switchDrawerTab('git')" data-i18n="drawer.git">Git</button>
+      <button class="drawer-tab" data-tab="services" onclick="switchDrawerTab('services')" data-i18n="drawer.services">Services</button>
+      <button class="drawer-tab" data-tab="tools" onclick="switchDrawerTab('tools')" data-i18n="drawer.tools">Tools</button>
+      <button class="drawer-tab" data-tab="links" onclick="switchDrawerTab('links')" data-i18n="drawer.links">Links</button>
+      <button class="drawer-tab" data-tab="projects" onclick="switchDrawerTab('projects')" data-i18n="drawer.projects">Projects</button>
+    </div>
+    <div id="sessionsTab" class="drawer-tab-content active">
+      <div id="currentProjectLabel" style="font-size:12px;color:var(--muted);padding:0 0 8px;font-family:var(--font-mono)"></div>
+      <div id="sessionList"></div>
+    </div>
+    <div id="projectsTab" class="drawer-tab-content">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:12px;color:var(--muted)">Projects</span>
+        <button id="addProjectBtn" onclick="showAddProjectForm()" style="background:none;border:1px solid var(--border);color:var(--accent);font-size:12px;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:var(--font-mono)">+ Add</button>
+      </div>
+      <div id="addProjectForm" style="display:none;margin-bottom:10px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface)">
+        <input id="addProjectPath" type="text" placeholder="/path/to/project" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:13px;font-family:var(--font-mono);margin-bottom:6px" />
+        <div id="addProjectError" style="display:none;font-size:11px;color:#e55;margin-bottom:6px"></div>
+        <div style="display:flex;gap:6px;justify-content:flex-end">
+          <button onclick="hideAddProjectForm()" style="background:none;border:1px solid var(--border);color:var(--muted);font-size:12px;padding:4px 12px;border-radius:6px;cursor:pointer">Cancel</button>
+          <button onclick="addProject()" style="background:var(--accent);border:none;color:#fff;font-size:12px;padding:4px 12px;border-radius:6px;cursor:pointer">Add</button>
+        </div>
+      </div>
+      <div id="projectList"></div>
+    </div>
+    <div id="filesTab" class="drawer-tab-content">
+      <div style="margin-bottom:8px">
+        <div style="position:relative">
+          <input id="fileSearchInput" type="text" placeholder="Search files..." oninput="onFileSearch()" style="width:100%;box-sizing:border-box;padding:8px 8px 8px 32px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:13px;font-family:var(--font-mono)" />
+          <span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;display:flex" id="fileSearchIcon"></span>
+        </div>
+      </div>
+      <div id="fileSearchResults" style="display:none;margin-bottom:8px"></div>
+      <div id="fileCurrentPath" style="font-size:12px;color:var(--muted);padding:4px 0 8px;font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:rtl;text-align:left"></div>
+      <div id="fileTree"></div>
+    </div>
+    <div id="gitTab" class="drawer-tab-content">
+      <div id="gitStatus"></div>
+    </div>
+    <div id="servicesTab" class="drawer-tab-content">
+      <div id="servicesList"></div>
+      <div style="color:var(--muted);font-size:11px;padding:8px 12px;line-height:1.5;opacity:.7">Tip: スマホからアクセスするには <code style="font-size:11px;background:var(--surface1);padding:1px 4px;border-radius:3px">0.0.0.0</code> でバインドが必要。例: <code style="font-size:11px;background:var(--surface1);padding:1px 4px;border-radius:3px">next dev --hostname 0.0.0.0</code></div>
+    </div>
+    <div id="toolsTab" class="drawer-tab-content">
+      <div id="toolsList"></div>
+    </div>
+    <div id="linksTab" class="drawer-tab-content">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:12px;color:var(--muted)">Bookmarks</span>
+        <button onclick="showAddLinkForm()" style="background:none;border:1px solid var(--border);color:var(--accent);font-size:12px;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:var(--font-mono)">+ Add</button>
+      </div>
+      <div id="addLinkForm" style="display:none;margin-bottom:10px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface)">
+        <input id="addLinkUrl" type="url" placeholder="https://example.com" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:13px;font-family:var(--font-mono);margin-bottom:6px" />
+        <input id="addLinkTitle" type="text" placeholder="Title (optional)" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:13px;font-family:var(--font-mono);margin-bottom:6px" />
+        <div style="display:flex;gap:6px;justify-content:flex-end">
+          <button onclick="hideAddLinkForm()" style="background:none;border:1px solid var(--border);color:var(--muted);font-size:12px;padding:4px 12px;border-radius:6px;cursor:pointer">Cancel</button>
+          <button onclick="addLink()" style="background:var(--accent);border:none;color:#fff;font-size:12px;padding:4px 12px;border-radius:6px;cursor:pointer">Add</button>
+        </div>
+      </div>
+      <div id="linksList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 設定パネル -->
+<div class="settings-overlay" id="settingsOverlay" onclick="closeSettingsPanel()">
+  <div class="settings-panel" onclick="event.stopPropagation()">
+    <div class="settings-header">
+      <span class="settings-title" data-i18n="settings.title">Settings</span>
+      <button class="tap-dismiss" onclick="closeSettingsPanel()" id="settingsCloseBtn"></button>
+    </div>
+    <div class="settings-body">
+      <div class="settings-row">
+        <span class="settings-label" data-i18n="settings.theme">Theme</span>
+        <button class="settings-toggle" id="settingsThemeBtn" onclick="toggleTheme();updateSettingsThemeBtn()"></button>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label" data-i18n="settings.language">Language</span>
+        <button class="settings-toggle" id="settingsLangBtn" onclick="toggleLang();updateSettingsLangBtn()"></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ソースビューアモーダル -->
+<div class="source-viewer" id="sourceViewer" style="display:none" onclick="closeSourceViewer()">
+  <div class="source-viewer-content" onclick="event.stopPropagation()">
+    <div class="source-viewer-header">
+      <span id="sourceViewerTitle" style="font-size:13px;color:var(--text);font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1"></span>
+      <button onclick="copySourceContent()" style="background:none;border:1px solid var(--border);color:var(--muted);padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-family:var(--font-mono);display:flex;align-items:center;gap:4px" id="sourceCopyBtn">Copy</button>
+      <button onclick="closeSourceViewer()" style="background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;display:flex;align-items:center" id="sourceCloseBtn"></button>
+    </div>
+    <pre id="sourceViewerCode" style="margin:0;padding:12px;overflow:auto;font-size:13px;font-family:var(--font-mono);color:var(--text);line-height:1.5;white-space:pre;-webkit-overflow-scrolling:touch"></pre>
+  </div>
+</div>
+
+<script src="/static/theme.js"></script>
+<script src="/static/i18n.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>
+<script>
+// ── Lucide インラインSVGアイコン ──
+const ICONS = {
+  terminal:      '<path d="m4 17 6-6-6-6"/><path d="M12 19h8"/>',
+  clock:         '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  'refresh-cw':  '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/>',
+  folder:        '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
+  plus:          '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  x:             '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  square:        '<rect width="18" height="18" x="3" y="3" rx="2"/>',
+  'send':        '<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/>',
+  'chevron-right':'<path d="m9 18 6-6-6-6"/>',
+  check:         '<path d="M20 6 9 17l-5-5"/>',
+  'alert-triangle':'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  'trash-2':     '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>',
+  'file-text':   '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 13H8"/><path d="M16 17H8"/><path d="M16 13h-2"/>',
+  'file-pen':    '<path d="M12.5 22H18a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v9.5"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M13.378 15.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/>',
+  search:        '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  globe:         '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
+  bot:           '<path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>',
+  'list-checks': '<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/>',
+  wrench:        '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76Z"/>',
+  slash:         '<path d="M22 2 2 22"/>',
+  'map-pin':     '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+  'layout-list': '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/><path d="M14 4h7"/><path d="M14 9h7"/><path d="M14 15h7"/><path d="M14 20h7"/>',
+  'shield':      '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+  'zap':         '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+  'link':        '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+  'eraser':      '<path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/>',
+  'upload':      '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>',
+  'image':       '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+  'copy':        '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+  'dollar-sign': '<line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+  'info':        '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  'help-circle': '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
+  'edit-3':      '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+  'download':    '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>',
+  'menu':        '<line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/>',
+  'github':      '<path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/>',
+  'git-branch':  '<line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>',
+  'server':      '<rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/>',
+  'external-link':'<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+  'chevron-down':'<path d="m6 9 6 6 6-6"/>',
+  'eye':            '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
+  'git-commit':     '<circle cx="12" cy="12" r="3"/><line x1="3" x2="9" y1="12" y2="12"/><line x1="15" x2="21" y1="12" y2="12"/>',
+  'settings':       '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  'sun':            '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+  'moon':           '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  'grid':           '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/>',
+}
+
+function ic(name, size) {
+  const s = size ? `style="font-size:${size}px"` : ''
+  return `<svg class="ic" viewBox="0 0 24 24" ${s}>${ICONS[name] || ''}</svg>`
+}
+
+// ツールアイコンマップ
+const TOOL_ICON_MAP = {
+  Read: 'file-text', Write: 'file-pen', Edit: 'file-pen', Bash: 'terminal',
+  Glob: 'search', Grep: 'search', WebFetch: 'globe', WebSearch: 'globe',
+  Task: 'bot', TodoWrite: 'list-checks', NotebookEdit: 'file-pen',
+}
+
+// --- ヘッダー等にアイコンを注入 ---
+document.getElementById('headerLogo').innerHTML = ic('terminal', 18) + '<span id="title">pocket-cc</span><span class="header-logo-chevron">' + ic('chevron-down', 10) + '</span>'
+document.getElementById('featuresBtn').innerHTML = ic('grid', 14)
+document.getElementById('settingsBtn').innerHTML = ic('settings', 14)
+document.getElementById('tabAddBtn').innerHTML = ic('plus', 14)
+document.getElementById('cmdBtn').innerHTML = ic('slash', 14)
+document.getElementById('filesBtn').innerHTML = ic('upload', 14)
+document.getElementById('abort').innerHTML = ic('square', 14)
+document.getElementById('send').innerHTML = ic('send', 14)
+document.getElementById('fileSearchIcon').innerHTML = ic('search', 14)
+document.getElementById('sourceCloseBtn').innerHTML = ic('x', 16)
+document.getElementById('settingsCloseBtn').innerHTML = ic('x', 14)
+document.getElementById('sourceCopyBtn').innerHTML = ic('copy', 12) + ' Copy'
+
+// --- State ---
+let currentProject = null
+let sessionTotalCost = 0
+let sessionTotalTurns = 0
+const sendBtn = document.getElementById('send')
+const abortBtn = document.getElementById('abort')
+const inputEl = document.getElementById('input')
+const tabBar = document.getElementById('tabBar')
+const sessionsContainer = document.getElementById('sessionsContainer')
+
+// マルチセッション管理
+let activeTabId = null
+const tabs = new Map()
+
+window.addEventListener('langchange', function() {
+  // Update drawer tab labels
+  document.querySelectorAll('.drawer-tab[data-i18n]').forEach(function(el) {
+    el.textContent = t(el.getAttribute('data-i18n'))
+  })
+})
+
+function genTabId() { return 'tab-' + Date.now() + '-' + Math.random().toString(36).slice(2,6) }
+
+// --- セッション永続化 (localStorage) --- Project別にタブ状態を保持
+const STORAGE_KEY = 'pocket-cc-tabs'
+
+function saveTabs() {
+  try {
+    // 全体データを読み込み
+    const raw = localStorage.getItem(STORAGE_KEY)
+    const store = raw ? JSON.parse(raw) : {}
+    if (!store.projects) store.projects = {}
+
+    store.currentProject = currentProject
+
+    // 現在のプロジェクトのタブを保存
+    if (currentProject) {
+      const projTabs = []
+      tabs.forEach((tab, tabId) => {
+        projTabs.push({ tabId, sessionId: tab.sessionId, label: tab.label, permissionMode: tab.permissionMode || 'plan' })
+      })
+      store.projects[currentProject] = { activeTabId, tabs: projTabs }
+    }
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(store))
+  } catch (e) { console.warn('Failed to save tabs:', e) }
+}
+
+/** 指定プロジェクトのタブをDOMに復元する */
+function restoreProjectTabs(projectPath) {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return false
+    const store = JSON.parse(raw)
+    const projData = store.projects?.[projectPath]
+    if (!projData?.tabs?.length) return false
+
+    projData.tabs.forEach(saved => {
+      const messagesEl = document.createElement('div')
+      messagesEl.className = 'messages'
+      messagesEl.id = 'msgs-' + saved.tabId
+      sessionsContainer.appendChild(messagesEl)
+
+      tabs.set(saved.tabId, {
+        sessionId: saved.sessionId,
+        streamId: null,
+        sending: false,
+        fetchController: null,
+        sendingPromise: null,
+        compacting: false,
+        pendingMessage: null,
+        messagesEl,
+        fullTexts: new WeakMap(),
+        label: cleanLabel(saved.label) || t('chat.newChat'),
+        permissionMode: saved.permissionMode || store.permissionMode || 'plan',
+      })
+
+      if (saved.sessionId) {
+        setTimeout(() => loadSessionHistory(saved.tabId), 0)
+      }
+    })
+
+    const targetTab = projData.activeTabId && tabs.has(projData.activeTabId) ? projData.activeTabId : tabs.keys().next().value
+    activeTabId = targetTab
+    tabs.forEach((t, id) => {
+      t.messagesEl.classList.toggle('active', id === targetTab)
+    })
+    renderTabs()
+    return true
+  } catch (e) {
+    console.warn('Failed to restore project tabs:', e)
+    return false
+  }
+}
+
+function restoreTabs() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return false
+    const store = JSON.parse(raw)
+
+    // プロジェクト復元
+    if (store.currentProject) currentProject = store.currentProject
+
+    // 現在プロジェクトのタブ復元
+    if (!currentProject) return false
+    const restored = restoreProjectTabs(currentProject)
+
+    // アクティブタブのモード色を反映
+    if (restored) updateInputBoxModeColor()
+
+    return restored
+  } catch (e) {
+    console.warn('Failed to restore tabs:', e)
+    return false
+  }
+}
+
+/** Project切替: 現在タブを退避→新Projectのタブを復元 */
+function switchProjectTabs(newProjectPath) {
+  closeTabActionPanel()
+  // 現在のタブを保存
+  saveTabs()
+
+  // 既存タブのDOMを全削除
+  tabs.forEach((tab) => {
+    if (tab.sending) {
+      if (tab.fetchController) tab.fetchController.abort()
+      if (tab.streamId) {
+        fetch('/api/chat/abort', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ streamId: tab.streamId }),
+        }).catch(() => {})
+      }
+    }
+    tab.messagesEl.remove()
+  })
+  tabs.clear()
+  activeTabId = null
+
+  // 新プロジェクトのタブを復元
+  currentProject = newProjectPath
+  const restored = restoreProjectTabs(newProjectPath)
+  if (!restored) {
+    createNewTab()
+  }
+  saveTabs()
+  loadGitStatus()
+}
+
+// --- marked カスタムレンダラー ---
+const renderer = new marked.Renderer()
+renderer.code = function({ text, lang }) {
+  const langLabel = lang ? esc(lang) : ''
+  const escaped = esc(text)
+  return `<pre><button class="code-copy-btn" data-testid="code-copy-btn">Copy</button><code class="language-${langLabel}">${escaped}</code></pre>`
+}
+marked.setOptions({ renderer, breaks: true })
+
+// コードコピーボタン: イベント委譲（動的生成されるボタンに対応）
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.code-copy-btn')
+  if (btn) copyCode(btn)
+})
+
+// --- コードコピー ---
+function copyCode(btn) {
+  const code = btn.parentElement.querySelector('code')
+  const text = code.textContent
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!'
+    btn.classList.add('copied')
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied') }, 1500)
+  }).catch(() => {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+    btn.textContent = 'Copied!'
+    btn.classList.add('copied')
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied') }, 1500)
+  })
+}
+
+// --- モデル選択（ヘッダーのselectのみで管理） ---
+
+// --- Permission Mode (per-tab) ---
+// 4 states: 'plan' → 'default' → 'auto-accept' → 'yolo' → 'plan'
+const PERM_MODES = {
+  'default':     { label: 'Default', icon: 'shield', color: 'var(--border)', banner: false },
+  'plan':        { label: 'Plan', icon: 'map-pin', color: '#007acc', banner: true, bannerBg: 'rgba(0,122,204,.1)', bannerBorder: 'rgba(0,122,204,.3)', bannerText: 'Claude will plan before acting' },
+  'auto-accept': { label: 'Auto', icon: 'zap', color: 'var(--text)', banner: true, bannerBg: 'rgba(205,214,230,.08)', bannerBorder: 'rgba(205,214,230,.2)', bannerText: 'Auto-accept — Claude will act without asking' },
+  'yolo':        { label: 'YOLO', icon: 'alert-triangle', color: 'var(--danger)', banner: true, bannerBg: 'var(--danger-bg)', bannerBorder: 'rgba(243,139,168,.3)', bannerText: 'YOLO — All tools allowed, no limits (--dangerously-allow-all-tools)' },
+}
+function getActivePermissionMode() {
+  const tab = tabs.get(activeTabId)
+  return tab ? (tab.permissionMode || 'plan') : 'plan'
+}
+function cyclePermissionMode() {
+  const current = getActivePermissionMode()
+  const order = ['plan', 'default', 'auto-accept', 'yolo']
+  const idx = (order.indexOf(current) + 1) % order.length
+  setPermissionMode(order[idx])
+}
+function setPermissionMode(mode, silent) {
+  const tab = tabs.get(activeTabId)
+  if (tab) tab.permissionMode = mode
+  saveTabs()
+  if (!silent && tab) {
+    const el = document.createElement('div')
+    el.className = 'msg system-notice'
+    el.innerHTML = `<div class="notice-badge">Mode → ${esc(mode)}</div>`
+    tab.messagesEl.appendChild(el)
+    scrollToBottom(activeTabId)
+  }
+  updateInputBoxModeColor()
+  renderTabs()
+}
+
+// --- Compacting 表示 ---
+function showCompacting(show) {
+  const banner = document.getElementById('compactBanner')
+  banner.classList.toggle('active', show)
+  banner.innerHTML = show
+    ? `${ic('zap', 13)} <span>Compacting context...</span>`
+    : ''
+}
+function showCompactDone(trigger, preTokens) {
+  const banner = document.getElementById('compactBanner')
+  banner.classList.add('active')
+  const info = preTokens ? ` (${Math.round(preTokens/1000)}k tokens compacted)` : ''
+  banner.innerHTML = `${ic('zap', 13)} <span>Context compacted${info}</span>`
+  setTimeout(() => { banner.classList.remove('active') }, 4000)
+}
+
+// --- トークン使用量表示 + 手動コンパクト ---
+let lastInputTokens = 0
+let lastContextWindow = 0
+let compactPollTimer = null
+
+function updateTokenUsage(inputTokens, contextWindow) {
+  // contextWindow=0 は中間更新（前回値を保持）
+  if (contextWindow > 0) lastContextWindow = contextWindow
+  if (inputTokens > 0) lastInputTokens = inputTokens
+
+  const pill = document.getElementById('tokenPill')
+  if (!lastContextWindow || !lastInputTokens) {
+    pill.style.display = 'none'
+    return
+  }
+
+  pill.style.display = 'flex'
+  const ratio = lastInputTokens / lastContextWindow
+  const inputK = Math.round(lastInputTokens / 1000)
+  const ctxK = Math.round(lastContextWindow / 1000)
+  pill.innerHTML = `${ic('cpu', 12)} ${inputK}k/${ctxK}k`
+
+  pill.classList.remove('warn', 'danger')
+  if (ratio >= 0.8) pill.classList.add('danger')
+  else if (ratio >= 0.6) pill.classList.add('warn')
+}
+
+function triggerCompact() {
+  const tab = tabs.get(activeTabId)
+  if (!tab?.sessionId) {
+    showToast(`<p>${t('toast.noActiveSession')}</p>`, 2000)
+    return
+  }
+  if (tab.sending) {
+    showToast(`<p>${t('toast.waitForResponse')}</p>`, 2000)
+    return
+  }
+
+  tab.compacting = true
+  showCompacting(true)
+
+  const pill = document.getElementById('tokenPill')
+  pill.classList.add('compact-running')
+  pill.innerHTML = `${ic('zap', 12)} ${t('compacting')}`
+
+  const cwd = currentProject || ''
+  const model = document.getElementById('model').value || 'sonnet'
+
+  fetch('/api/chat/compact', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId: tab.sessionId, project: cwd, model }),
+  }).then(r => r.json()).then(res => {
+    if (res.started) {
+      pollCompactStatus(tab.sessionId)
+    } else {
+      tab.compacting = false
+      showCompacting(false)
+      pill.classList.remove('compact-running')
+      showToast(`<p>Compact: ${res.reason || 'could not start'}</p>`, 3000)
+    }
+  }).catch(() => {
+    tab.compacting = false
+    showCompacting(false)
+    pill.classList.remove('compact-running')
+  })
+}
+
+/** コンパクト完了後にキューされたメッセージを自動送信 */
+function flushPendingAfterCompact(tabId) {
+  const tid = tabId || activeTabId
+  const tab = tabs.get(tid)
+  if (!tab) return
+  tab.compacting = false
+  showCompacting(false)
+  if (tab.pendingMessage && tid === activeTabId) {
+    inputEl.value = tab.pendingMessage
+    tab.pendingMessage = null
+    setTimeout(() => sendMessage(), 100)
+  } else if (tab.pendingMessage) {
+    // 別タブにいる場合は入力欄に戻してトースト通知
+    showToast('Compact done. Switch back to send queued message.', 3000)
+  }
+}
+
+function pollCompactStatus(sessionId) {
+  if (compactPollTimer) clearInterval(compactPollTimer)
+  compactPollTimer = setInterval(() => {
+    fetch(`/api/chat/compact-status/${encodeURIComponent(sessionId)}`)
+      .then(r => r.json())
+      .then(job => {
+        if (job.status === 'done') {
+          clearInterval(compactPollTimer)
+          compactPollTimer = null
+          const pill = document.getElementById('tokenPill')
+          pill.classList.remove('compact-running')
+          showCompactDone('manual', job.preTokens)
+          lastInputTokens = 0
+          pill.innerHTML = `${ic('cpu', 12)} ${t('compacted')}`
+          setTimeout(() => { if (!lastInputTokens) pill.style.display = 'none' }, 5000)
+          // キューされたメッセージを自動送信
+          flushPendingAfterCompact(activeTabId)
+        } else if (job.status === 'error') {
+          clearInterval(compactPollTimer)
+          compactPollTimer = null
+          const pill = document.getElementById('tokenPill')
+          pill.classList.remove('compact-running')
+          showToast(`<p>Compact error: ${job.error || 'unknown'}</p>`, 4000)
+          updateTokenUsage(lastInputTokens, lastContextWindow)
+          // エラー時はメッセージを入力欄に戻す
+          const tab = tabs.get(activeTabId)
+          if (tab) {
+            tab.compacting = false
+            showCompacting(false)
+            if (tab.pendingMessage) {
+              inputEl.value = tab.pendingMessage
+              tab.pendingMessage = null
+            }
+          }
+        }
+      })
+      .catch(() => {})
+  }, 2000)
+}
+
+function checkCompactJobOnTabSwitch(tab) {
+  // トークン表示リセット（タブごとに異なる）
+  lastInputTokens = 0
+  lastContextWindow = 0
+  const pill = document.getElementById('tokenPill')
+  pill.style.display = 'none'
+  pill.classList.remove('compact-running', 'warn', 'danger')
+  if (compactPollTimer) { clearInterval(compactPollTimer); compactPollTimer = null }
+
+  if (!tab?.sessionId) return
+  // サーバー側にコンパクトジョブが残っているか確認
+  fetch(`/api/chat/compact-status/${encodeURIComponent(tab.sessionId)}`)
+    .then(r => r.json())
+    .then(job => {
+      if (job.status === 'running') {
+        tab.compacting = true
+        showCompacting(true)
+        pill.style.display = 'flex'
+        pill.classList.add('compact-running')
+        pill.innerHTML = `${ic('zap', 12)} ${t('compacting')}`
+        pollCompactStatus(tab.sessionId)
+      }
+    })
+    .catch(() => {})
+}
+
+// --- コマンドメニュー ---
+const CMD_ITEMS = [
+  { name: '/plan', desc: 'Toggle plan mode', icon: 'map-pin', action: () => togglePlanMode() },
+  { name: '/compact', desc: 'Compact context', icon: 'zap', action: () => triggerCompact() },
+  { name: '/cost', desc: 'Show usage cost', icon: 'dollar-sign', action: () => showCostToast() },
+  { name: '/copy', desc: 'Copy last response', icon: 'copy', action: () => copyLastResponse() },
+  { name: '/rename', desc: 'Rename session', icon: 'edit-3', action: () => renameCurrentTab() },
+  { name: '/export', desc: 'Export conversation', icon: 'download', action: () => exportConversation() },
+  { name: '/model', desc: 'Change model', icon: 'bot', action: () => document.getElementById('model').focus() },
+  { name: '/status', desc: 'Show status info', icon: 'info', action: () => showStatusToast() },
+  { name: '/help', desc: 'Show shortcuts', icon: 'help-circle', action: () => showHelpToast() },
+  { name: '/clear', desc: 'Clear chat', icon: 'eraser', action: () => clearCurrentTab() },
+]
+let cmdMenuOpen = false
+function toggleCmdMenu() {
+  cmdMenuOpen = !cmdMenuOpen
+  const menu = document.getElementById('cmdMenu')
+  menu.classList.toggle('open', cmdMenuOpen)
+  if (cmdMenuOpen) renderCmdMenu()
+}
+function closeCmdMenu() {
+  cmdMenuOpen = false
+  document.getElementById('cmdMenu').classList.remove('open')
+}
+function renderCmdMenu(filter = '') {
+  const menu = document.getElementById('cmdMenu')
+  const filtered = CMD_ITEMS.map((c, i) => ({ ...c, idx: i })).filter(c => !filter || c.name.slice(1).startsWith(filter))
+  menu.innerHTML = ''
+  if (filtered.length === 0) {
+    menu.innerHTML = '<div class="cmd-item" style="color:var(--muted)">' + t('noMatchingCommands') + '</div>'
+    return
+  }
+  for (const c of filtered) {
+    const div = document.createElement('div')
+    div.className = 'cmd-item'
+    div.innerHTML = `${ic(c.icon, 15)} <span class="cmd-name">${c.name}</span> <span class="cmd-desc">${c.desc}</span>`
+    div.addEventListener('click', () => execCmd(c.idx))
+    menu.appendChild(div)
+  }
+}
+function execCmd(idx) {
+  closeCmdMenu()
+  inputEl.value = ''
+  CMD_ITEMS[idx].action()
+}
+// --- Toast helpers ---
+function showToast(html, autoClose = 3000) {
+  const existing = document.querySelector('.toast-backdrop')
+  if (existing) existing.remove()
+  const backdrop = document.createElement('div')
+  backdrop.className = 'toast-backdrop'
+  backdrop.onclick = () => backdrop.remove()
+  const toast = document.createElement('div')
+  toast.className = 'toast'
+  toast.innerHTML = html
+  toast.onclick = (e) => e.stopPropagation()
+  backdrop.appendChild(toast)
+  document.body.appendChild(backdrop)
+  if (autoClose) setTimeout(() => backdrop.remove(), autoClose)
+}
+
+function showCostToast() {
+  showToast(`
+    <h3>${ic('dollar-sign', 16)} Usage Cost</h3>
+    <p>Session total: <span class="toast-value">$${sessionTotalCost.toFixed(4)}</span></p>
+    <p>Total turns: <span class="toast-value">${sessionTotalTurns}</span></p>
+  `, 4000)
+}
+
+function copyLastResponse() {
+  const tab = tabs.get(activeTabId)
+  if (!tab) return
+  const msgs = tab.messagesEl.querySelectorAll('.msg.assistant .content')
+  if (msgs.length === 0) return
+  const lastContent = msgs[msgs.length - 1]
+  const text = collectSegmentTexts(lastContent, tab)
+  navigator.clipboard.writeText(text).then(() => {
+    showToast(`<h3>${ic('check', 16)} ${t('toast.copied')}</h3><p>${t('toast.copiedClipboard')}</p>`, 1500)
+  }).catch(() => {
+    showToast(`<h3 style="color:var(--danger)">${t('toast.copyFailed')}</h3><p>${t('toast.clipboardDenied')}</p>`, 2000)
+  })
+}
+
+function renameCurrentTab() {
+  const tab = tabs.get(activeTabId)
+  if (!tab) return
+  const name = prompt('Session name:', tab.label)
+  if (name && name.trim()) {
+    tab.label = name.trim()
+    renderTabs()
+    saveTabs()
+  }
+}
+
+function exportConversation() {
+  const tab = tabs.get(activeTabId)
+  if (!tab) return
+  const msgs = tab.messagesEl.querySelectorAll('.msg')
+  if (msgs.length === 0) { showToast(`<p>${t('toast.noMessages')}</p>`, 1500); return }
+  let md = `# ${tab.label}\n\n`
+  msgs.forEach(msg => {
+    if (msg.classList.contains('interrupt') || msg.classList.contains('system-notice')) return
+    const role = msg.classList.contains('user') ? 'User' : 'Assistant'
+    const el = msg.querySelector('.content') || msg.querySelector('.bubble')
+    if (!el) return
+    const text = el.classList.contains('content') ? collectSegmentTexts(el, tab) : el.textContent
+    md += `## ${role}\n\n${text}\n\n---\n\n`
+  })
+  navigator.clipboard.writeText(md).then(() => {
+    showToast(`<h3>${ic('check', 16)} Exported!</h3><p>${msgs.length} messages copied as Markdown</p>`, 2000)
+  }).catch(() => {
+    const blob = new Blob([md], { type: 'text/markdown' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = (tab.label || 'chat') + '.md'
+    a.click()
+    showToast(`<h3>${ic('check', 16)} ${t('toast.downloaded')}</h3>`, 1500)
+  })
+}
+
+const MODEL_STORAGE_KEY = 'pocket-cc-model'
+
+function onModelChange() {
+  const model = document.getElementById('model').value
+  localStorage.setItem(MODEL_STORAGE_KEY, model)
+  const tab = tabs.get(activeTabId)
+  if (!tab) return
+  const el = document.createElement('div')
+  el.className = 'msg system-notice'
+  el.innerHTML = `<div class="notice-badge">Model → ${esc(model)}</div>`
+  tab.messagesEl.appendChild(el)
+  scrollToBottom(activeTabId)
+}
+
+function restoreModel() {
+  const saved = localStorage.getItem(MODEL_STORAGE_KEY)
+  if (!saved) return
+  const sel = document.getElementById('model')
+  const opt = [...sel.options].find(o => o.value === saved)
+  if (opt) sel.value = saved
+}
+
+function showStatusToast() {
+  const tab = tabs.get(activeTabId)
+  const model = document.getElementById('model').value
+  showToast(`
+    <h3>${ic('info', 16)} Status</h3>
+    <p>Model: <span class="toast-value">${model}</span></p>
+    <p>Project: <span class="toast-value">${currentProject || 'None'}</span></p>
+    <p>Session: <span class="toast-value">${tab?.sessionId || 'New'}</span></p>
+    <p>Tabs: <span class="toast-value">${tabs.size}</span></p>
+    <p>Cost: <span class="toast-value">$${sessionTotalCost.toFixed(4)}</span></p>
+  `, 5000)
+}
+
+function showHelpToast() {
+  showToast(`
+    <h3>${ic('help-circle', 16)} Shortcuts</h3>
+    <p><span class="toast-value">Enter</span> Send message</p>
+    <p><span class="toast-value">Shift+Enter</span> New line</p>
+    <p><span class="toast-value">/</span> Open command menu</p>
+    <p style="margin-top:8px;font-size:12px;color:var(--muted)">Tap outside to close</p>
+  `, 0)
+}
+
+function clearCurrentTab() {
+  const tab = tabs.get(activeTabId)
+  if (!tab) return
+  tab.messagesEl.innerHTML = ''
+  tab.fullTexts = new WeakMap()
+  tab.sessionId = null
+  tab.label = t('chat.newChat')
+  renderTabs()
+  saveTabs()
+}
+
+// --- File Upload ---
+const pendingFiles = []
+const attachmentsEl = document.getElementById('attachments')
+
+function renderAttachments() {
+  attachmentsEl.innerHTML = ''
+  pendingFiles.forEach((f, i) => {
+    const chip = document.createElement('div')
+    chip.className = 'attach-chip'
+    if (f.thumb) {
+      const img = document.createElement('img')
+      img.className = 'attach-thumb'
+      img.src = f.thumb
+      chip.appendChild(img)
+    } else {
+      const iconSpan = document.createElement('span')
+      iconSpan.innerHTML = ic('file-text', 12)
+      chip.appendChild(iconSpan)
+    }
+    const name = document.createElement('span')
+    name.className = 'attach-name'
+    name.textContent = f.name
+    chip.appendChild(name)
+    const rm = document.createElement('button')
+    rm.className = 'attach-remove'
+    rm.innerHTML = ic('x', 10)
+    rm.onclick = () => { pendingFiles.splice(i, 1); renderAttachments() }
+    chip.appendChild(rm)
+    attachmentsEl.appendChild(chip)
+  })
+}
+
+const IMAGE_EXTS = /\.(jpg|jpeg|png|gif|webp|bmp|heic|heif|svg)$/i
+
+function isImageFile(file) {
+  return file.type.startsWith('image/') || IMAGE_EXTS.test(file.name)
+}
+
+/** テキストペイロードと画像配列を分離して返す */
+function buildFilePayload() {
+  if (pendingFiles.length === 0) return { text: '', images: [] }
+  const textParts = []
+  const images = []
+  for (const f of pendingFiles) {
+    if (f.isImage && f.data && !f.data.startsWith('(')) {
+      // data:image/jpeg;base64,/9j/... → mediaType + base64 data を分離
+      const match = f.data.match(/^data:([^;]+);base64,(.+)$/)
+      if (match) {
+        images.push({ name: f.name, mediaType: match[1], data: match[2] })
+      } else {
+        textParts.push(`[image: ${f.name}] (unsupported format)`)
+      }
+    } else {
+      textParts.push(`--- ${f.name} ---\n${f.data}`)
+    }
+  }
+  pendingFiles.length = 0
+  renderAttachments()
+  return { text: textParts.join('\n\n'), images }
+}
+
+document.getElementById('fileInput').addEventListener('change', async (e) => {
+  const files = e.target.files
+  if (!files || files.length === 0) return
+  for (const file of files) {
+    if (file.size > 20 * 1024 * 1024) {
+      showToast(`<p>File too large: ${esc(file.name)} (max 20MB)</p>`, 3000)
+      continue
+    }
+    if (isImageFile(file)) {
+      try {
+        const reader = new FileReader()
+        const dataUrl = await new Promise((resolve, reject) => {
+          reader.onload = () => resolve(reader.result)
+          reader.onerror = reject
+          reader.readAsDataURL(file)
+        })
+        pendingFiles.push({ name: file.name, data: dataUrl, isImage: true, thumb: dataUrl })
+      } catch { pendingFiles.push({ name: file.name, data: `(読み込みエラー: ${file.name})`, isImage: false }) }
+    } else {
+      try {
+        const text = await file.text()
+        pendingFiles.push({ name: file.name, data: text, isImage: false })
+      } catch { pendingFiles.push({ name: file.name, data: `(読み込みエラー: ${file.name})`, isImage: false }) }
+    }
+  }
+  renderAttachments()
+  inputEl.focus()
+  e.target.value = ''
+})
+
+// --- タブ管理 ---
+function createNewTab(label) {
+  const tabId = genTabId()
+  const messagesEl = document.createElement('div')
+  messagesEl.className = 'messages'
+  messagesEl.id = 'msgs-' + tabId
+  sessionsContainer.appendChild(messagesEl)
+
+  tabs.set(tabId, {
+    sessionId: null,
+    streamId: null,
+    sending: false,
+    fetchController: null,
+    sendingPromise: null,
+    compacting: false,
+    pendingMessage: null,
+    messagesEl,
+    fullTexts: new WeakMap(),
+    label: label || t('chat.newChat'),
+    permissionMode: 'plan',
+  })
+
+  renderTabs()
+  switchTab(tabId)
+  saveTabs()
+  return tabId
+}
+
+function switchTab(tabId) {
+  closeTabActionPanel()
+  if (!tabs.has(tabId)) return
+  activeTabId = tabId
+  tabs.forEach((t, id) => {
+    t.messagesEl.classList.toggle('active', id === tabId)
+  })
+  renderTabs()
+  const tab = tabs.get(tabId)
+  updateStreamingUI(tab.sending)
+  updateInputBoxModeColor()
+  saveTabs()
+  // タブ切替時にコンパクトジョブ状態を確認
+  checkCompactJobOnTabSwitch(tab)
+}
+
+function closeTab(tabId) {
+  const tab = tabs.get(tabId)
+  if (!tab) return
+  if (tab.sending) {
+    if (tab.fetchController) tab.fetchController.abort()
+    if (tab.streamId) {
+      fetch('/api/chat/abort', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ streamId: tab.streamId }),
+      }).catch(() => {})
+    }
+  }
+  tab.messagesEl.remove()
+  tabs.delete(tabId)
+  if (activeTabId === tabId) {
+    const remaining = Array.from(tabs.keys())
+    if (remaining.length > 0) {
+      switchTab(remaining[remaining.length - 1])
+    } else {
+      createNewTab()
+    }
+  } else {
+    renderTabs()
+  }
+  saveTabs()
+}
+
+// --- タブアクションパネル ---
+let tabPanelOpen = false
+
+function toggleTabActionPanel() {
+  if (tabPanelOpen) { closeTabActionPanel(); return }
+  tabPanelOpen = true
+  document.getElementById('tapOverlay').classList.add('open')
+  document.getElementById('tabActionPanel').classList.add('open')
+  // シェブロンを回転
+  const chev = document.querySelector('.tab.active .tab-chevron')
+  if (chev) chev.classList.add('panel-open')
+  populateTabActionPanel()
+  setTimeout(() => {
+    document.addEventListener('click', _tapOutside)
+    document.addEventListener('keydown', _tapEscape)
+  }, 0)
+}
+
+function closeTabActionPanel() {
+  tabPanelOpen = false
+  document.getElementById('tapOverlay').classList.remove('open')
+  document.getElementById('tabActionPanel').classList.remove('open')
+  document.querySelectorAll('.tab-chevron').forEach(c => c.classList.remove('panel-open'))
+  document.removeEventListener('click', _tapOutside)
+  document.removeEventListener('keydown', _tapEscape)
+}
+
+function _tapOutside(e) {
+  const panel = document.getElementById('tabActionPanel')
+  if (!panel.contains(e.target) && !e.target.closest('.tab.active')) closeTabActionPanel()
+}
+function _tapEscape(e) { if (e.key === 'Escape') closeTabActionPanel() }
+
+const _summaryCache = new Map()
+
+async function fetchSummary(sessionId, project) {
+  const el = document.getElementById('tapSummary')
+  if (!el) return
+
+  const cached = _summaryCache.get(sessionId)
+  if (cached) { el.innerHTML = esc(cached).replace(/\n/g, '<br>'); return }
+
+  try {
+    const res = await fetch(`/api/chat/summary/${encodeURIComponent(sessionId)}?${new URLSearchParams({ project })}`)
+    const data = await res.json()
+    const target = document.getElementById('tapSummary')
+    if (!target) return
+    if (data.summary) {
+      _summaryCache.set(sessionId, data.summary)
+      target.innerHTML = esc(data.summary).replace(/\n/g, '<br>')
+    } else {
+      const tab = tabs.get(activeTabId)
+      const fallback = tab?.label && tab.label !== t('chat.newChat') ? tab.label : '—'
+      target.innerHTML = `<span style="color:var(--muted)">${esc(fallback)}</span>`
+    }
+  } catch {
+    const target = document.getElementById('tapSummary')
+    if (target) target.innerHTML = '<span style="color:var(--muted)">Failed to load</span>'
+  }
+}
+
+const _nameCache = new Map()
+
+async function fetchSuggestName(sessionId, project) {
+  const el = document.getElementById('tapNameSuggest')
+  if (!el) return
+
+  const cached = _nameCache.get(sessionId)
+  if (cached) {
+    renderNameSuggestion(el, cached)
+    return
+  }
+
+  try {
+    const res = await fetch(`/api/chat/suggest-name/${encodeURIComponent(sessionId)}?${new URLSearchParams({ project })}`)
+    const data = await res.json()
+    const target = document.getElementById('tapNameSuggest')
+    if (!target) return
+    if (data.name) {
+      _nameCache.set(sessionId, data.name)
+      renderNameSuggestion(target, data.name)
+    } else {
+      target.innerHTML = `<span style="color:var(--muted)">—</span>`
+    }
+  } catch {
+    const target = document.getElementById('tapNameSuggest')
+    if (target) target.innerHTML = `<span style="color:var(--muted)">—</span>`
+  }
+}
+
+function renderNameSuggestion(el, name) {
+  el.innerHTML = `
+    <span class="tap-name-row">
+      <span class="tap-name-suggest">${esc(name)}</span>
+      <button class="tap-name-apply" onclick="applyNameSuggestion('${esc(name).replace(/'/g, "\\'")}')">Apply</button>
+      <button class="tap-name-edit" onclick="editNameSuggestion('${esc(name).replace(/'/g, "\\'")}')">Edit</button>
+    </span>
+  `
+}
+
+function applyNameSuggestion(name) {
+  const tab = tabs.get(activeTabId)
+  if (!tab) return
+  tab.label = name
+  renderTabs()
+  saveTabs()
+  closeTabActionPanel()
+}
+
+function editNameSuggestion(prefill) {
+  closeTabActionPanel()
+  const tab = tabs.get(activeTabId)
+  if (!tab) return
+  const name = prompt('Session name:', prefill)
+  if (name && name.trim()) {
+    tab.label = name.trim()
+    renderTabs()
+    saveTabs()
+  }
+}
+
+function populateTabActionPanel() {
+  const tab = tabs.get(activeTabId)
+  if (!tab) return
+
+  const sid = tab.sessionId
+  const msgCount = tab.messagesEl.querySelectorAll('.msg').length
+  let status = 'idle'
+  if (tab.compacting) status = 'compacting'
+  else if (tab.sending) status = 'streaming'
+  const sClass = status === 'idle' ? 's-idle' : 's-active'
+
+  const info = document.getElementById('tapInfo')
+  info.innerHTML = `
+    <div class="tap-field">
+      <span class="tap-label">Session</span>
+      <span class="tap-val ${sid ? 'muted' : ''}">${sid ? esc(sid) : 'New'}</span>
+      <button class="tap-dismiss" onclick="closeTabActionPanel()" title="Close panel">${ic('x', 14)}</button>
+    </div>
+    <div class="tap-field">
+      <span class="tap-label">Messages</span>
+      <span class="tap-val">${msgCount}</span>
+    </div>
+    <div class="tap-field">
+      <span class="tap-label">Status</span>
+      <span class="tap-val"><span class="tap-status ${sClass}">${status}</span></span>
+    </div>
+    ${sid ? `<div class="tap-field" style="align-items:flex-start">
+      <span class="tap-label">Summary</span>
+      <span class="tap-val tap-summary" id="tapSummary"><span class="typing-dots"><span></span><span></span><span></span></span></span>
+    </div>` : ''}
+    ${sid ? `<div class="tap-field">
+      <span class="tap-label">Name</span>
+      <span class="tap-val" id="tapNameSuggest"><span class="typing-dots" style="display:inline-flex"><span></span><span></span><span></span></span></span>
+    </div>` : ''}
+  `
+
+  // サマリー + 名前提案の非同期取得
+  if (sid && currentProject) {
+    fetchSummary(sid, currentProject)
+    fetchSuggestName(sid, currentProject)
+  }
+
+  // モードセレクター（前回のものを除去）
+  document.querySelectorAll('#tabActionPanel .tap-mode-section').forEach(el => el.remove())
+  const modeSection = document.createElement('div')
+  modeSection.className = 'tap-mode-section'
+  const currentMode = tab.permissionMode || 'plan'
+  modeSection.innerHTML = '<div class="tap-mode-label">MODE</div>'
+  const modeRow = document.createElement('div')
+  modeRow.className = 'tap-mode-row'
+  for (const m of ['plan', 'default', 'auto-accept', 'yolo']) {
+    const cfg = PERM_MODES[m]
+    const btn = document.createElement('button')
+    btn.className = 'tap-mode-btn' + (m === currentMode ? ' active' : '')
+    btn.style.setProperty('--mode-btn-color', cfg.color)
+    btn.innerHTML = ic(cfg.icon, 12) + ' ' + cfg.label
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      setPermissionMode(m)
+      modeRow.querySelectorAll('.tap-mode-btn').forEach(b => b.classList.remove('active'))
+      btn.classList.add('active')
+    })
+    modeRow.appendChild(btn)
+  }
+  modeSection.appendChild(modeRow)
+  const panel = document.getElementById('tabActionPanel')
+  panel.insertBefore(modeSection, document.getElementById('tapActions'))
+
+  // アクションボタン
+  const actions = [
+    { icon: 'list-checks', label: 'Sessions', fn: () => { closeTabActionPanel(); openDrawer('sessions') } },
+    { icon: 'refresh-cw', label: 'Refresh', fn: () => { closeTabActionPanel(); refreshActiveTab() }, disabled: !sid || tab.sending },
+    { icon: 'eraser', label: 'Clear', fn: () => { closeTabActionPanel(); clearCurrentTab() } },
+    { icon: 'trash-2', label: 'Close Tab', fn: () => { closeTabActionPanel(); closeTab(activeTabId) }, danger: true, hidden: tabs.size <= 1 },
+  ]
+  const container = document.getElementById('tapActions')
+  container.innerHTML = ''
+  for (const a of actions) {
+    if (a.hidden) continue
+    const btn = document.createElement('button')
+    btn.className = 'tap-action-btn' + (a.danger ? ' danger' : '')
+    btn.disabled = !!a.disabled
+    btn.innerHTML = `${ic(a.icon, 14)} ${a.label}`
+    btn.addEventListener('click', (e) => { e.stopPropagation(); a.fn() })
+    container.appendChild(btn)
+  }
+}
+
+function renderTabs() {
+  const addBtn = tabBar.querySelector('.tab-add')
+  tabBar.querySelectorAll('.tab').forEach(t => t.remove())
+
+  tabs.forEach((tab, tabId) => {
+    const el = document.createElement('div')
+    el.className = 'tab' + (tabId === activeTabId ? ' active' : '')
+    el.onclick = (e) => {
+      if (e.target.closest('.tab-close')) return
+      if (tabId === activeTabId) { toggleTabActionPanel() }
+      else { closeTabActionPanel(); switchTab(tabId) }
+    }
+
+    const modeColor = PERM_MODES[tab.permissionMode || 'plan'].color
+    let inner = ''
+    if (tab.sending) inner += `<span class="tab-dot streaming" style="--tab-mode-color:${modeColor}"></span>`
+    inner += `<span class="tab-label">${esc(tab.label)}</span>`
+    if (tabId === activeTabId) inner += `<span class="tab-chevron">${ic('chevron-down', 10)}</span>`
+    el.innerHTML = inner
+
+    if (tabs.size > 1) {
+      const closeSpan = document.createElement('span')
+      closeSpan.className = 'tab-close'
+      closeSpan.innerHTML = ic('x', 11)
+      closeSpan.addEventListener('click', (e) => { e.stopPropagation(); closeTab(tabId) })
+      el.appendChild(closeSpan)
+    }
+    tabBar.insertBefore(el, addBtn)
+  })
+}
+
+function updateTabLabel(tabId, label) {
+  const tab = tabs.get(tabId)
+  if (tab) {
+    tab.label = label.slice(0, 30) || t('chat.newChat')
+    renderTabs()
+    saveTabs()
+  }
+}
+
+// --- ストリーミングUI ---
+function updateStreamingUI(streaming) {
+  sendBtn.style.display = 'flex'
+  sendBtn.disabled = false
+  abortBtn.style.display = streaming ? 'flex' : 'none'
+  const box = document.querySelector('.input-box')
+  box.classList.toggle('streaming', streaming)
+}
+
+function updateInputBoxModeColor() {
+  const mode = getActivePermissionMode()
+  const cfg = PERM_MODES[mode]
+  document.querySelector('.input-box').style.setProperty('--mode-color', cfg.color)
+}
+
+function abortCurrentTab() {
+  const tab = tabs.get(activeTabId)
+  if (!tab || !tab.sending) return
+  if (tab.compacting) return  // コンパクト中は中断不可
+  // クライアント側のfetchを即座に中断
+  if (tab.fetchController) {
+    tab.fetchController.abort()
+  }
+  // サーバー側のAgent SDKストリームも中断
+  if (tab.streamId) {
+    fetch('/api/chat/abort', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ streamId: tab.streamId }),
+    }).catch(e => console.error('Abort failed:', e))
+  }
+}
+
+// --- 初期化 ---
+let cachedProjects = []
+
+async function init() {
+  // localStorageからモデル選択を復元
+  restoreModel()
+
+  // localStorageからタブ・プロジェクト・Permission Modeを復元
+  const restored = restoreTabs()
+
+  try {
+    const res = await fetch('/api/projects')
+    cachedProjects = await res.json()
+    renderProjectList(cachedProjects)
+    // 復元済みプロジェクトがプロジェクト一覧に存在するか確認
+    if (currentProject) {
+      const found = cachedProjects.find(p => p.localPath === currentProject)
+      if (found) {
+        document.getElementById('title').textContent = found.slug
+      } else {
+        currentProject = null
+      }
+    }
+    if (!currentProject && cachedProjects.length > 0) selectProject(cachedProjects[0])
+  } catch (e) {
+    console.error('Failed to load projects:', e)
+  }
+
+  // selectProject が呼ばれていない（= タブが未作成）場合のみ新規タブ作成
+  if (!restored && tabs.size === 0) createNewTab()
+  if (currentProject) loadGitStatus()
+  updateInputBoxModeColor()
+}
+
+function getProjectTabInfo(projectPath) {
+  // 現在のプロジェクトならメモリから取得
+  if (projectPath === currentProject) {
+    let sending = 0
+    tabs.forEach(t => { if (t.sending) sending++ })
+    return { count: tabs.size, sending }
+  }
+  // 他のプロジェクトはlocalStorageから取得
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return { count: 0, sending: 0 }
+    const store = JSON.parse(raw)
+    const projData = store.projects?.[projectPath]
+    return { count: projData?.tabs?.length || 0, sending: 0 }
+  } catch { return { count: 0, sending: 0 } }
+}
+
+function renderProjectList(projects) {
+  const list = document.getElementById('projectList')
+  list.innerHTML = ''
+  projects.forEach(p => {
+    const el = document.createElement('div')
+    el.className = 'project-item' + (currentProject === p.localPath ? ' active' : '')
+    const info = getProjectTabInfo(p.localPath)
+    let badge = ''
+    if (info.sending > 0) {
+      badge = `<span style="margin-left:auto;font-size:11px;color:var(--accent);font-weight:600">${info.sending} running</span>`
+    }
+    let deleteBtn = ''
+    if (p.source === 'manual') {
+      deleteBtn = `<button class="project-delete" data-delete-path="${esc(p.localPath)}" title="Remove">&times;</button>`
+    }
+    el.innerHTML = `<div style="display:flex;align-items:center"><span class="name">${esc(p.slug)}</span>${badge}${deleteBtn}</div><span class="path">${esc(p.localPath)}</span>`
+    el.addEventListener('click', () => { selectProject(p) })
+    const delBtn = el.querySelector('[data-delete-path]')
+    if (delBtn) {
+      delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteProject(p.localPath) })
+    }
+    list.appendChild(el)
+  })
+}
+
+// --- プロジェクト追加/削除 ---
+async function refreshProjects() {
+  try {
+    const res = await fetch('/api/projects')
+    if (res.ok) cachedProjects = await res.json()
+  } catch { /* use cache */ }
+  renderProjectList(cachedProjects)
+}
+
+function showAddProjectForm() {
+  document.getElementById('addProjectForm').style.display = 'block'
+  document.getElementById('addProjectBtn').style.display = 'none'
+  document.getElementById('addProjectPath').value = ''
+  document.getElementById('addProjectError').style.display = 'none'
+  document.getElementById('addProjectPath').focus()
+}
+
+function hideAddProjectForm() {
+  document.getElementById('addProjectForm').style.display = 'none'
+  document.getElementById('addProjectBtn').style.display = ''
+  document.getElementById('addProjectError').style.display = 'none'
+}
+
+async function addProject() {
+  const pathInput = document.getElementById('addProjectPath')
+  const errEl = document.getElementById('addProjectError')
+  const localPath = pathInput.value.trim()
+  if (!localPath) { errEl.textContent = 'Path is required'; errEl.style.display = 'block'; return }
+  try {
+    const res = await fetch('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ localPath })
+    })
+    const data = await res.json()
+    if (!res.ok) { errEl.textContent = data.error || 'Failed to add'; errEl.style.display = 'block'; return }
+    cachedProjects = data
+    renderProjectList(cachedProjects)
+    hideAddProjectForm()
+  } catch (e) {
+    errEl.textContent = 'Network error'; errEl.style.display = 'block'
+  }
+}
+
+async function deleteProject(localPath) {
+  if (!confirm('Remove this project from the list?')) return
+  try {
+    const res = await fetch('/api/projects', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ localPath })
+    })
+    const data = await res.json()
+    if (res.ok) {
+      cachedProjects = data
+      renderProjectList(cachedProjects)
+    }
+  } catch { /* ignore */ }
+}
+
+function selectProject(p) {
+  if (currentProject === p.localPath) return // 同じProject
+  document.getElementById('title').textContent = p.slug
+  switchProjectTabs(p.localPath)
+  // Projectリスト再レンダリング（active状態 + タブ数バッジ更新）
+  if (cachedProjects.length) renderProjectList(cachedProjects)
+}
+
+// --- ドロワー ---
+function openDrawer(tab) {
+  document.getElementById('drawer').classList.add('open')
+  const target = tab || 'sessions'
+  switchDrawerTab(target)
+  if (target === 'sessions') loadSessions()
+}
+function closeDrawer() { document.getElementById('drawer').classList.remove('open') }
+
+// --- Settings Panel ---
+// --- Features Menu ---
+function toggleFeaturesMenu() {
+  const menu = document.getElementById('featuresMenu')
+  const isOpen = menu.classList.toggle('open')
+  if (isOpen) {
+    // 外クリックで閉じる
+    setTimeout(() => document.addEventListener('click', _closeFeaturesOnOutside, { once: true }), 0)
+  }
+}
+function closeFeaturesMenu() {
+  document.getElementById('featuresMenu').classList.remove('open')
+}
+function _closeFeaturesOnOutside(e) {
+  if (!e.target.closest('.features-menu') && !e.target.closest('#featuresBtn')) {
+    closeFeaturesMenu()
+  } else if (document.getElementById('featuresMenu').classList.contains('open')) {
+    document.addEventListener('click', _closeFeaturesOnOutside, { once: true })
+  }
+}
+
+function openSettingsPanel() {
+  document.getElementById('settingsOverlay').classList.add('open')
+  updateSettingsThemeBtn()
+  updateSettingsLangBtn()
+}
+function closeSettingsPanel() {
+  document.getElementById('settingsOverlay').classList.remove('open')
+}
+function updateSettingsThemeBtn() {
+  const btn = document.getElementById('settingsThemeBtn')
+  if (!btn) return
+  const isDark = (document.documentElement.dataset.theme || 'dark') === 'dark'
+  btn.innerHTML = isDark ? ic('sun', 14) + ' Light' : ic('moon', 14) + ' Dark'
+}
+function updateSettingsLangBtn() {
+  const btn = document.getElementById('settingsLangBtn')
+  if (!btn) return
+  const lang = window.getCurrentLang ? window.getCurrentLang() : 'en'
+  btn.textContent = lang === 'ja' ? 'English' : '日本語'
+}
+
+function switchDrawerTab(tab) {
+  document.querySelectorAll('.drawer-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab))
+  ;['sessions', 'projects', 'files', 'git', 'services', 'tools', 'links'].forEach(id => {
+    const el = document.getElementById(id + 'Tab')
+    if (el) el.classList.toggle('active', tab === id)
+  })
+  // アクティブタブを見える位置にスクロール
+  const activeBtn = document.querySelector(`.drawer-tab[data-tab="${tab}"]`)
+  if (activeBtn) activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+  if (tab === 'sessions') loadSessions()
+  if (tab === 'projects') refreshProjects()
+  if (tab === 'files') loadFileTree()
+  if (tab === 'git') loadGitStatus()
+  if (tab === 'services') loadServices()
+  if (tab === 'tools') loadTools()
+  if (tab === 'links') loadLinks()
+}
+
+// ドロワータブのスクロールフェード制御
+;(function() {
+  const tabs = document.querySelector('.drawer-tabs')
+  if (!tabs) return
+  function updateFade() {
+    const atEnd = tabs.scrollLeft + tabs.clientWidth >= tabs.scrollWidth - 2
+    const atStart = tabs.scrollLeft <= 2
+    if (atEnd && atStart) {
+      tabs.style.maskImage = 'none'
+      tabs.style.webkitMaskImage = 'none'
+    } else if (atEnd) {
+      tabs.style.maskImage = 'linear-gradient(to left,#000 calc(100% - 24px),transparent)'
+      tabs.style.webkitMaskImage = 'linear-gradient(to left,#000 calc(100% - 24px),transparent)'
+    } else if (atStart) {
+      tabs.style.maskImage = 'linear-gradient(to right,#000 calc(100% - 24px),transparent)'
+      tabs.style.webkitMaskImage = 'linear-gradient(to right,#000 calc(100% - 24px),transparent)'
+    } else {
+      tabs.style.maskImage = 'linear-gradient(to right,transparent,#000 24px,#000 calc(100% - 24px),transparent)'
+      tabs.style.webkitMaskImage = 'linear-gradient(to right,transparent,#000 24px,#000 calc(100% - 24px),transparent)'
+    }
+  }
+  tabs.addEventListener('scroll', updateFade, { passive: true })
+  updateFade()
+})()
+
+// --- セッション履歴 ---
+let sessionOffset = 0
+const SESSION_PAGE_SIZE = 20
+
+async function loadSessions(append) {
+  if (!append) sessionOffset = 0
+  // プロジェクトラベル更新
+  const lbl = document.getElementById('currentProjectLabel')
+  if (lbl) lbl.textContent = currentProject ? currentProject.split('/').pop() : ''
+  try {
+    const params = new URLSearchParams()
+    if (currentProject) params.set('project', currentProject)
+    params.set('offset', String(sessionOffset))
+    params.set('limit', String(SESSION_PAGE_SIZE))
+    const res = await fetch('/api/chat/sessions?' + params.toString())
+    const data = await res.json()
+    renderSessionList(data.items, data.total, append)
+  } catch (e) {
+    console.error('Failed to load sessions:', e)
+  }
+}
+
+function timeAgo(ts) {
+  const sec = Math.floor((Date.now() - ts) / 1000)
+  if (sec < 60) return `${sec}s ago`
+  const min = Math.floor(sec / 60)
+  if (min < 60) return `${min}m ago`
+  const hr = Math.floor(min / 60)
+  if (hr < 24) return `${hr}h ago`
+  const day = Math.floor(hr / 24)
+  return `${day}d ago`
+}
+
+function renderSessionList(list, total, append) {
+  const container = document.getElementById('sessionList')
+  if (!append) {
+    if (list.length === 0) {
+      container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">' + t('noSessions') + '</div>'
+      return
+    }
+    container.innerHTML = ''
+  }
+
+  // 既存の「さらに読み込む」ボタンを削除
+  const oldBtn = container.querySelector('.load-more-btn')
+  if (oldBtn) oldBtn.remove()
+
+  list.forEach(s => {
+    const el = document.createElement('div')
+    const openTabId = findTabBySessionId(s.sessionId)
+    el.className = 'session-item' + (openTabId ? ' active' : '')
+    el.setAttribute('data-testid', 'session-item')
+    const timeStr = timeAgo(s.lastUsed)
+    const statusLabel = openTabId ? '<span style="color:var(--accent);font-size:10px">OPEN</span>' : ''
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:4px">
+        <span class="preview" style="flex:1">${esc(cleanLabel(s.messagePreview) || 'Untitled')} ${statusLabel}</span>
+        <button class="delete-session" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px;flex-shrink:0" title="Delete">&times;</button>
+      </div>
+      <div class="session-meta">
+        <span>${timeStr}</span>
+      </div>
+    `
+    el.querySelector('.delete-session').addEventListener('click', async (e) => {
+      e.stopPropagation()
+      try {
+        await fetch('/api/chat/sessions/' + encodeURIComponent(s.sessionId.slice(0, 12)), { method: 'DELETE' })
+        el.remove()
+      } catch { /* ignore */ }
+    })
+    el.addEventListener('click', () => { resumeSession(s); closeDrawer() })
+    container.appendChild(el)
+  })
+
+  sessionOffset += list.length
+  // まだ続きがあれば「さらに読み込む」ボタンを追加
+  if (sessionOffset < total) {
+    const btn = document.createElement('button')
+    btn.className = 'load-more-btn'
+    btn.textContent = `Load more (${sessionOffset}/${total})`
+    btn.onclick = (e) => { e.stopPropagation(); loadSessions(true) }
+    container.appendChild(btn)
+  }
+}
+
+function findTabBySessionId(sessionId) {
+  for (const [tabId, tab] of tabs) {
+    if (tab.sessionId === sessionId) return tabId
+  }
+  return null
+}
+
+// --- アクティブタブリフレッシュ ---
+async function refreshActiveTab() {
+  const tab = tabs.get(activeTabId)
+  if (!tab?.sessionId || tab.sending) return
+
+  tab._historyLoaded = false
+  tab.messagesEl.innerHTML = ''
+  tab.fullTexts = new WeakMap()
+
+  await loadSessionHistory(activeTabId)
+}
+
+// --- 会話履歴の読み込み・描画 ---
+async function loadSessionHistory(tabId) {
+  const tab = tabs.get(tabId)
+  if (!tab?.sessionId || !currentProject) return
+  if (tab._historyLoaded) return
+
+  tab.messagesEl.innerHTML = ''
+  const loading = document.createElement('div')
+  loading.className = 'typing'
+  loading.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div> ' + t('loadingHistory')
+  tab.messagesEl.appendChild(loading)
+
+  try {
+    const params = new URLSearchParams({ project: currentProject })
+    const res = await fetch(`/api/chat/history/${tab.sessionId}?${params}`)
+    const data = await res.json()
+    loading.remove()
+    if (data.messages && data.messages.length > 0) {
+      renderHistoryMessages(tabId, data.messages)
+    } else {
+      addMessage(tabId, 'assistant', `<span style="color:var(--muted);font-size:12px">Session: ${esc(tab.label)}</span>`)
+    }
+    tab._historyLoaded = true
+  } catch (e) {
+    loading.remove()
+    addMessage(tabId, 'assistant', `<span style="color:var(--muted);font-size:12px">Failed to load history</span>`)
+  }
+}
+
+function renderHistoryMessages(tabId, messages) {
+  const tab = tabs.get(tabId)
+  if (!tab) return
+
+  let currentAssistantEl = null
+  let currentContent = null
+
+  for (const msg of messages) {
+    if (msg.role === 'user' && msg.type === 'text') {
+      currentAssistantEl = null
+      currentContent = null
+      const raw = msg.text || ''
+      if (/^\[Request interrupted by user\]$/.test(raw.trim())) {
+        addInterruptIndicator(tabId)
+        continue
+      }
+      const cleaned = cleanUserMessage(raw)
+      if (cleaned) addMessage(tabId, 'user', cleaned)
+    }
+    else if (msg.role === 'assistant' && msg.type === 'text') {
+      if (!currentAssistantEl) {
+        currentAssistantEl = addMessage(tabId, 'assistant', '')
+        currentContent = currentAssistantEl.querySelector('.content')
+      }
+      const seg = getCurrentTextSegment(currentContent, tab)
+      const existingText = tab.fullTexts.get(seg) || ''
+      const newText = existingText + (existingText ? '\n\n' : '') + (msg.text || '')
+      tab.fullTexts.set(seg, newText)
+      seg.innerHTML = marked.parse(newText)
+    }
+    else if (msg.role === 'assistant' && msg.type === 'tool_use') {
+      if (!currentAssistantEl) {
+        currentAssistantEl = addMessage(tabId, 'assistant', '')
+        currentContent = currentAssistantEl.querySelector('.content')
+      }
+      const panel = createToolDetailPanel({
+        name: msg.toolUse.name,
+        input: msg.toolUse.input,
+      })
+      currentContent.appendChild(panel)
+    }
+    else if (msg.role === 'user' && msg.type === 'tool_result') {
+      if (currentContent) {
+        const panels = currentContent.querySelectorAll('.tool-detail')
+        if (panels.length > 0) {
+          appendToolOutput(panels[panels.length - 1], msg.toolResult?.output || '')
+        }
+      }
+    }
+  }
+  scrollToBottom(tabId)
+}
+
+function resumeSession(s) {
+  // 既にタブで開いているならそのタブに切り替え
+  const existingTabId = findTabBySessionId(s.sessionId)
+  if (existingTabId) {
+    switchTab(existingTabId)
+    return
+  }
+  // 現在のタブで開く
+  const tab = tabs.get(activeTabId)
+  if (tab) {
+    tab.sessionId = s.sessionId
+    tab.label = (cleanLabel(s.messagePreview) || 'Untitled').slice(0, 30)
+    tab.messagesEl.innerHTML = ''
+    tab.fullTexts = new WeakMap()
+    tab._historyLoaded = false
+    loadSessionHistory(activeTabId)
+    renderTabs()
+    saveTabs()
+  }
+}
+
+
+// --- メッセージ送信 ---
+async function sendMessage() {
+  const { text: fileText, images: fileImages } = buildFilePayload()
+  const raw = inputEl.value.trim()
+  const text = fileText ? (raw ? raw + '\n\n' + fileText : fileText) : raw
+  if (!text && fileImages.length === 0) return
+  if (!activeTabId || !tabs.has(activeTabId)) return
+
+  const tab = tabs.get(activeTabId)
+
+  // コンパクティング中はメッセージをキューイング（完了後に自動送信）
+  if (tab.compacting) {
+    tab.pendingMessage = text
+    inputEl.value = ''
+    autoResize()
+    const banner = document.getElementById('compactBanner')
+    banner.classList.add('active')
+    banner.innerHTML = `${ic('zap', 13)} <span>${t('compacting')} message queued, will send after</span>`
+    return
+  }
+
+  // 処理中なら中断してから送信（前のストリームを完全に停止してから新しいリクエストを開始）
+  if (tab.sending) {
+    // クライアント側のfetchを即座に中断（reader.read()がAbortErrorをthrow → ループ終了）
+    if (tab.fetchController) {
+      tab.fetchController.abort()
+    }
+    // サーバー側のAgent SDKストリームも中断
+    if (tab.streamId) {
+      fetch('/api/chat/abort', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ streamId: tab.streamId }),
+      }).catch(() => {})
+    }
+    // 前のsendMessage()が完全に終了するのを待つ
+    if (tab.sendingPromise) {
+      await tab.sendingPromise
+    }
+  }
+
+  tab.sending = true
+  const fetchController = new AbortController()
+  tab.fetchController = fetchController
+  updateStreamingUI(true)
+  renderTabs()
+  inputEl.value = ''
+  autoResize()
+
+  if (tab.label === t('chat.newChat')) {
+    updateTabLabel(activeTabId, cleanLabel(raw) || 'File upload')
+  }
+
+  const tabId = activeTabId
+  const imageNames = fileImages.map(i => i.name).join(', ')
+  const displayMsg = cleanUserMessage(raw) || (imageNames ? `📎 ${imageNames}` : '(ファイル添付)')
+  addMessage(tabId, 'user', displayMsg)
+  const assistantEl = addMessage(tabId, 'assistant', '')
+  const content = assistantEl.querySelector('.content')
+  content.innerHTML = '<div class="typing"><div class="typing-dots"><span></span><span></span><span></span></div></div>'
+
+  // sendingPromiseを設定（割り込み時に前の処理完了を待てるようにする）
+  let resolveSending
+  tab.sendingPromise = new Promise(r => { resolveSending = r })
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: text || '(添付ファイルを確認してください)',
+        project: currentProject,
+        sessionId: tab.sessionId,
+        model: document.getElementById('model').value,
+        permissionMode: tab.permissionMode || 'plan',
+        images: fileImages.length > 0 ? fileImages : undefined,
+      }),
+      signal: fetchController.signal,
+    })
+
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+
+      const blocks = buffer.split('\n\n')
+      buffer = blocks.pop() || ''
+
+      for (const block of blocks) {
+        if (!block.trim()) continue
+        let eventName = 'message'
+        const dataLines = []
+        for (const line of block.split('\n')) {
+          if (line.startsWith('event:')) eventName = line.slice(6).trim()
+          else if (line.startsWith('data:')) {
+            dataLines.push(line.charAt(5) === ' ' ? line.slice(6) : line.slice(5))
+          }
+        }
+        const data = dataLines.join('\n')
+        if (data) handleSSE(tabId, eventName, data, content, assistantEl)
+      }
+    }
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      // 割り込み中断: タイピングドットを削除、コンテンツが空なら要素ごと削除
+      const typing = content.querySelector('.typing')
+      if (typing) typing.remove()
+      if (!content.querySelector('.text-segment') && !content.querySelector('.tool-detail') && !content.querySelector('.warning-badge')) {
+        assistantEl.remove()
+      }
+      addInterruptIndicator(tabId)
+    } else {
+      content.innerHTML = `<span style="color:var(--danger)" data-testid="error-message">Error: ${esc(e.message)}</span>`
+    }
+  }
+
+  tab.sending = false
+  tab.streamId = null
+  tab.fetchController = null
+  resolveSending()
+  if (activeTabId === tabId) updateStreamingUI(false)
+  renderTabs()
+  scrollToBottom(tabId)
+}
+
+// --- テキストセグメント管理 ---
+// contentの最後の子要素が.text-segmentならそれを返し、なければ新規作成してappend
+function getCurrentTextSegment(content, tab) {
+  const lastChild = content.lastElementChild
+  if (lastChild && lastChild.classList.contains('text-segment')) {
+    return lastChild
+  }
+  const seg = document.createElement('div')
+  seg.className = 'text-segment'
+  content.appendChild(seg)
+  return seg
+}
+
+// --- テキストセグメントからマークダウンテキストを収集 ---
+function collectSegmentTexts(content, tab) {
+  const segments = content.querySelectorAll('.text-segment')
+  if (segments.length > 0) {
+    return Array.from(segments).map(seg => tab.fullTexts.get(seg) || seg.textContent).join('\n\n')
+  }
+  return content.textContent
+}
+
+function handleSSE(tabId, event, data, content, msgEl) {
+  const tab = tabs.get(tabId)
+  if (!tab) return
+
+  if (event === 'text') {
+    const typing = content.querySelector('.typing')
+    if (typing) typing.remove()
+
+    const seg = getCurrentTextSegment(content, tab)
+    tab.fullTexts.set(seg, (tab.fullTexts.get(seg) || '') + data)
+    seg.innerHTML = marked.parse(tab.fullTexts.get(seg))
+    scrollToBottom(tabId)
+  }
+
+  if (event === 'tool') {
+    try {
+      const info = JSON.parse(data)
+      if (info.status === 'input' && info.detail) {
+        const panel = createToolDetailPanel(info.detail)
+        content.appendChild(panel)
+        scrollToBottom(tabId)
+      }
+      if (info.status === 'output' && info.detail) {
+        const panels = content.querySelectorAll('.tool-detail')
+        for (let i = panels.length - 1; i >= 0; i--) {
+          const nameEl = panels[i].querySelector('.tool-name')
+          if (nameEl && nameEl.textContent === info.detail.name) {
+            appendToolOutput(panels[i], info.detail.output || '')
+            break
+          }
+        }
+        scrollToBottom(tabId)
+      }
+    } catch {}
+  }
+
+  if (event === 'warning') {
+    try {
+      const w = JSON.parse(data)
+      const warn = document.createElement('div')
+      warn.className = 'warning-badge'
+      warn.setAttribute('data-testid', 'warning-badge')
+      warn.innerHTML = `${ic('alert-triangle', 14)} <strong>${esc(w.label)}</strong> ${esc(w.command)}`
+      content.appendChild(warn)
+      scrollToBottom(tabId)
+    } catch {}
+  }
+
+  if (event === 'stream-start') {
+    try {
+      const s = JSON.parse(data)
+      if (s.streamId) tab.streamId = s.streamId
+    } catch {}
+  }
+
+  if (event === 'session') {
+    try {
+      const s = JSON.parse(data)
+      if (s.sessionId) { tab.sessionId = s.sessionId; saveTabs() }
+      if (s.streamId) tab.streamId = s.streamId
+    } catch {}
+  }
+
+  if (event === 'result') {
+    try {
+      const r = JSON.parse(data)
+      if (r.sessionId) { tab.sessionId = r.sessionId; _summaryCache.delete(r.sessionId); _nameCache.delete(r.sessionId); saveTabs() }
+      if (r.text && !content.querySelector('.text-segment')) {
+        const seg = document.createElement('div')
+        seg.className = 'text-segment'
+        seg.innerHTML = marked.parse(r.text)
+        content.appendChild(seg)
+        tab.fullTexts.set(seg, r.text)
+      }
+      if (r.cost) sessionTotalCost += r.cost
+      if (r.turns) sessionTotalTurns += r.turns
+      if (r.cost || r.durationMs) {
+        const meta = document.createElement('div')
+        meta.className = 'meta'
+        meta.setAttribute('data-testid', 'result-meta')
+        if (r.cost) meta.innerHTML += `<span>$${r.cost.toFixed(4)}</span>`
+        if (r.durationMs) meta.innerHTML += `<span>${(r.durationMs / 1000).toFixed(1)}s</span>`
+        if (r.turns) meta.innerHTML += `<span>${r.turns} turns</span>`
+        msgEl.appendChild(meta)
+      }
+    } catch {}
+  }
+
+  if (event === 'error') {
+    try {
+      const e = JSON.parse(data)
+      content.innerHTML = `<span style="color:var(--danger)" data-testid="error-message">Error: ${esc(e.message)}</span>`
+    } catch {}
+  }
+
+  if (event === 'status') {
+    try {
+      const s = JSON.parse(data)
+      if (s.status === 'compacting') {
+        showCompacting(true)
+        if (tab) tab.compacting = true
+      }
+      if (s.permissionMode && tab) {
+        const mode = s.permissionMode === 'plan' ? 'plan' : s.permissionMode === 'auto-accept' ? 'auto-accept' : 'default'
+        tab.permissionMode = mode
+        if (tabId === activeTabId) updateInputBoxModeColor()
+        renderTabs()
+        saveTabs()
+      }
+    } catch {}
+  }
+
+  if (event === 'compact') {
+    try {
+      const c = JSON.parse(data)
+      showCompactDone(c.trigger, c.preTokens)
+      // 自動コンパクト完了 → キューされたメッセージを自動送信
+      flushPendingAfterCompact(tabId)
+    } catch {}
+  }
+
+  if (event === 'tokenUsage') {
+    try {
+      const t = JSON.parse(data)
+      updateTokenUsage(t.inputTokens, t.contextWindow)
+    } catch {}
+  }
+}
+
+// --- ツール詳細パネル ---
+function createToolDetailPanel(detail) {
+  const panel = document.createElement('div')
+  panel.className = 'tool-detail'
+  panel.setAttribute('data-testid', 'tool-detail')
+
+  const summary = getToolSummary(detail)
+  const iconName = TOOL_ICON_MAP[detail.name] || 'wrench'
+
+  panel.innerHTML = `
+    <div class="tool-detail-header" onclick="toggleToolDetail(this)">
+      <span class="tool-chevron">${ic('chevron-right', 10)}</span>
+      <div class="tool-icon-label">
+        <span class="tool-icon">${ic(iconName, 13)}</span>
+        <span class="tool-name">${esc(detail.name)}</span>
+      </div>
+      <span class="tool-file">${esc(summary)}</span>
+      <span class="tool-status">${ic('check', 12)}</span>
+    </div>
+    <div class="tool-detail-body">${formatToolInput(detail)}</div>
+  `
+  return panel
+}
+
+function getToolSummary(detail) {
+  if (!detail.input) return ''
+  const inp = detail.input
+  if (detail.name === 'Read') return inp.file_path || ''
+  if (detail.name === 'Write') return inp.file_path || ''
+  if (detail.name === 'Edit') return inp.file_path || ''
+  if (detail.name === 'Bash') return (inp.command || '').slice(0, 80)
+  if (detail.name === 'Glob') return inp.pattern || ''
+  if (detail.name === 'Grep') return inp.pattern || ''
+  return JSON.stringify(inp).slice(0, 80)
+}
+
+function formatToolInput(detail) {
+  if (!detail.input) return ''
+  const inp = detail.input
+
+  if (detail.name === 'Edit' && inp.old_string !== undefined && inp.new_string !== undefined) {
+    return formatDiff(inp.old_string || '', inp.new_string || '', inp.file_path || '')
+  }
+  if (detail.name === 'Bash') {
+    return `<div style="color:var(--accent)">$ ${esc(inp.command || '')}</div>`
+  }
+  if (detail.name === 'Write') {
+    const content = inp.content || ''
+    return `<div class="diff-add" style="max-height:200px;overflow:auto;padding:4px 6px">${esc(content)}</div>`
+  }
+  return `<div>${esc(JSON.stringify(inp, null, 2))}</div>`
+}
+
+function formatDiff(oldStr, newStr, filePath) {
+  const oldLines = oldStr.split('\n')
+  const newLines = newStr.split('\n')
+  let html = ''
+  if (filePath) html += `<div class="diff-hunk">--- ${esc(filePath)}</div>`
+  oldLines.forEach(l => { html += `<div class="diff-line diff-del">- ${esc(l)}</div>` })
+  newLines.forEach(l => { html += `<div class="diff-line diff-add">+ ${esc(l)}</div>` })
+  return html
+}
+
+function appendToolOutput(panel, output) {
+  const body = panel.querySelector('.tool-detail-body')
+  if (!body) return
+  if (output) {
+    body.innerHTML += `<div style="margin-top:6px;border-top:1px solid var(--border);padding-top:6px;color:var(--muted)">${esc(output)}</div>`
+  }
+}
+
+function toggleToolDetail(header) {
+  const icon = header.querySelector('.tool-chevron')
+  const body = header.nextElementSibling
+  icon.classList.toggle('open')
+  body.classList.toggle('open')
+}
+
+// --- UI helpers ---
+/** ユーザーメッセージからシステムコンテキストを除去して表示用テキストを返す。空ならnull（非表示）*/
+function cleanUserMessage(raw) {
+  if (!raw) return null
+  let t = raw
+  // Skill展開コンテンツ（"Base directory for this skill:"で始まる全体）を除去
+  if (/^\s*Base directory for this skill:/i.test(t)) return null
+  // システムタグを中身ごと除去（閉じタグあり）
+  t = t.replace(/<(ide_opened_file|ide_selection|system-reminder|user-prompt-submit-hook)[^>]*>[\s\S]*?<\/\1>/g, '')
+  // 閉じタグなし → 開始タグ以降を全除去
+  t = t.replace(/<(ide_opened_file|ide_selection|system-reminder|user-prompt-submit-hook)[^>]*>[\s\S]*/g, '')
+  // 残った単独タグを除去
+  t = t.replace(/<[^>]+>/g, '')
+  // セッションエラー／再接続ログを除去
+  t = t.replace(/^\[[\d:]+\]\s*(Session failed|To reconnect):.*$/gm, '')
+  // IDE/システム由来のボイラープレートテキストを除去
+  t = t.replace(/^The user opened the file\b.*$/gm, '')
+  t = t.replace(/^The user's IDE selection.*$/gm, '')
+  t = t.replace(/^This (may or may not|is|represents).*$/gm, '')
+  t = t.replace(/[^\S\n]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
+  return t || null
+}
+
+function addInterruptIndicator(tabId) {
+  const tab = tabs.get(tabId)
+  if (!tab) return
+  const el = document.createElement('div')
+  el.className = 'msg interrupt'
+  el.innerHTML = `<div class="interrupt-badge"><svg width="12" height="12" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="14" height="14" rx="3" stroke="currentColor" stroke-width="1.5"/><rect x="5" y="5" width="6" height="6" rx="1" fill="currentColor"/></svg>${t('requestInterrupted')}</div>`
+  tab.messagesEl.appendChild(el)
+  scrollToBottom(tabId)
+  return el
+}
+
+function addMessage(tabId, role, text) {
+  const tab = tabs.get(tabId)
+  if (!tab) return
+  const el = document.createElement('div')
+  el.className = `msg ${role}`
+  el.setAttribute('data-testid', `msg-${role}`)
+  if (role === 'user') {
+    el.innerHTML = `<div class="bubble">${esc(text)}</div>`
+  } else {
+    el.innerHTML = `<div class="content">${text}</div>`
+  }
+  tab.messagesEl.appendChild(el)
+  scrollToBottom(tabId)
+  return el
+}
+
+function scrollToBottom(tabId) {
+  const tab = tabs.get(tabId || activeTabId)
+  if (tab) requestAnimationFrame(() => tab.messagesEl.scrollTop = tab.messagesEl.scrollHeight)
+}
+
+function esc(s) {
+  if (typeof s !== 'string') s = String(s || '')
+  const d = document.createElement('div')
+  d.textContent = s
+  return d.innerHTML
+}
+
+/** セッション名/タブラベル用のクリーンアップ */
+function cleanLabel(raw) {
+  if (!raw) return ''
+  let t = raw
+  // システムタグを中身ごと除去（閉じタグあり）
+  t = t.replace(/<(ide_opened_file|ide_selection|system-reminder|user-prompt-submit-hook)[^>]*>[\s\S]*?<\/\1>/g, '')
+  // 閉じタグなし（切り詰めで閉じタグが欠落）→ 開始タグ以降を全除去
+  t = t.replace(/<(ide_opened_file|ide_selection|system-reminder|user-prompt-submit-hook)[^>]*>[\s\S]*/g, '')
+  // 残った単独タグを除去
+  t = t.replace(/<[^>]+>/g, '')
+  // UTF-8文字化け（U+FFFD）を含む場合はデータ破損なので空を返す
+  if (t.includes('\uFFFD')) return ''
+  t = t.replace(/\uFFFD/g, '')
+  // タグ除去済みの既存データ対応: IDEコンテキストの定型文を除去
+  t = t.replace(/^The user opened the file\b.*$/gm, '')
+  t = t.replace(/^The user's IDE selection.*$/gm, '')
+  t = t.replace(/^This (may or may not|is|represents).*$/gm, '')
+  t = t.replace(/\s+/g, ' ').trim()
+  if (/^[0-9a-f-]{8,}$/i.test(t)) return ''
+  return t
+}
+
+function autoResize() {
+  inputEl.style.height = 'auto'
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 150) + 'px'
+}
+const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+inputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.isComposing) {
+    if (isTouchDevice) {
+      // モバイル: Enter = 改行（デフォルト動作）、送信はボタンで
+    } else if (!e.shiftKey) {
+      // デスクトップ: Enter = 送信、Shift+Enter = 改行
+      e.preventDefault()
+      closeCmdMenu()
+      sendMessage()
+    }
+  }
+  if (e.key === 'Escape') closeCmdMenu()
+})
+
+// `/` in empty input opens command menu
+inputEl.addEventListener('input', () => {
+  autoResize()
+  const val = inputEl.value
+  if (val.startsWith('/') && !val.includes(' ')) {
+    if (!cmdMenuOpen) { cmdMenuOpen = true; document.getElementById('cmdMenu').classList.add('open') }
+    renderCmdMenu(val.slice(1).toLowerCase())
+  } else {
+    closeCmdMenu()
+  }
+})
+
+// モバイル: 入力エリア外タップでキーボードを閉じる（入力エリア全体は除外）
+if (isTouchDevice) {
+  document.addEventListener('touchstart', (e) => {
+    if (document.activeElement !== inputEl) return
+    const inputArea = document.querySelector('.input-area')
+    if (inputArea && inputArea.contains(e.target)) return
+    inputEl.blur()
+  })
+}
+
+// =====================================================
+// Tools タブ: MCP + SKILLS 一覧
+// =====================================================
+async function loadTools() {
+  const container = document.getElementById('toolsList')
+  container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">' + t('loading') + '</div>'
+  try {
+    const [mcpRes, skillsRes] = await Promise.all([
+      fetch('/api/mcp' + (currentProject ? '?project=' + encodeURIComponent(currentProject) : '')),
+      fetch('/api/skills' + (currentProject ? '?project=' + encodeURIComponent(currentProject) : '')),
+    ])
+    const mcp = await mcpRes.json()
+    const skills = await skillsRes.json()
+    let html = ''
+
+    // MCP セクション
+    html += `<div style="font-size:11px;color:var(--muted);padding:4px 0 6px;font-weight:600;letter-spacing:.05em">MCP SERVERS</div>`
+    if (mcp.items.length === 0) {
+      html += `<div style="font-size:12px;color:var(--muted);padding:4px 0 10px">None</div>`
+    } else {
+      html += `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:12px">`
+      mcp.items.forEach(m => {
+        const dotColor = m.disabled ? 'var(--muted)' : 'var(--success)'
+        const nameColor = m.disabled ? 'var(--muted)' : 'var(--text)'
+        const badge = m.source ? `<span style="font-size:10px;color:var(--muted);background:var(--surface);padding:1px 5px;border-radius:3px">${esc(m.source)}</span>` : ''
+        const envInfo = m.envKeys?.length ? `<div style="font-size:10px;color:var(--muted);margin-top:2px">env: ${m.envKeys.map(k => esc(k)).join(', ')}</div>` : ''
+        html += `<div style="padding:8px 12px;border-top:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="width:7px;height:7px;border-radius:50%;background:${dotColor};flex-shrink:0"></span>
+            <span style="font-size:13px;font-family:var(--font-mono);color:${nameColor};font-weight:600">${esc(m.name)}</span>
+            ${badge}
+            ${m.disabled ? '<span style="font-size:10px;color:var(--warning);background:var(--warning-bg);padding:1px 5px;border-radius:3px">disabled</span>' : ''}
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.command)}</div>
+          ${envInfo}
+        </div>`
+      })
+      html += `</div>`
+    }
+
+    // SKILLS セクション
+    html += `<div style="font-size:11px;color:var(--muted);padding:4px 0 6px;font-weight:600;letter-spacing:.05em">SKILLS</div>`
+    if (skills.items.length === 0) {
+      html += `<div style="font-size:12px;color:var(--muted);padding:4px 0">None</div>`
+    } else {
+      html += `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">`
+      skills.items.forEach(s => {
+        html += `<div style="padding:7px 12px;border-top:1px solid var(--border)">
+          <div style="font-size:13px;font-family:var(--font-mono);color:var(--text)">${esc(s.name)}</div>
+          ${s.title !== s.name ? `<div style="font-size:11px;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.title)}</div>` : ''}
+        </div>`
+      })
+      html += `</div>`
+    }
+
+    container.innerHTML = html
+  } catch (e) {
+    container.innerHTML = `<div style="color:var(--danger);font-size:13px;padding:16px">Error: ${esc(String(e))}</div>`
+  }
+}
+
+// =====================================================
+// 機能1: サービス/プロセス一覧 + ワンタップアクセス
+// =====================================================
+async function loadServices() {
+  const container = document.getElementById('servicesList')
+  container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">' + t('loading') + '</div>'
+  try {
+    const res = await fetch('/api/processes')
+    const data = await res.json()
+    if (!data.items || data.items.length === 0) {
+      container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">' + t('noServicesFound') + '</div>'
+      return
+    }
+    container.innerHTML = ''
+    const accessible = data.items.filter(p => p.accessible)
+    const localOnly = data.items.filter(p => !p.accessible)
+
+    if (accessible.length === 0 && localOnly.length === 0) {
+      container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">' + t('noServicesFound') + '</div>'
+      return
+    }
+
+    accessible.forEach(p => {
+      const el = document.createElement('div')
+      el.className = 'service-item'
+      const accessHost = (p.host === '*' || p.host === '0.0.0.0' || p.host === '[::]') ? location.hostname : p.host
+      const url = `http://${accessHost}:${p.port}`
+      el.innerHTML = `
+        <span class="port-badge">:${p.port}</span>
+        <span style="font-size:13px;color:var(--text);font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis">${esc(p.command)} (PID ${p.pid})</span>
+        <button class="open-btn">Open ${ic('external-link', 12)}</button>
+      `
+      el.querySelector('.open-btn').addEventListener('click', (e) => { e.stopPropagation(); window.open(url, '_blank') })
+      container.appendChild(el)
+    })
+
+    if (localOnly.length > 0) {
+      const sep = document.createElement('div')
+      sep.style.cssText = 'color:var(--muted);font-size:11px;padding:8px 12px 4px;opacity:.7'
+      sep.textContent = `Local only (${localOnly.length})`
+      container.appendChild(sep)
+      localOnly.forEach(p => {
+        const el = document.createElement('div')
+        el.className = 'service-item'
+        el.style.opacity = '.5'
+        el.innerHTML = `
+          <span class="port-badge" style="background:var(--surface1)">:${p.port}</span>
+          <span style="font-size:13px;color:var(--muted);font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis">${esc(p.command)} (PID ${p.pid})</span>
+          <span style="font-size:11px;color:var(--muted)">127.0.0.1</span>
+        `
+        container.appendChild(el)
+      })
+    }
+  } catch (e) {
+    container.innerHTML = `<div style="color:var(--danger);font-size:13px;padding:16px">Error: ${esc(String(e))}</div>`
+  }
+}
+
+// =====================================================
+// Links (ブックマーク)
+// =====================================================
+const LINKS_STORAGE_KEY = 'pocket-cc-links'
+const DEFAULT_LINKS = [
+  { title: 'Claude Usage', url: 'https://claude.ai/settings/usage' },
+  { title: 'ChatGPT Codex Usage', url: 'https://chatgpt.com/codex/settings/usage' },
+]
+
+function getLinks() {
+  try {
+    const raw = localStorage.getItem(LINKS_STORAGE_KEY)
+    if (!raw) return [...DEFAULT_LINKS]
+    return JSON.parse(raw)
+  } catch { return [...DEFAULT_LINKS] }
+}
+
+function saveLinksData(links) {
+  localStorage.setItem(LINKS_STORAGE_KEY, JSON.stringify(links))
+}
+
+function loadLinks() {
+  const container = document.getElementById('linksList')
+  const links = getLinks()
+  container.innerHTML = ''
+  if (links.length === 0) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">' + t('noLinksYet') + '</div>'
+    return
+  }
+  links.forEach((link, idx) => {
+    const el = document.createElement('div')
+    el.className = 'link-item'
+    const hostname = (() => { try { return new URL(link.url).hostname } catch { return link.url } })()
+    el.innerHTML = `
+      <div style="color:var(--accent);display:flex;align-items:center;flex-shrink:0">${ic('external-link', 16)}</div>
+      <div class="link-info">
+        <div class="link-title">${esc(link.title || hostname)}</div>
+        <div class="link-url">${esc(link.url)}</div>
+      </div>
+      <button class="link-delete" title="Delete">${ic('x', 14)}</button>
+    `
+    el.querySelector('.link-delete').addEventListener('click', (e) => { e.stopPropagation(); removeLink(idx) })
+    el.addEventListener('click', () => window.open(link.url, '_blank'))
+    container.appendChild(el)
+  })
+}
+
+function showAddLinkForm() {
+  document.getElementById('addLinkForm').style.display = 'block'
+  document.getElementById('addLinkUrl').focus()
+}
+
+function hideAddLinkForm() {
+  document.getElementById('addLinkForm').style.display = 'none'
+  document.getElementById('addLinkUrl').value = ''
+  document.getElementById('addLinkTitle').value = ''
+}
+
+function addLink() {
+  const url = document.getElementById('addLinkUrl').value.trim()
+  if (!url) return
+  let title = document.getElementById('addLinkTitle').value.trim()
+  if (!title) {
+    try { title = new URL(url).hostname } catch { title = url }
+  }
+  const links = getLinks()
+  links.push({ title, url })
+  saveLinksData(links)
+  hideAddLinkForm()
+  loadLinks()
+}
+
+function removeLink(idx) {
+  const links = getLinks()
+  links.splice(idx, 1)
+  saveLinksData(links)
+  loadLinks()
+}
+
+// =====================================================
+// 機能2: ファイルツリー + ソースビューア + 検索
+// =====================================================
+let fileTreePath = '' // 現在のツリー表示パス
+let fileSearchTimer = null
+
+async function loadFileTree(path) {
+  const container = document.getElementById('fileTree')
+  const dirPath = path || currentProject
+  if (!dirPath) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">' + t('noProjectSelected') + '</div>'
+    return
+  }
+  fileTreePath = dirPath
+  // 現在パス表示（プロジェクトルートからの相対パス）
+  const pathLabel = document.getElementById('fileCurrentPath')
+  const relPath = dirPath.replace(currentProject, '').replace(/^\//, '') || '/'
+  pathLabel.textContent = relPath
+  container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px">' + t('loading') + '</div>'
+  try {
+    const res = await fetch('/api/files?path=' + encodeURIComponent(dirPath))
+    const data = await res.json()
+    container.innerHTML = ''
+
+    // 上の階層に戻るボタン（ルートでなければ）
+    if (dirPath !== currentProject) {
+      const back = document.createElement('div')
+      back.className = 'file-item dir'
+      back.innerHTML = `${ic('chevron-right', 14)} <span style="transform:rotate(180deg);display:inline-flex">${ic('chevron-right', 14)}</span> ..`
+      back.style.cssText = 'opacity:.7'
+      back.onclick = () => {
+        const parent = dirPath.replace(/\/[^/]+$/, '')
+        loadFileTree(parent || currentProject)
+      }
+      container.appendChild(back)
+    }
+
+    if (!data.items || data.items.length === 0) {
+      container.innerHTML += '<div style="color:var(--muted);font-size:13px;padding:8px">Empty directory</div>'
+      return
+    }
+
+    data.items.forEach(item => {
+      const el = document.createElement('div')
+      el.className = 'file-item' + (item.isDir ? ' dir' : '')
+      const icon = item.isDir ? ic('folder', 14) : ic('file-text', 14)
+      const sizeStr = item.isDir ? '' : `<span class="file-size">${formatSize(item.size)}</span>`
+      el.innerHTML = `${icon} <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(item.name)}</span>${sizeStr}`
+      el.onclick = () => {
+        if (item.isDir) {
+          loadFileTree(item.path)
+        } else {
+          openSourceViewer(item.path, item.name)
+        }
+      }
+      container.appendChild(el)
+    })
+  } catch (e) {
+    container.innerHTML = `<div style="color:var(--danger);font-size:13px;padding:8px">${t('errorLoadingFiles')}</div>`
+  }
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + 'B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + 'KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + 'MB'
+}
+
+function onFileSearch() {
+  clearTimeout(fileSearchTimer)
+  const q = document.getElementById('fileSearchInput').value.trim()
+  const resultsEl = document.getElementById('fileSearchResults')
+  if (!q) {
+    resultsEl.style.display = 'none'
+    resultsEl.innerHTML = ''
+    return
+  }
+  fileSearchTimer = setTimeout(async () => {
+    try {
+      const params = new URLSearchParams({ project: currentProject || '', q })
+      const res = await fetch('/api/files/search?' + params)
+      const data = await res.json()
+      resultsEl.style.display = 'block'
+      if (!data.items || data.items.length === 0) {
+        resultsEl.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:4px">' + t('noMatches') + '</div>'
+        return
+      }
+      resultsEl.innerHTML = ''
+      data.items.slice(0, 30).forEach(item => {
+        const el = document.createElement('div')
+        el.className = 'file-item' + (item.isDir ? ' dir' : '')
+        const icon = item.isDir ? ic('folder', 14) : ic('file-text', 14)
+        const relPath = item.path.replace(currentProject + '/', '')
+        el.innerHTML = `${icon} <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">${esc(relPath)}</span>`
+        el.onclick = () => {
+          if (item.isDir) {
+            loadFileTree(item.path)
+            resultsEl.style.display = 'none'
+            document.getElementById('fileSearchInput').value = ''
+          } else {
+            openSourceViewer(item.path, item.name)
+          }
+        }
+        resultsEl.appendChild(el)
+      })
+    } catch { resultsEl.innerHTML = '' }
+  }, 300)
+}
+
+let currentSourceContent = ''
+async function openSourceViewer(filePath, fileName) {
+  const viewer = document.getElementById('sourceViewer')
+  const title = document.getElementById('sourceViewerTitle')
+  const code = document.getElementById('sourceViewerCode')
+  title.textContent = fileName || filePath.split('/').pop()
+  code.textContent = t('loading')
+  viewer.style.display = 'block'
+
+  try {
+    const res = await fetch('/api/files/content?path=' + encodeURIComponent(filePath))
+    const data = await res.json()
+    if (data.error) {
+      code.textContent = 'Error: ' + data.error
+      currentSourceContent = ''
+    } else {
+      // 行番号付き表示
+      const lines = data.content.split('\n')
+      const padLen = String(lines.length).length
+      const numbered = lines.map((line, i) => {
+        const num = String(i + 1).padStart(padLen, ' ')
+        return `<span style="color:var(--muted);user-select:none">${num}</span>  ${esc(line)}`
+      }).join('\n')
+      code.innerHTML = numbered
+      currentSourceContent = data.content
+    }
+  } catch (e) {
+    code.textContent = t('failedToLoadFile')
+    currentSourceContent = ''
+  }
+}
+
+function closeSourceViewer() {
+  document.getElementById('sourceViewer').style.display = 'none'
+}
+
+function copySourceContent() {
+  if (!currentSourceContent) return
+  navigator.clipboard.writeText(currentSourceContent).then(() => {
+    const btn = document.getElementById('sourceCopyBtn')
+    btn.innerHTML = ic('check', 12) + ' Copied!'
+    setTimeout(() => { btn.innerHTML = ic('copy', 12) + ' Copy' }, 2000)
+  })
+}
+
+// =====================================================
+// 機能3: Git状況表示
+// =====================================================
+async function loadGitStatus() {
+  const container = document.getElementById('gitStatus')
+  if (!currentProject) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">' + t('noProjectSelected') + '</div>'
+    return
+  }
+  container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">' + t('loading') + '</div>'
+  try {
+    const res = await fetch('/api/git/status?project=' + encodeURIComponent(currentProject))
+    const data = await res.json()
+    if (data.error) {
+      container.innerHTML = `<div style="color:var(--danger);font-size:13px;padding:16px">${esc(data.error)}</div>`
+      return
+    }
+
+    const branchCount = data.branches ? data.branches.length : 0
+    let html = ''
+    // ブランチ + 未プッシュ（複数ブランチ時はタップで一覧開閉）
+    const hasMultiple = branchCount > 1
+    html += `<div class="git-branch" ${hasMultiple ? 'data-toggle-branches style="cursor:pointer"' : ''}>
+      ${ic('git-branch', 16)}
+      <span style="font-size:14px;font-family:var(--font-mono);font-weight:600">${esc(data.branch)}</span>
+      ${hasMultiple ? `<span style="font-size:11px;color:var(--muted);margin-left:2px">(${branchCount})</span>` : ''}
+      ${data.unpushed > 0 ? `<span style="margin-left:auto;background:var(--warning-bg);color:var(--warning);padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">${data.unpushed} unpushed</span>` : ''}
+      ${hasMultiple ? `<span id="branchChevron" style="${data.unpushed > 0 ? '' : 'margin-left:auto;'}color:var(--muted);display:flex;transition:transform .2s">${ic('chevron-down', 14)}</span>` : ''}
+    </div>`
+
+    // ブランチ一覧（デフォルト非表示・タップで開閉）
+    if (hasMultiple) {
+      html += `<div id="branchList" style="display:none;margin-bottom:12px;border:1px solid var(--border);border-radius:8px;overflow:hidden">`
+      data.branches.forEach(b => {
+        if (b.current) {
+          html += `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--accent-dim);border-left:3px solid var(--accent)">
+            <span style="font-size:13px;font-family:var(--font-mono);color:var(--accent);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(b.name)}</span>
+            <span style="margin-left:auto;font-size:10px;color:var(--accent);opacity:.8;flex-shrink:0">current</span>
+          </div>`
+        } else {
+          html += `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-left:3px solid transparent;border-top:1px solid var(--border)">
+            <span style="font-size:13px;font-family:var(--font-mono);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(b.name)}</span>
+          </div>`
+        }
+      })
+      html += `</div>`
+    }
+
+    // GitHub リンク
+    if (data.repo) {
+      html += `<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">`
+      html += `<a href="https://github.com/${data.repo}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:4px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:var(--font-mono);text-decoration:none;transition:all .1s">${ic('github', 14)} Repo</a>`
+      html += `<a href="https://github.com/${data.repo}/issues" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:4px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:var(--font-mono);text-decoration:none">${ic('file-text', 14)} Issues</a>`
+      html += `<a href="https://github.com/${data.repo}/pulls" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:4px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:var(--font-mono);text-decoration:none">${ic('git-branch', 14)} PRs</a>`
+      html += `</div>`
+
+    }
+
+    // ファイル一覧
+    if (data.files.length === 0) {
+      html += '<div style="color:var(--success);font-size:13px;padding:10px;text-align:center">' + ic('check', 14) + ' Working tree clean</div>'
+    } else {
+      html += `<div style="font-size:12px;color:var(--muted);margin-bottom:4px">${data.files.length} changed files</div>`
+      data.files.forEach(f => {
+        let badgeClass = 'modified'
+        let label = f.status
+        if (f.status === 'M') { badgeClass = 'modified'; label = 'M' }
+        else if (f.status === 'A') { badgeClass = 'added'; label = 'A' }
+        else if (f.status === 'D') { badgeClass = 'deleted'; label = 'D' }
+        else if (f.status === '??' || f.status === '?') { badgeClass = 'untracked'; label = '?' }
+        else if (f.status === 'R') { badgeClass = 'modified'; label = 'R' }
+        html += `<div class="git-stat"><span class="badge ${badgeClass}">${label}</span> <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.file)}</span></div>`
+      })
+    }
+
+    container.innerHTML = html
+    // ブランチ一覧の開閉ボタンにイベントリスナーを追加
+    const branchToggle = container.querySelector('[data-toggle-branches]')
+    if (branchToggle) branchToggle.addEventListener('click', () => toggleBranchList())
+    updateGitBar(data)
+  } catch (e) {
+    container.innerHTML = `<div style="color:var(--danger);font-size:13px;padding:16px">${t('failedToLoadGit')}</div>`
+  }
+}
+
+function toggleBranchList() {
+  const list = document.getElementById('branchList')
+  const chevron = document.getElementById('branchChevron')
+  if (!list) return
+  const open = list.style.display === 'none'
+  list.style.display = open ? 'block' : 'none'
+  if (chevron) chevron.style.transform = open ? 'rotate(180deg)' : ''
+}
+
+function updateGitBar(data) {
+  const branchEl = document.getElementById('gitBarBranch')
+  const rightEl = document.getElementById('gitBarRight')
+  if (!branchEl || !rightEl) return
+  branchEl.style.opacity = '1'
+  branchEl.innerHTML = ic('git-branch', 13) + ' ' + esc(data.branch || '—')
+  let right = ''
+  const changed = data.files ? data.files.length : 0
+  if (changed > 0) {
+    right += `<div class="git-statusbar-pill" style="color:var(--accent)" onclick="event.stopPropagation();showGitPillTooltip(this,'changed',${changed})">${ic('git-commit', 12)} ${changed}</div>`
+  }
+  const up = data.unpushed ?? 0
+  const down = data.unpulled ?? 0
+  right += `<div class="git-statusbar-pill${up > 0 ? ' warn' : ''}" onclick="event.stopPropagation();showGitPillTooltip(this,'sync',${down},${up})">↓${down} ↑${up}</div>`
+  rightEl.innerHTML = right
+}
+
+function showGitPillTooltip(el, type, a, b) {
+  // 既存ツールチップがあれば消す
+  const old = document.getElementById('gitPillTooltip')
+  if (old) { old.remove(); return }
+  let msg = ''
+  if (type === 'changed') {
+    msg = `${a} file${a !== 1 ? 's' : ''} changed locally (uncommitted)`
+  } else {
+    const down = a, up = b ?? 0
+    const parts = []
+    if (down > 0) parts.push(`↓${down} commit${down !== 1 ? 's' : ''} to pull from remote`)
+    if (up > 0) parts.push(`↑${up} commit${up !== 1 ? 's' : ''} to push to remote`)
+    if (parts.length === 0) parts.push('Local and remote are in sync')
+    msg = parts.join('\n')
+  }
+  const tip = document.createElement('div')
+  tip.id = 'gitPillTooltip'
+  tip.style.cssText = 'position:fixed;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;font-family:var(--font-mono);color:var(--text);white-space:pre-line;box-shadow:0 4px 12px rgba(0,0,0,.3);max-width:260px;line-height:1.5'
+  tip.textContent = msg
+  document.body.appendChild(tip)
+  const rect = el.getBoundingClientRect()
+  tip.style.top = (rect.bottom + 6) + 'px'
+  tip.style.right = (window.innerWidth - rect.right) + 'px'
+  const dismiss = (e) => { if (!tip.contains(e.target) && e.target !== el) { tip.remove(); document.removeEventListener('click', dismiss) } }
+  setTimeout(() => document.addEventListener('click', dismiss), 0)
+}
+
+init()
+</script>
+</body>
+</html>

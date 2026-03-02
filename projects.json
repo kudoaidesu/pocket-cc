@@ -1,11 +1,7 @@
 [
   {
-    "slug": "issue-ai-bot",
-    "guildId": "1475120731451822091",
-    "channelId": "1475120731451822094",
-    "repo": "kudoaidesu/issue-ai-bot",
-    "localPath": "/Users/ai_server/work/issue-ai-bot",
-    "alertChannelId": "1475193248388612267",
-    "operationAlertChannelId": "1475189494591262943"
+    "slug": "pocket-cc",
+    "repo": "kudoaidesu/claude-crew",
+    "localPath": "/Users/ai-server/work/claude-crew"
   }
 ]

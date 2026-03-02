@@ -24,7 +24,7 @@ Discord で `/cron` を実行すると現在の登録済みジョブとスケジ
 ### ② .env の直接確認
 
 ```bash
-grep -E '(CRON|SCRAPE|SCHEDULE)' /Users/ai_server/work/issue-ai-bot/.env
+grep -E '(CRON|SCRAPE|SCHEDULE)' /Users/ai-server/work/issue-ai-bot/.env
 ```
 
 ### ③ サービス稼働確認

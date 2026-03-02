@@ -26,11 +26,6 @@ async function ask(question: string, defaultValue?: string): Promise<string> {
   return answer.trim() || defaultValue || ''
 }
 
-async function askSecret(question: string): Promise<string> {
-  const answer = await rl.question(`  ${question}: `)
-  return answer.trim()
-}
-
 function checkCli(name: string, args: string[]): string | null {
   try {
     return execFileSync(name, args, { encoding: 'utf-8' }).trim()
@@ -89,20 +84,6 @@ async function setupLlm(): Promise<Record<string, string>> {
   }
 }
 
-async function setupDiscord(): Promise<Record<string, string>> {
-  print('')
-  print('── Discord Bot 設定 ──')
-  print('  Discord Developer Portal: https://discord.com/developers/applications')
-  print('  Guild ID / Channel ID は projects.json で管理します。')
-  print('')
-
-  const botToken = await askSecret('Bot Token')
-
-  return {
-    DISCORD_BOT_TOKEN: botToken,
-  }
-}
-
 async function setupCron(): Promise<Record<string, string>> {
   print('')
   print('── Cron スケジュール設定 ──')
@@ -139,7 +120,6 @@ function loadExistingEnv(): Record<string, string> {
 
 function writeEnv(env: Record<string, string>): void {
   const sections: { header: string; keys: string[] }[] = [
-    { header: '# Discord', keys: ['DISCORD_BOT_TOKEN'] },
     { header: '# Claude Code', keys: ['LLM_MODEL'] },
     { header: '# Cron', keys: ['CRON_SCHEDULE', 'CRON_REPORT_SCHEDULE'] },
     { header: '# Queue', keys: ['QUEUE_DATA_DIR'] },
@@ -193,15 +173,11 @@ export async function runSetup(): Promise<void> {
   const llmEnv = await setupLlm()
   Object.assign(env, llmEnv)
 
-  // 2. Discord設定
-  const discordEnv = await setupDiscord()
-  Object.assign(env, discordEnv)
-
-  // 3. Cron設定
+  // 2. Cron設定
   const cronEnv = await setupCron()
   Object.assign(env, cronEnv)
 
-  // 4. デフォルト値
+  // 3. デフォルト値
   env.QUEUE_DATA_DIR = './data'
 
   // 書き込み

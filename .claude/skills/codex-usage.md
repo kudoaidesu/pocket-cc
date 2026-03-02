@@ -14,7 +14,7 @@ OpenAI Codex MCPを使用してコード生成・分析を行う際のモデル�
 ### 1. 基本モデル（デフォルト）
 
 ```
-model: gpt-5.2-codex
+model: gpt-5.3-codex
 reasoning: high
 ```
 
@@ -23,7 +23,7 @@ reasoning: high
 ### 2. 高難度モデル（エスカレーション）
 
 ```
-model: gpt-5.2-codex
+model: gpt-5.3-codex
 reasoning: x-high
 ```
 
@@ -38,14 +38,14 @@ reasoning: x-high
 // 基本モデル（最初に必ずこちらを試す）
 mcp__codex-mcp__codex({
   prompt: "...",
-  model: "gpt-5.2-codex",
+  model: "gpt-5.3-codex",
   // reasoning: high（デフォルト）
 })
 
 // エスカレーション（基本で解決できない場合のみ）
 mcp__codex-mcp__codex({
   prompt: "...",
-  model: "gpt-5.2-codex",
+  model: "gpt-5.3-codex",
   // reasoning: x-high を指定
 })
 ```

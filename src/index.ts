@@ -1,17 +1,6 @@
 import { config } from './config.js'
 import { createLogger } from './utils/logger.js'
-import { startBot } from './bot/index.js'
 import { startScheduler, stopScheduler, setProcessHandler } from './queue/scheduler.js'
-import { initializeMemory, shutdownMemory } from './memory/index.js'
-import { startDashboard } from './dashboard/server.js'
-import type { Server } from 'node:http'
-import {
-  notifyProcessingStart,
-  notifyProcessingComplete,
-  notifyError,
-  createIssueThread,
-  updateProgress,
-} from './bot/notifier.js'
 import { getIssue } from './github/issues.js'
 import { runTaicho } from './agents/taicho/index.js'
 import type { ProgressReporter } from './agents/taicho/types.js'
@@ -30,77 +19,39 @@ async function main(): Promise<void> {
     const project = config.projects.find((p) => p.repo === repository)
     if (!project) {
       log.error(`No project config found for repository: ${repository}`)
-      await notifyError(`プロジェクト設定が見つかりません: ${repository}`)
       return
     }
 
     const issue = await getIssue(issueNumber, repository)
     log.info(`Processing Issue #${issueNumber} (${repository}): ${issue.title}`)
 
-    // Thread 作成を試行
-    const threadCtx = await createIssueThread(issueNumber, issue.title, project.channelId)
-
-    if (!threadCtx) {
-      // フォールバック: レガシー通知
-      await notifyProcessingStart(issueNumber, project.channelId)
+    const onProgress: ProgressReporter = (data) => {
+      log.info(`[Progress] #${issueNumber} ${data.stage}: ${data.message}`)
     }
-
-    // ProgressReporter クロージャ構築
-    const onProgress: ProgressReporter | undefined = threadCtx
-      ? (data) => { void updateProgress(threadCtx, data) }
-      : undefined
 
     const result = await runTaicho({ issue, project, onProgress })
 
-    // Thread 使用時は onProgress 経由で done/failed が通知済み
-    // Thread 未使用時はレガシー通知にフォールバック
-    if (!threadCtx) {
-      if (result.success) {
-        const durationStr = result.durationMs
-          ? ` (所要時間: ${Math.round(result.durationMs / 1000)}秒)`
-          : ''
-        await notifyProcessingComplete(
-          issueNumber,
-          true,
-          `Draft PR 作成完了: ${result.prUrl}${durationStr}`,
-          project.channelId,
-        )
-      } else {
-        await notifyProcessingComplete(
-          issueNumber,
-          false,
-          `タイチョー失敗: ${result.error} (試行回数: ${result.retryCount})`,
-          project.channelId,
-        )
-      }
+    if (result.success) {
+      const durationStr = result.durationMs
+        ? ` (${Math.round(result.durationMs / 1000)}s)`
+        : ''
+      log.info(`Issue #${issueNumber} completed: ${result.prUrl}${durationStr}`)
+    } else {
+      log.error(`Issue #${issueNumber} failed: ${result.error} (retries: ${result.retryCount})`)
     }
   })
-
-  // メモリシステム初期化
-  await initializeMemory()
-  log.info('Memory system initialized')
-
-  // Discord Bot起動
-  const client = await startBot()
-  log.info('Discord Bot started')
 
   // Cronスケジューラ起動
   startScheduler()
   log.info('Cron scheduler started')
 
-  // ダッシュボード起動
-  let dashboardServer: Server | undefined
-  if (config.dashboard.enabled) {
-    dashboardServer = startDashboard()
-  }
+  // Web UI は別プロセス: npm run web
+  log.info('Web UI: run "npm run web" in a separate process')
 
   // Graceful shutdown
   const shutdown = async (): Promise<void> => {
     log.info('Shutting down...')
     stopScheduler()
-    shutdownMemory()
-    client.destroy()
-    dashboardServer?.close()
     log.info('Goodbye')
     process.exit(0)
   }

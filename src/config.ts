@@ -2,14 +2,6 @@ import 'dotenv/config'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-function required(key: string): string {
-  const value = process.env[key]
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${key}`)
-  }
-  return value
-}
-
 function optional(key: string, defaultValue: string): string {
   return process.env[key] ?? defaultValue
 }
@@ -47,13 +39,9 @@ export const MODEL_OPTIONS_UPDATED = '2026-02-23'
 
 export interface ProjectConfig {
   slug: string
-  guildId: string
-  channelId: string
   repo: string
   localPath: string
   chatModel?: ChatModel
-  alertChannelId?: string
-  operationAlertChannelId?: string
 }
 
 function loadProjects(): ProjectConfig[] {
@@ -83,9 +71,6 @@ function loadProjects(): ProjectConfig[] {
 }
 
 export const config = {
-  discord: {
-    botToken: required('DISCORD_BOT_TOKEN'),
-  },
   projects: loadProjects(),
   llm: {
     model: optional('LLM_MODEL', 'sonnet'),
@@ -95,8 +80,6 @@ export const config = {
   },
   cron: {
     schedule: optional('CRON_SCHEDULE', '0 1 * * *'),
-    reportSchedule: optional('CRON_REPORT_SCHEDULE', '0 9 * * *'),
-    dailyUsageStatusSchedule: optional('CRON_DAILY_USAGE_STATUS_SCHEDULE', '0 18 * * *'),
   },
   queue: {
     dataDir: optional('QUEUE_DATA_DIR', './data'),
@@ -110,52 +93,12 @@ export const config = {
     timeoutMs: Number(optional('TAICHO_TIMEOUT_MS', optional('CODER_TIMEOUT_MS', String(30 * 60 * 1000)))),
     strategy: optional('TAICHO_STRATEGY', 'claude-cli'),
   },
-  memory: {
-    enabled: optional('MEMORY_ENABLED', 'true') === 'true',
-    dataDir: optional('MEMORY_DATA_DIR', './data'),
-    search: {
-      vectorWeight: 0.7,
-      textWeight: 0.3,
-      maxResults: 6,
-      minScore: 0.35,
-    },
-    chunking: {
-      tokens: 400,
-      overlap: 80,
-    },
-    temporalDecay: {
-      enabled: true,
-      halfLifeDays: 30,
-    },
-    compaction: {
-      threshold: 100,
-      model: 'haiku',
-    },
-    contextBudgetTokens: 2000,
-  },
-  session: {
-    ttlMs: Number(optional('SESSION_TTL_MS', String(24 * 60 * 60 * 1000))),
-    maxPerGuild: Number(optional('SESSION_MAX_PER_GUILD', '50')),
-  },
-  dashboard: {
-    enabled: optional('DASHBOARD_ENABLED', 'true') === 'true',
-    port: Number(optional('DASHBOARD_PORT', '3000')),
-    host: optional('DASHBOARD_HOST', '127.0.0.1'),
-  },
-  usageMonitor: {
-    scrapeSchedule: optional('USAGE_SCRAPE_SCHEDULE', '*/20 * * * *'),
-    reportSchedule: optional('USAGE_REPORT_SCHEDULE', '0 9 * * *'),
-    alertThreshold: Number(optional('USAGE_ALERT_THRESHOLD', '80')),
-    chromeUserDataDir: optional(
-      'USAGE_CHROME_USER_DATA_DIR',
-      './data/chrome-usage-profile',
-    ),
-    timeoutMs: Number(optional('USAGE_MONITOR_TIMEOUT_MS', '60000')),
-    claudeUsageUrl: 'https://claude.ai/settings/usage',
-    codexUsageUrl: 'https://chatgpt.com/codex/settings/usage',
-  },
 } as const
 
-export function findProjectByGuildId(guildId: string): ProjectConfig | undefined {
-  return config.projects.find((p) => p.guildId === guildId)
+export function findProjectBySlug(slug: string): ProjectConfig | undefined {
+  return config.projects.find((p) => p.slug === slug)
+}
+
+export function findProjectByRepo(repo: string): ProjectConfig | undefined {
+  return config.projects.find((p) => p.repo === repo)
 }

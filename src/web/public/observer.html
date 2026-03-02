@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Observer - pocket-cc</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#1e1e2e;--surface:#252536;--surface-hover:#2a2a3d;
+  --border:#333346;--border-light:#3e3e56;
+  --text:#cdd6f4;--text-bright:#fff;--muted:#6c7086;
+  --accent:#c084fc;--accent-dim:rgba(192,132,252,.12);--accent-border:rgba(192,132,252,.25);
+  --warning:#f9e2af;--warning-bg:rgba(249,226,175,.08);
+  --danger:#f38ba8;--danger-bg:rgba(243,139,168,.08);
+  --success:#a6e3a1;--success-bg:rgba(166,227,161,.08);
+  --blue:#89b4fa;--blue-bg:rgba(137,180,250,.12);
+  --font-sans:-apple-system,system-ui,'Segoe UI','Helvetica Neue',sans-serif;
+  --font-mono:'SF Mono',Menlo,'Cascadia Code','JetBrains Mono',Consolas,monospace;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font-sans);font-size:14px;line-height:1.6}
+body{display:flex;flex-direction:column;height:100dvh}
+svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none;vertical-align:-.125em;flex-shrink:0}
+
+/* ── ヘッダー ── */
+.header{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.header-back{background:none;border:none;color:var(--muted);cursor:pointer;padding:8px;display:flex;align-items:center;border-radius:6px;transition:all .15s}
+.header-back:hover{color:var(--text);background:var(--surface-hover)}
+.header-back svg.ic{font-size:18px}
+.header-title{flex:1;font-weight:700;font-size:14px;color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.header-sub{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px}
+.project-select{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;cursor:pointer;max-width:140px;min-height:36px}
+.project-select:focus{outline:none;border-color:var(--accent)}
+.header-refresh{background:none;border:none;color:var(--muted);cursor:pointer;padding:8px;display:flex;align-items:center;border-radius:6px;transition:all .15s}
+.header-refresh:hover{color:var(--text);background:var(--surface-hover)}
+.header-refresh svg.ic{font-size:16px}
+.header-refresh.spinning svg.ic{animation:spin .6s linear infinite}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+/* ── メインコンテナ ── */
+.main{flex:1;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch}
+
+/* ── Level 1: セッション一覧 ── */
+.session-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent}
+.session-card:hover,.session-card:active{border-color:var(--accent-border);background:var(--surface-hover)}
+.session-preview{font-size:14px;color:var(--text-bright);font-weight:500;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.session-meta{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);font-family:var(--font-mono);flex-wrap:wrap}
+.session-meta span{display:inline-flex;align-items:center;gap:3px}
+.depth-bar{display:inline-flex;gap:2px;margin-left:4px}
+.depth-bar .bar{width:4px;height:12px;border-radius:2px;background:var(--muted)}
+.depth-bar .bar.active{background:var(--accent)}
+.depth-bar .bar.child{background:var(--blue)}
+.load-more{display:block;width:100%;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:13px;cursor:pointer;text-align:center;margin-top:8px;transition:all .15s}
+.load-more:hover{color:var(--text);border-color:var(--accent-border)}
+
+/* ── Level 2: ツリービュー ── */
+.tree-root{background:var(--surface);border:1px solid var(--accent-border);border-radius:10px;padding:14px 16px;margin-bottom:16px;cursor:pointer;transition:all .15s}
+.tree-root:hover{background:var(--surface-hover)}
+.tree-root .node-label{font-size:15px;color:var(--text-bright);font-weight:600;margin-bottom:4px}
+.node-meta{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);font-family:var(--font-mono);flex-wrap:wrap}
+.node-meta span{display:inline-flex;align-items:center;gap:3px}
+
+.tree-section-title{font-size:12px;color:var(--muted);margin-bottom:10px;padding:0 4px;display:flex;align-items:center;gap:8px}
+.tree-section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.tree-children{border-left:2px solid var(--border);margin-left:8px;padding-left:0}
+.tree-child{position:relative;margin-bottom:8px;padding-left:16px}
+.tree-child::before{content:'';position:absolute;left:-2px;top:16px;width:14px;height:0;border-top:2px solid var(--border)}
+.tree-child:last-child::after{content:'';position:absolute;left:-2px;top:16px;bottom:0;width:2px;background:var(--bg)}
+
+.child-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;transition:all .15s}
+.child-card:hover,.child-card:active{border-color:var(--accent-border);background:var(--surface-hover)}
+.child-label{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.child-label .node-label{font-size:13px;color:var(--text-bright);font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* subagent type バッジ */
+.type-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;flex-shrink:0}
+.type-badge.explore{background:var(--blue-bg);color:var(--blue)}
+.type-badge.plan{background:var(--accent-dim);color:var(--accent)}
+.type-badge.code,.type-badge.general-purpose{background:var(--success-bg);color:var(--success)}
+.type-badge.review{background:var(--warning-bg);color:var(--warning)}
+.type-badge.other{background:rgba(108,112,134,.12);color:var(--muted)}
+
+.model-badge{font-size:10px;color:var(--muted);font-family:var(--font-mono);padding:2px 6px;background:var(--bg);border-radius:3px;flex-shrink:0}
+
+/* ── Level 3: ノード詳細 ── */
+.layer-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.layer-tabs::-webkit-scrollbar{display:none}
+.layer-tab{flex:1;min-width:0;padding:10px 6px;text-align:center;font-size:12px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .1s;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+.layer-tab:hover{color:var(--text);background:var(--surface-hover)}
+.layer-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.layer-tab.refreshing{opacity:.5;pointer-events:none}
+.layer-tab.refreshing .tab-icon{animation:spin .6s linear infinite}
+.layer-tab .tab-icon{display:block;margin:0 auto 2px;font-size:16px}
+.layer-tab .tab-label{font-size:11px}
+.layer-tab .tab-count{font-size:9px;color:var(--muted);margin-left:2px}
+
+.layer-content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.layer-panel{display:none;padding:16px}
+.layer-panel.active{display:block}
+
+/* ── コンテキストバナー（親子関係表示） ── */
+.context-banner{padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.context-breadcrumb{display:flex;align-items:center;gap:6px;font-size:12px;font-family:var(--font-mono);color:var(--muted);flex-wrap:wrap}
+.context-breadcrumb .crumb{color:var(--text);cursor:pointer;text-decoration:underline;text-decoration-color:var(--border);text-underline-offset:2px}
+.context-breadcrumb .crumb:hover{color:var(--accent);text-decoration-color:var(--accent)}
+.context-breadcrumb .sep{color:var(--muted);font-size:10px}
+.node-type-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.node-type-badge.root{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-border)}
+.node-type-badge.subagent{background:var(--blue-bg);color:var(--blue);border:1px solid rgba(137,180,250,.25)}
+.parent-instruction{margin:12px 16px 0;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;border-left:3px solid var(--accent)}
+.parent-instruction-label{font-size:10px;color:var(--accent);text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:4px}
+.parent-instruction-label .translate-btn{margin-left:auto;font-size:10px;background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:1px 7px;cursor:pointer;transition:all .15s;text-transform:none}
+.parent-instruction-label .translate-btn:hover{color:var(--accent);border-color:var(--accent-border)}
+.parent-instruction-label .translate-btn:disabled{opacity:.5;cursor:default}
+.parent-instruction-text{font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap;word-break:break-word;max-height:200px;overflow-y:auto}
+
+/* Layer 1: Interface */
+.conv-msg{margin-bottom:12px;padding:10px 14px;border-radius:8px;font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+.conv-msg.user{background:var(--surface);border:1px solid var(--border);margin-left:20%}
+.conv-msg.assistant{background:var(--bg);border:1px solid var(--border);margin-right:10%}
+.conv-msg .msg-role{font-size:10px;font-family:var(--font-mono);color:var(--muted);margin-bottom:4px;text-transform:uppercase}
+
+/* Layer 2: Orchestration */
+.delegation-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:all .15s}
+.delegation-card:hover{border-color:var(--accent-border);background:var(--surface-hover)}
+.delegation-header{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.delegation-prompt{font-size:12px;color:var(--muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+
+/* Layer 3: Execution */
+.tool-summary{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.tool-pill{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;background:var(--surface);border:1px solid var(--border);font-size:11px;font-family:var(--font-mono);color:var(--text)}
+.tool-pill .tool-count{color:var(--accent);font-weight:600}
+.tool-timeline{border-left:2px solid var(--border);margin-left:6px;padding-left:14px}
+.tool-entry{position:relative;margin-bottom:6px;font-size:12px;font-family:var(--font-mono);color:var(--muted);line-height:1.5}
+.tool-entry::before{content:'';position:absolute;left:-19px;top:7px;width:8px;height:8px;border-radius:50%;background:var(--border);border:2px solid var(--bg)}
+.tool-entry .tool-name{color:var(--accent);font-weight:500}
+.tool-entry .tool-detail{color:var(--text);margin-left:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;max-width:calc(100vw - 80px)}
+.tool-entry .tool-time{font-size:10px;color:var(--muted)}
+
+/* Layer 4: State */
+.state-row{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.state-row:last-child{border-bottom:none}
+.state-label{color:var(--muted);font-family:var(--font-mono);font-size:11px;min-width:80px;flex-shrink:0}
+.state-value{color:var(--text);word-break:break-all}
+
+/* Layer 5: Governance */
+.gov-section{margin-bottom:16px}
+.gov-title{font-size:12px;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.gov-item{padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;font-size:12px;font-family:var(--font-mono)}
+.gov-item.danger{border-color:rgba(243,139,168,.3);background:var(--danger-bg)}
+.gov-item.danger .gov-label{color:var(--danger)}
+.gov-clean{display:flex;align-items:center;gap:8px;padding:16px;color:var(--success);font-size:13px}
+
+/* ── ローディング ── */
+.skeleton{background:linear-gradient(90deg,var(--surface) 25%,var(--surface-hover) 50%,var(--surface) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:8px;height:80px;margin-bottom:10px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+.empty-state{text-align:center;padding:40px 20px;color:var(--muted);font-size:13px}
+.empty-state svg.ic{font-size:32px;margin-bottom:12px;display:block;margin:0 auto 12px}
+
+/* ── レスポンシブ ── */
+@media(max-width:480px){
+  .header{padding:8px 12px;gap:6px}
+  .main{padding:12px}
+  .session-card{padding:12px 14px}
+  .layer-tab{padding:8px 4px}
+  .layer-tab .tab-label{font-size:10px}
+  .conv-msg.user{margin-left:10%}
+}
+
+/* ── ライトテーマ (Catppuccin Latte) ── */
+[data-theme="light"]{
+  --bg:#eff1f5;--surface:#ffffff;--surface-hover:#f2f4f8;
+  --border:#dce0e8;--border-light:#ccd0da;
+  --text:#4c4f69;--text-bright:#1e1e2e;--muted:#8c8fa1;
+  --accent:#8839ef;--accent-dim:rgba(136,57,239,.08);--accent-border:rgba(136,57,239,.2);
+  --warning:#df8e1d;--warning-bg:rgba(223,142,29,.08);
+  --danger:#d20f39;--danger-bg:rgba(210,15,57,.06);
+  --success:#40a02b;--success-bg:rgba(64,160,43,.06);
+  --blue:#1e66f5;--blue-bg:rgba(30,102,245,.08);
+  --font-sans:-apple-system,system-ui,'Segoe UI','Helvetica Neue',sans-serif;
+  --font-mono:'SF Mono',Menlo,'Cascadia Code','JetBrains Mono',Consolas,monospace;
+}
+[data-theme="light"] .session-card{box-shadow:0 1px 3px rgba(0,0,0,.06)}
+[data-theme="light"] .skeleton{background:linear-gradient(90deg,#e6e9ef 25%,#f2f4f8 50%,#e6e9ef 75%);background-size:200% 100%}
+</style>
+</head>
+<body>
+
+<div class="header" id="header">
+  <button class="header-back" id="backBtn" style="display:none" onclick="goBack()">
+    <svg class="ic" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+  </button>
+  <span class="header-title" id="headerTitle">Observer</span>
+  <span class="header-sub" id="headerSub"></span>
+  <button class="header-refresh" id="refreshBtn" onclick="refresh()" title="更新">
+    <svg class="ic" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+  </button>
+  <select class="project-select" id="projectSelect" onchange="onProjectChange()"></select>
+</div>
+
+<div class="layer-tabs" id="layerTabs" style="display:none">
+  <div class="layer-tab active" data-layer="interface" onclick="switchLayer('interface')">
+    <span class="tab-icon"><svg class="ic" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6"/><path d="M12 19h8"/></svg></span>
+    <span class="tab-label" data-i18n="obs.tab.interface">受付</span>
+  </div>
+  <div class="layer-tab" data-layer="orchestration" onclick="switchLayer('orchestration')">
+    <span class="tab-icon"><svg class="ic" viewBox="0 0 24 24"><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg></span>
+    <span class="tab-label" data-i18n="obs.tab.orchestration">指揮</span>
+  </div>
+  <div class="layer-tab" data-layer="execution" onclick="switchLayer('execution')">
+    <span class="tab-icon"><svg class="ic" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76Z"/></svg></span>
+    <span class="tab-label" data-i18n="obs.tab.execution">実行</span>
+  </div>
+  <div class="layer-tab" data-layer="state" onclick="switchLayer('state')">
+    <span class="tab-icon"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+    <span class="tab-label" data-i18n="obs.tab.state">状態</span>
+  </div>
+  <div class="layer-tab" data-layer="governance" onclick="switchLayer('governance')">
+    <span class="tab-icon"><svg class="ic" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg></span>
+    <span class="tab-label" data-i18n="obs.tab.governance">監査</span>
+  </div>
+</div>
+
+<div id="contextBanner" class="context-banner" style="display:none"></div>
+
+<div class="main" id="main"></div>
+
+<script src="/static/theme.js"></script>
+<script src="/static/i18n.js"></script>
+<script>
+// ── State ─────────────────────────────────────
+const navStack = [] // [{level, sessionId?, agentId?, label?}]
+let currentProject = ''
+let sessions = []
+
+window.addEventListener('langchange', function() {
+  // Re-render current view to apply translations
+  var state = navStack[navStack.length - 1]
+  if (state) {
+    if (state.level === 'sessions') loadSessions()
+    else if (state.level === 'tree') loadTree(state.sessionId)
+    else if (state.level === 'detail') loadDetail(state.sessionId, state.agentId)
+  }
+})
+
+// ── Icons ─────────────────────────────────────
+const ICONS = {
+  'chevron-left': '<path d="m15 18-6-6 6-6"/>',
+  'eye':          '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
+  'git-branch':   '<line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>',
+  'shield':       '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+  'check-circle': '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/>',
+  'alert-triangle':'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  'inbox':        '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  'arrow-down-right':'<path d="m7 7 10 10"/><path d="M17 7v10H7"/>',
+}
+function ic(name, size) {
+  const s = size ? `style="font-size:${size}px"` : ''
+  return `<svg class="ic" viewBox="0 0 24 24" ${s}>${ICONS[name] || ''}</svg>`
+}
+
+// ── URL Hash ルーティング ─────────────────────
+// 形式: #sessions / #tree/{sid} / #detail/{sid} / #detail/{sid}/{agentId}?layer=execution&label=...&badge=...
+function stateToHash(state) {
+  const params = new URLSearchParams()
+  if (state.label) params.set('label', state.label)
+  if (state.badge) params.set('badge', state.badge)
+  if (state.level === 'detail' && currentLayer && currentLayer !== 'interface') {
+    params.set('layer', currentLayer)
+  }
+  const qs = params.toString()
+  const suffix = qs ? '?' + qs : ''
+
+  switch (state.level) {
+    case 'tree':
+      return `#tree/${state.sessionId}${suffix}`
+    case 'detail':
+      return state.agentId
+        ? `#detail/${state.sessionId}/${state.agentId}${suffix}`
+        : `#detail/${state.sessionId}${suffix}`
+    default:
+      return '#sessions'
+  }
+}
+
+function hashToState(hash) {
+  if (!hash || hash === '#' || hash === '#sessions') {
+    return { level: 'sessions' }
+  }
+  const [pathPart, qsPart] = hash.slice(1).split('?')
+  const params = new URLSearchParams(qsPart || '')
+  const parts = pathPart.split('/')
+  const label = params.get('label') || ''
+  const badge = params.get('badge') || ''
+  const layer = params.get('layer') || ''
+
+  if (parts[0] === 'tree' && parts[1]) {
+    return { level: 'tree', sessionId: parts[1] }
+  }
+  if (parts[0] === 'detail' && parts[1]) {
+    return {
+      level: 'detail',
+      sessionId: parts[1],
+      agentId: parts[2] || null,
+      label: label || (parts[2] ? parts[2].slice(0, 12) + '...' : 'Root'),
+      badge,
+      _layer: layer,
+    }
+  }
+  return { level: 'sessions' }
+}
+
+function syncHash() {
+  const state = navStack[navStack.length - 1]
+  if (!state) return
+  const newHash = stateToHash(state)
+  if (location.hash !== newHash) {
+    history.replaceState(null, '', newHash)
+  }
+}
+
+// ── 初期化 ────────────────────────────────────
+async function init() {
+  await loadProjects()
+  // URLハッシュから復帰、なければセッション一覧
+  const restored = hashToState(location.hash)
+  if (restored._layer) {
+    currentLayer = restored._layer
+    delete restored._layer
+  }
+  navigate(restored)
+}
+
+window.addEventListener('hashchange', () => {
+  const state = hashToState(location.hash)
+  if (state._layer) {
+    currentLayer = state._layer
+    delete state._layer
+  }
+  // navStack をリセットして再描画
+  navStack.length = 0
+  // tree/detail の場合、sessionsを先にスタックに入れておく（戻る用）
+  if (state.level === 'detail' && state.sessionId) {
+    navStack.push({ level: 'sessions' })
+    // tree経由で来た可能性があるので tree もスタックに入れる
+    if (state.agentId) {
+      navStack.push({ level: 'tree', sessionId: state.sessionId })
+    }
+  } else if (state.level === 'tree') {
+    navStack.push({ level: 'sessions' })
+  }
+  navigate(state)
+})
+
+async function loadProjects() {
+  try {
+    const res = await fetch('/api/projects')
+    const projects = await res.json()
+    const sel = document.getElementById('projectSelect')
+    sel.innerHTML = ''
+    for (const p of projects) {
+      const opt = document.createElement('option')
+      opt.value = p.localPath
+      opt.textContent = p.slug
+      sel.appendChild(opt)
+    }
+    // デフォルト or localStorage
+    const saved = localStorage.getItem('observer_project')
+    if (saved && projects.some(p => p.localPath === saved)) {
+      sel.value = saved
+    }
+    currentProject = sel.value
+  } catch (e) {
+    console.error('Failed to load projects', e)
+  }
+}
+
+function onProjectChange() {
+  const sel = document.getElementById('projectSelect')
+  currentProject = sel.value
+  localStorage.setItem('observer_project', currentProject)
+  navStack.length = 0
+  navigate({ level: 'sessions' })
+}
+
+// ── Refresh ───────────────────────────────────
+async function refresh() {
+  const btn = document.getElementById('refreshBtn')
+  btn.classList.add('spinning')
+  try {
+    const state = navStack[navStack.length - 1]
+    if (!state) return
+    switch (state.level) {
+      case 'sessions':
+        await renderSessions()
+        break
+      case 'tree':
+        await renderTree(state.sessionId)
+        break
+      case 'detail':
+        await renderDetail(state.sessionId, state.agentId, true)
+        break
+    }
+  } finally {
+    btn.classList.remove('spinning')
+  }
+}
+
+// ── Navigation ────────────────────────────────
+function navigate(state) {
+  navStack.push(state)
+  render(state)
+  syncHash()
+}
+
+function goBack() {
+  if (navStack.length > 1) {
+    navStack.pop()
+    const state = navStack[navStack.length - 1]
+    render(state)
+    syncHash()
+  } else {
+    window.location.href = '/'
+  }
+}
+
+function render(state) {
+  const backBtn = document.getElementById('backBtn')
+  const layerTabs = document.getElementById('layerTabs')
+  const headerTitle = document.getElementById('headerTitle')
+  const headerSub = document.getElementById('headerSub')
+
+  backBtn.style.display = navStack.length > 1 ? '' : 'none'
+  // Chat UIへのリンク（Level 1のみ）
+  if (navStack.length <= 1) {
+    backBtn.style.display = ''
+    backBtn.onclick = () => { window.location.href = '/' }
+  } else {
+    backBtn.onclick = goBack
+  }
+
+  const contextBanner = document.getElementById('contextBanner')
+  layerTabs.style.display = state.level === 'detail' ? 'flex' : 'none'
+  contextBanner.style.display = 'none'
+
+  switch (state.level) {
+    case 'sessions':
+      headerTitle.textContent = 'Observer'
+      headerSub.textContent = ''
+      renderSessions()
+      break
+    case 'tree':
+      headerTitle.textContent = t('obs.sessionTree')
+      headerSub.textContent = state.sessionId?.slice(0, 8) + '...'
+      renderTree(state.sessionId)
+      break
+    case 'detail':
+      headerTitle.textContent = state.label || (state.agentId ? state.agentId.slice(0, 12) + '...' : 'Root')
+      headerSub.textContent = state.badge || ''
+      renderDetail(state.sessionId, state.agentId)
+      break
+  }
+}
+
+// ── Level 1: Sessions ─────────────────────────
+async function renderSessions() {
+  const main = document.getElementById('main')
+  main.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>'
+
+  try {
+    const res = await fetch(`/api/observe/sessions?project=${encodeURIComponent(currentProject)}`)
+    const data = await res.json()
+    sessions = data.items || []
+
+    if (sessions.length === 0) {
+      main.innerHTML = `<div class="empty-state">${ic('inbox', 32)}<div>${t('obs.noSessions')}</div></div>`
+      return
+    }
+
+    main.innerHTML = sessions.map(s => {
+      const ago = timeAgo(s.lastUsed)
+      const sizeKB = Math.round(s.fileSize / 1024)
+      const depth = s.subagentCount > 0 ? Math.min(s.subagentCount, 4) : 0
+      const depthBars = Array.from({length: Math.max(depth + 1, 1)}, (_, i) =>
+        `<span class="bar ${i === 0 ? 'active' : 'child'}"></span>`
+      ).join('')
+      const subLabel = s.subagentCount > 0
+        ? `${s.subagentCount} subagent${s.subagentCount > 1 ? 's' : ''}`
+        : 'flat'
+
+      return `<div class="session-card" onclick="openSession('${s.sessionId}', ${s.subagentCount})">
+        <div class="session-preview">${esc(s.preview)}</div>
+        <div class="session-meta">
+          <span>${ago}</span>
+          <span>${subLabel}</span>
+          <span>${sizeKB}KB</span>
+          <span class="depth-bar">${depthBars}</span>
+        </div>
+      </div>`
+    }).join('')
+  } catch (e) {
+    main.innerHTML = `<div class="empty-state">${ic('alert-triangle', 32)}<div>${t('obs.loadError')}: ${esc(e.message)}</div></div>`
+  }
+}
+
+function openSession(sessionId, subagentCount) {
+  if (subagentCount > 0) {
+    navigate({ level: 'tree', sessionId })
+  } else {
+    // flat → 直接 detail
+    navigate({ level: 'detail', sessionId, agentId: null, label: 'Root' })
+  }
+}
+
+// ── Level 2: Tree ─────────────────────────────
+async function renderTree(sessionId) {
+  const main = document.getElementById('main')
+  main.innerHTML = '<div class="skeleton"></div><div class="skeleton" style="height:40px"></div><div class="skeleton"></div>'
+
+  try {
+    const res = await fetch(`/api/observe/tree/${sessionId}?project=${encodeURIComponent(currentProject)}`)
+    const tree = await res.json()
+
+    let html = ''
+
+    // Root node
+    const modelShort = shortModel(tree.model)
+    html += `<div class="tree-root" onclick="openNode('${sessionId}', null, '${esc(tree.label)}', '')">
+      <div class="node-label">${esc(tree.label)}</div>
+      <div class="node-meta">
+        ${modelShort ? `<span class="model-badge">${modelShort}</span>` : ''}
+        <span>${tree.messageCount} msgs</span>
+        <span>${tree.toolUseCount} tools</span>
+      </div>
+    </div>`
+
+    // Children
+    if (tree.children && tree.children.length > 0) {
+      html += `<div class="tree-section-title">${t('obs.subagents')} (${tree.children.length})</div>`
+      html += '<div class="tree-children">'
+      for (const child of tree.children) {
+        const typeClass = badgeClass(child.subagentType)
+        const typeLabel = child.subagentType || 'Agent'
+        const childModel = shortModel(child.model)
+        html += `<div class="tree-child">
+          <div class="child-card" onclick="openNode('${sessionId}', '${child.id}', '${esc(child.label)}', '${esc(typeLabel)}')">
+            <div class="child-label">
+              <span class="type-badge ${typeClass}">${esc(typeLabel)}</span>
+              <span class="node-label">${esc(child.label)}</span>
+            </div>
+            <div class="node-meta">
+              ${childModel ? `<span class="model-badge">${childModel}</span>` : ''}
+              <span>${child.messageCount} msgs</span>
+              <span>${child.toolUseCount} tools</span>
+            </div>
+          </div>
+        </div>`
+      }
+      html += '</div>'
+    }
+
+    main.innerHTML = html
+  } catch (e) {
+    main.innerHTML = `<div class="empty-state">${ic('alert-triangle', 32)}<div>${t('obs.treeLoadError')}</div></div>`
+  }
+}
+
+function openNode(sessionId, agentId, label, badge) {
+  navigate({ level: 'detail', sessionId, agentId, label, badge })
+}
+
+// ── Level 3: Detail (5 Layers) ────────────────
+let currentNodeData = null
+let currentLayer = 'interface'
+
+async function renderDetail(sessionId, agentId, keepLayer) {
+  const main = document.getElementById('main')
+  main.innerHTML = '<div class="skeleton"></div><div class="skeleton" style="height:40px"></div><div class="skeleton"></div>'
+  if (!keepLayer) currentLayer = 'interface'
+  updateLayerTabs()
+
+  // subagentType をクエリパラメータで渡す
+  const state = navStack[navStack.length - 1] || {}
+  const agentParam = agentId ? `&agentId=${agentId}` : ''
+  const typeParam = state.badge ? `&subagentType=${encodeURIComponent(state.badge)}` : ''
+  try {
+    const res = await fetch(`/api/observe/node/${sessionId}?project=${encodeURIComponent(currentProject)}${agentParam}${typeParam}`)
+    currentNodeData = await res.json()
+    renderContextBanner(currentNodeData, state)
+    updateLayerTabCounts()
+    renderLayer(currentLayer)
+  } catch (e) {
+    main.innerHTML = `<div class="empty-state">${ic('alert-triangle', 32)}<div>${t('obs.detailLoadError')}</div></div>`
+  }
+}
+
+let _originalInstruction = null
+let _translatedInstruction = null
+let _showingTranslation = false
+
+async function toggleTranslation() {
+  const btn = document.getElementById('translateBtn')
+  const textEl = document.getElementById('instructionText')
+  if (!btn || !textEl) return
+
+  if (_showingTranslation) {
+    textEl.textContent = _originalInstruction
+    btn.textContent = t('obs.translate')
+    _showingTranslation = false
+    return
+  }
+
+  if (_translatedInstruction) {
+    textEl.textContent = _translatedInstruction
+    btn.textContent = t('obs.original')
+    _showingTranslation = true
+    return
+  }
+
+  btn.textContent = t('obs.translating')
+  btn.disabled = true
+  try {
+    const res = await fetch('/api/observe/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: _originalInstruction }),
+    })
+    const data = await res.json()
+    if (data.translated) {
+      _translatedInstruction = data.translated
+      textEl.textContent = _translatedInstruction
+      btn.textContent = t('obs.original')
+      _showingTranslation = true
+    } else {
+      btn.textContent = t('obs.translate')
+    }
+  } catch {
+    btn.textContent = t('obs.translate')
+  } finally {
+    btn.disabled = false
+  }
+}
+
+function renderContextBanner(data, state) {
+  // 翻訳キャッシュをリセット
+  _originalInstruction = data.meta?.parentInstruction || null
+  _translatedInstruction = null
+  _showingTranslation = false
+
+  const banner = document.getElementById('contextBanner')
+  const meta = data.meta || {}
+  const isSubagent = meta.nodeType === 'subagent'
+  const label = state.label || 'Root'
+
+  // パンくずリスト構築
+  // ツリーの state を navStack から探す
+  const treeState = navStack.find(s => s.level === 'tree')
+  const rootLabel = treeState ? 'ROOT' : ''
+
+  let html = '<div class="context-breadcrumb">'
+
+  if (isSubagent) {
+    const typeLabel = meta.subagentType || state.badge || 'Agent'
+    html += `<span class="node-type-badge subagent">${esc(typeLabel)}</span>`
+    if (rootLabel) {
+      html += `<span class="sep">&larr;</span>`
+      html += `<span class="crumb" onclick="goBack()">ROOT</span>`
+    }
+  } else {
+    html += `<span class="node-type-badge root">ROOT</span>`
+    html += `<span style="color:var(--text);font-size:12px">${esc(label)}</span>`
+  }
+  html += '</div>'
+
+  // 親からの指示
+  if (isSubagent && meta.parentInstruction) {
+    html += `<div class="parent-instruction" id="parentInstructionCard">
+      <div class="parent-instruction-label">
+        ${ic('arrow-down-right', 12)} ${t('obs.parentInstruction')}
+        <button class="translate-btn" id="translateBtn" onclick="toggleTranslation()">${t('obs.translate')}</button>
+      </div>
+      <div class="parent-instruction-text" id="instructionText">${esc(meta.parentInstruction)}</div>
+    </div>`
+  }
+
+  banner.innerHTML = html
+  banner.style.display = ''
+}
+
+async function switchLayer(layer) {
+  const isRefresh = (layer === currentLayer)
+  currentLayer = layer
+  updateLayerTabs()
+
+  if (isRefresh) {
+    // 同じタブを再タップ → データ再取得
+    const state = navStack[navStack.length - 1]
+    if (state?.level === 'detail') {
+      const tab = document.querySelector(`.layer-tab[data-layer="${layer}"]`)
+      if (tab) tab.classList.add('refreshing')
+      const main = document.getElementById('main')
+      const agentParam = state.agentId ? `&agentId=${state.agentId}` : ''
+      const typeParam = state.badge ? `&subagentType=${encodeURIComponent(state.badge)}` : ''
+      try {
+        const res = await fetch(`/api/observe/node/${state.sessionId}?project=${encodeURIComponent(currentProject)}${agentParam}${typeParam}`)
+        currentNodeData = await res.json()
+        updateLayerTabCounts()
+        renderLayer(layer)
+      } catch (e) {
+        main.innerHTML = `<div class="empty-state">${ic('alert-triangle', 32)}<div>${t('obs.updateError')}</div></div>`
+      } finally {
+        if (tab) tab.classList.remove('refreshing')
+      }
+      syncHash()
+      return
+    }
+  }
+
+  renderLayer(layer)
+  syncHash()
+}
+
+function updateLayerTabs() {
+  document.querySelectorAll('.layer-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.layer === currentLayer)
+  })
+}
+
+function updateLayerTabCounts() {
+  if (!currentNodeData) return
+  const d = currentNodeData
+  const counts = {
+    interface: d.interface?.messages?.length || 0,
+    orchestration: d.orchestration?.delegations?.length || 0,
+    execution: Object.values(d.execution?.summary || {}).reduce((a, b) => a + b, 0),
+    state: d.state?.models?.length || 0,
+    governance: (d.governance?.dangerousCommands?.length || 0) + (d.governance?.errors?.length || 0),
+  }
+  document.querySelectorAll('.layer-tab').forEach(tab => {
+    const layer = tab.dataset.layer
+    const countEl = tab.querySelector('.tab-count')
+    if (countEl) countEl.remove()
+    const count = counts[layer]
+    if (count > 0) {
+      const span = document.createElement('span')
+      span.className = 'tab-count'
+      span.textContent = `(${count})`
+      tab.querySelector('.tab-label').appendChild(span)
+    }
+  })
+}
+
+function renderLayer(layer) {
+  const main = document.getElementById('main')
+  if (!currentNodeData) return
+  const d = currentNodeData
+
+  switch (layer) {
+    case 'interface':
+      renderInterface(main, d.interface)
+      break
+    case 'orchestration':
+      renderOrchestration(main, d.orchestration)
+      break
+    case 'execution':
+      renderExecution(main, d.execution)
+      break
+    case 'state':
+      renderState(main, d.state)
+      break
+    case 'governance':
+      renderGovernance(main, d.governance)
+      break
+  }
+}
+
+// ── Layer Renderers ───────────────────────────
+
+function renderInterface(el, data) {
+  if (!data?.messages?.length) {
+    el.innerHTML = `<div class="empty-state">${ic('inbox', 32)}<div>${t('obs.noMessages')}</div></div>`
+    return
+  }
+  el.innerHTML = data.messages.map(m => {
+    const text = m.text.length > 1000 ? m.text.slice(0, 1000) + '\n...(truncated)' : m.text
+    return `<div class="conv-msg ${m.role}">
+      <div class="msg-role">${m.role}</div>
+      ${esc(text)}
+    </div>`
+  }).join('')
+}
+
+function renderOrchestration(el, data) {
+  if (!data?.delegations?.length) {
+    el.innerHTML = `<div class="empty-state">${ic('inbox', 32)}<div>${t('obs.noDelegations')}</div></div>`
+    return
+  }
+  el.innerHTML = data.delegations.map((d, i) => {
+    const typeClass = badgeClass(d.subagentType)
+    const onclick = d.agentId
+      ? `onclick="openNode('${navStack[navStack.length-1]?.sessionId}', '${d.agentId}', '${esc(d.description)}', '${esc(d.subagentType)}')"`
+      : ''
+    return `<div class="delegation-card" ${onclick}>
+      <div class="delegation-header">
+        <span style="color:var(--muted);font-family:var(--font-mono);font-size:11px">${i + 1}.</span>
+        <span class="type-badge ${typeClass}">${esc(d.subagentType)}</span>
+        <span style="font-size:13px;color:var(--text-bright);font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.description)}</span>
+      </div>
+      <div class="delegation-prompt">${esc(d.prompt)}</div>
+    </div>`
+  }).join('')
+}
+
+function renderExecution(el, data) {
+  if (!data?.tools?.length) {
+    el.innerHTML = `<div class="empty-state">${ic('inbox', 32)}<div>${t('obs.noTools')}</div></div>`
+    return
+  }
+
+  // Summary pills
+  let html = '<div class="tool-summary">'
+  for (const [name, count] of Object.entries(data.summary).sort((a, b) => b[1] - a[1])) {
+    html += `<span class="tool-pill"><span class="tool-count">${count}</span> ${esc(name)}</span>`
+  }
+  html += '</div>'
+
+  // Timeline
+  html += '<div class="tool-timeline">'
+  for (const t of data.tools) {
+    const time = t.timestamp ? formatTime(t.timestamp) : ''
+    html += `<div class="tool-entry">
+      <span class="tool-name">${esc(t.name)}</span>
+      <span class="tool-detail">${esc(t.summary)}</span>
+      ${time ? `<span class="tool-time">${time}</span>` : ''}
+    </div>`
+  }
+  html += '</div>'
+
+  el.innerHTML = html
+}
+
+function renderState(el, data) {
+  if (!data) { el.innerHTML = '<div class="empty-state">' + t('obs.noData') + '</div>'; return }
+  let html = ''
+  html += stateRow('Models', data.models?.join(', ') || 'N/A')
+  if (data.duration) {
+    const d1 = new Date(data.duration.first)
+    const d2 = new Date(data.duration.last)
+    const diffMs = d2 - d1
+    const diffMin = Math.round(diffMs / 60000)
+    html += stateRow('Duration', `${formatTime(data.duration.first)} - ${formatTime(data.duration.last)} (${diffMin}min)`)
+  }
+  html += stateRow('Compact', `${data.compactEvents} events`)
+  el.innerHTML = html
+}
+
+function renderGovernance(el, data) {
+  if (!data) { el.innerHTML = '<div class="empty-state">' + t('obs.noData') + '</div>'; return }
+
+  let html = ''
+
+  // Dangerous commands
+  html += '<div class="gov-section">'
+  html += `<div class="gov-title">${ic('alert-triangle', 14)} Dangerous Commands (${data.dangerousCommands?.length || 0})</div>`
+  if (data.dangerousCommands?.length > 0) {
+    for (const d of data.dangerousCommands) {
+      html += `<div class="gov-item danger">
+        <span class="gov-label">${esc(d.label)}</span>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">${esc(d.command)}</div>
+      </div>`
+    }
+  } else {
+    html += '<div style="color:var(--muted);font-size:12px;padding:4px 0">' + t('obs.noneDetected') + '</div>'
+  }
+  html += '</div>'
+
+  // Errors
+  html += '<div class="gov-section">'
+  html += `<div class="gov-title">${ic('alert-triangle', 14)} Errors (${data.errors?.length || 0})</div>`
+  if (data.errors?.length > 0) {
+    for (const e of data.errors) {
+      html += `<div class="gov-item">${esc(e)}</div>`
+    }
+  } else {
+    html += '<div style="color:var(--muted);font-size:12px;padding:4px 0">' + t('obs.none') + '</div>'
+  }
+  html += '</div>'
+
+  // Clean badge
+  if ((!data.dangerousCommands || data.dangerousCommands.length === 0) && (!data.errors || data.errors.length === 0)) {
+    html += `<div class="gov-clean">${ic('check-circle', 18)} ${t('obs.cleanSession')}</div>`
+  }
+
+  el.innerHTML = html
+}
+
+// ── Utilities ─────────────────────────────────
+
+function stateRow(label, value) {
+  return `<div class="state-row"><span class="state-label">${label}</span><span class="state-value">${esc(String(value))}</span></div>`
+}
+
+function esc(str) {
+  if (!str) return ''
+  const d = document.createElement('div')
+  d.textContent = str
+  return d.innerHTML
+}
+
+function timeAgo(ts) {
+  if (!ts) return ''
+  var diff = Date.now() - new Date(ts).getTime()
+  if (diff < 60000) return t('time.justNow')
+  if (diff < 3600000) return Math.floor(diff / 60000) + t('time.minAgo')
+  if (diff < 86400000) return Math.floor(diff / 3600000) + t('time.hoursAgo')
+  return Math.floor(diff / 86400000) + t('time.daysAgo')
+}
+
+function formatTime(isoStr) {
+  try {
+    const d = new Date(isoStr)
+    return d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  } catch { return '' }
+}
+
+function shortModel(model) {
+  if (!model) return ''
+  if (model.includes('opus')) return 'opus'
+  if (model.includes('sonnet')) return 'sonnet'
+  if (model.includes('haiku')) return 'haiku'
+  return model.split('-').pop() || model
+}
+
+function badgeClass(type) {
+  if (!type) return 'other'
+  const t = type.toLowerCase()
+  if (t === 'explore') return 'explore'
+  if (t === 'plan') return 'plan'
+  if (t === 'code' || t === 'general-purpose') return 'code'
+  if (t === 'review') return 'review'
+  return 'other'
+}
+
+// ── Start ─────────────────────────────────────
+init()
+</script>
+</body>
+</html>

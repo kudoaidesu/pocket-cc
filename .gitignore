@@ -28,6 +28,12 @@ data/
 # Logs
 logs/
 
+# Review docs (local only)
+docs/claude-code-web-port-review-*.md
+
+# Screenshots (local only)
+*.png
+
 # OS
 .DS_Store
 Thumbs.db

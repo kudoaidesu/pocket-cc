@@ -32,21 +32,21 @@ Claude が設計・実装し、Codex がレビューするワークフロー。�
 
 | 段階 | モデル | reasoning | 使用条件 |
 |------|--------|-----------|----------|
-| 基本 | gpt-5.2-codex | high | **必ず最初にこちらを使用** |
-| エスカレーション | gpt-5.2-codex | x-high | highで解決できない場合のみ |
+| 基本 | gpt-5.3-codex | high | **必ず最初にこちらを使用** |
+| エスカレーション | gpt-5.3-codex | x-high | highで解決できない場合のみ |
 
 ```typescript
 // 基本（必ずこちらから）
 mcp__codex-mcp__codex({
   prompt: "...",
-  model: "gpt-5.2-codex",
+  model: "gpt-5.3-codex",
   // reasoning: high（デフォルト）
 })
 
 // エスカレーション（highで不十分な場合のみ）
 mcp__codex-mcp__codex({
   prompt: "...",
-  model: "gpt-5.2-codex",
+  model: "gpt-5.3-codex",
   // reasoning: x-high
 })
 ```

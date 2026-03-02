@@ -1,5 +1,5 @@
 {
-  "name": "issue-ai-bot",
+  "name": "pocket-cc",
   "version": "0.1.0",
   "description": "Issue駆動 × AI駆動の自律型開発ワークフロー",
   "type": "module",
@@ -11,22 +11,21 @@
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
-    "setup:usage": "tsx src/cli/setup-usage-profile.ts"
+    "web": "tsx src/web/server.ts",
+    "web:dev": "tsx watch src/web/server.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.50",
-    "@huggingface/transformers": "^3.8.1",
-    "better-sqlite3": "^12.6.2",
-    "discord.js": "^14.16.0",
+    "@hono/node-server": "^1.19.9",
     "dotenv": "^16.4.0",
-    "node-cron": "^3.0.3",
-    "playwright": "^1.58.2",
-    "sqlite-vec": "^0.1.7-alpha.2"
+    "hono": "^4.12.2",
+    "node-cron": "^3.0.3"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
+    "@playwright/test": "^1.58.2",
     "@types/node": "^22.0.0",
     "@types/node-cron": "^3.0.11",
     "tsx": "^4.19.0",

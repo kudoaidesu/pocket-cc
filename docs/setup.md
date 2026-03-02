@@ -1,111 +1,62 @@
 # セットアップ手順
 
+## Quick Start
+
+```bash
+git clone https://github.com/kudoaidesu/claude-crew
+cd claude-crew
+npm install
+npm run setup    # 対話式セットアップ（.env + projects.json を生成）
+npm run web:dev  # Web UI 起動（開発モード）
+```
+
 ## 前提条件
 
-- Node.js 20+
-- MacBook 2018 (Intel) に macOS がインストール済み
-- Tailscale がインストール・接続済み
-- Git がインストール済み
+- **Node.js 20+**
+- **Claude Code CLI** — Claude Max サブスク、または API キー
+- **GitHub CLI** — `gh auth login` で認証済み
+- **Git**
+- **Tailscale**（オプション — リモートアクセス用）
 
-## 1. 外部サービスの準備
+## 1. 外部ツールの準備
 
-### 1.1 Discord Bot の作成
+### 1.1 Claude Code CLI
 
-#### Step 1: Application 作成
+Claude Code CLI をインストールし、認証する。
 
-1. [Discord Developer Portal](https://discord.com/developers/applications) にアクセス
-2. **「New Application」** をクリック → アプリ名を入力 → **「Create」**
+```bash
+# インストール
+npm install -g @anthropic-ai/claude-code
 
-#### Step 2: Bot Token 取得
+# 認証（ブラウザが開く）
+claude login
 
-1. 左メニューの **「Bot」** タブを開く
-2. **「Reset Token」** をクリックしてトークンを生成
-3. トークンをコピーして `.env` の `DISCORD_BOT_TOKEN` に設定
-
-> トークンは一度しか表示されない。紛失したら再度 Reset Token が必要。
-
-#### Step 3: OAuth2 Code Grant を無効化
-
-1. 左メニューの **「OAuth2」** タブを開く
-2. **「Require OAuth2 Code Grant」** が **OFF** であることを確認
-   - ON だと招待時に「Integration requires code grant」エラーになる
-
-#### Step 4: Privileged Gateway Intents 設定
-
-1. 左メニューの **「Bot」** タブに戻る
-2. 下部の **「Privileged Gateway Intents」** セクションで以下を設定:
-
-| Intent | 設定 | 理由 |
-|--------|------|------|
-| **Message Content Intent** | **ON** | DMメッセージの内容を読むために必須 |
-| Server Members Intent | OFF | 未使用 |
-| Presence Intent | OFF | 未使用 |
-
-3. **Save Changes**
-
-#### Step 5: Installation 設定（招待URL生成）
-
-1. 左メニューの **「Installation」** タブを開く
-2. **「Guild Install」** にチェック
-3. **Default Install Settings** の Guild Install で以下を設定:
-
-**Scopes:**
-- `bot`
-- `applications.commands`
-
-**Permissions（8つ）:**
-- View Channels
-- Send Messages
-- Create Public Threads
-- Send Messages in Threads
-- Manage Threads
-- Embed Links
-- Read Message History
-- Use Slash Commands
-
-4. **Save Changes**
-
-> **Note:** 旧方式の「OAuth2 > URL Generator」ではなく「Installation」タブを使用する。
-> URL Generator は Redirect URI が必要で Bot 招待には不向き。
-
-#### Step 6: サーバーに招待
-
-1. **「Installation」** タブ上部の **Install Link** をコピー
-2. ブラウザで開く → **「Add to server」** → 対象サーバーを選択 → **「Authorize」**
-
-または、手動でURLを構築して招待:
+# 確認
+claude --version
 ```
-https://discord.com/oauth2/authorize?client_id=YOUR_APP_ID&scope=bot+applications.commands&permissions=326417526784
-```
-- `YOUR_APP_ID`: General Information ページの Application ID
 
-#### Step 7: Guild ID / Channel ID の取得
+**認証方式（いずれか）:**
 
-1. Discordアプリの **設定 > 詳細設定 > 開発者モード** を **ON**
-2. サーバー名を右クリック → **「サーバーIDをコピー」** → `guildId`
-3. 通知先チャンネルを右クリック → **「チャンネルIDをコピー」** → `channelId`
-4. `projects.json` に記入:
-
-```json
-[
-  {
-    "slug": "your-project",
-    "guildId": "コピーしたサーバーID",
-    "channelId": "コピーしたチャンネルID",
-    "repo": "owner/repo-name",
-    "localPath": "/path/to/local/repo"
-  }
-]
-```
+| 方式 | 設定 | 用途 |
+|------|------|------|
+| Max サブスク（推奨） | `claude login` or `claude setup-token` | 個人利用 |
+| API キー | `.env` に `ANTHROPIC_API_KEY=sk-ant-...` | 従量課金 |
 
 ### 1.2 GitHub CLI
 
-**GitHub Token は不要。** `gh` CLI の認証セッションを使用する（CLI-First 方針）。
+GitHub CLI をインストールし、認証する。Issue 操作・PR 作成に使用。
+
+**macOS:**
+```bash
+brew install gh
+```
+
+**Linux:**
+```bash
+# https://github.com/cli/cli/blob/trunk/docs/install_linux.md を参照
+```
 
 ```bash
-# GitHub CLI のインストール
-brew install gh
-
 # ブラウザ認証でログイン
 gh auth login
 
@@ -113,95 +64,183 @@ gh auth login
 gh auth status
 ```
 
-### 1.3 Claude Code CLI
+> GitHub Token は `.env` に書かない。CLI-First 方針に基づき `gh` CLI の認証セッションを使用する。
 
-Claude Code CLI をサブスク枠で使用する（API Key 不要）。
+### 1.3 Tailscale（オプション）
 
-```bash
-# インストール
-npm install -g @anthropic-ai/claude-code
-
-# 認証セットアップ
-claude setup-token
-
-# 確認
-claude --version
-```
-
-### 1.4 Docker（AI Coder サンドボックス用）
+リモートアクセス（スマホや別 PC から Web UI を操作）に使用。ローカルのみで使う場合は不要。
 
 ```bash
-brew install --cask docker
+# macOS
+brew install --cask tailscale
+
+# 接続
+tailscale up
+
+# IP 確認
+tailscale ip -4
 ```
 
-Docker Desktop を起動して、`docker ps` が動作することを確認。
+Tailscale 接続時、Web UI は自動的に Tailscale IP にバインドされる。認証は Tailscale ACL に委譲。
 
 ## 2. プロジェクトセットアップ
 
 ```bash
-# リポジトリをクローン
-git clone https://github.com/kudoaidesu/issue-ai-bot.git
-cd issue-ai-bot
-
-# 依存パッケージをインストール
+git clone https://github.com/kudoaidesu/claude-crew
+cd claude-crew
 npm install
-
-# 環境変数ファイルを作成
-cp .env.example .env
 ```
 
-## 3. 環境変数の設定
-
-`.env` ファイルを編集（**Discord Bot Token のみ**が必須のシークレット）:
-
-```env
-# Discord（唯一の必須シークレット）
-DISCORD_BOT_TOKEN=your_discord_bot_token
-
-# Claude Code (API Key不要 — claude CLIのサブスク枠を使用)
-LLM_MODEL=sonnet
-
-# Cron (cron expression, Asia/Tokyo)
-CRON_SCHEDULE=0 1 * * *
-CRON_REPORT_SCHEDULE=0 9 * * *
-
-# Queue
-QUEUE_DATA_DIR=./data
-QUEUE_MAX_BATCH_SIZE=5
-QUEUE_COOLDOWN_MS=60000
-QUEUE_DAILY_BUDGET_USD=20
-QUEUE_MAX_RETRIES=2
-QUEUE_RETRY_BASE_MS=300000
-
-# AI Coder Agent
-CODER_MAX_BUDGET_USD=5
-CODER_MAX_RETRIES=3
-CODER_TIMEOUT_MS=1800000
-```
-
-> **GitHub Token / API Key は `.env` に書かない。** CLI-First 方針を参照。
-
-## 4. 開発
+### 対話式セットアップ
 
 ```bash
-# 開発モードで起動（ホットリロード付き）
-npm run dev
-
-# ビルド
-npm run build
-
-# テスト
-npm run test
-
-# 対話式セットアップ
 npm run setup
 ```
 
-## 5. サーバー常時起動設定（macOS）
+ウィザードが以下を順に設定する:
 
-### launchd で自動起動
+1. **前提ツール確認** — claude CLI, gh CLI のインストール・認証状態チェック
+2. **LLM モデル選択** — デフォルト: `sonnet`
+3. **Cron スケジュール** — キュー処理と日次レポートのタイミング
+4. **`.env` ファイル生成**
 
-`~/Library/LaunchAgents/com.issue-ai-bot.plist` を作成:
+### 手動セットアップ
+
+対話式ウィザードを使わない場合:
+
+```bash
+cp .env.example .env
+# .env を編集
+
+cp projects.json.example projects.json
+# projects.json を編集（localPath を自分の環境に合わせる）
+```
+
+## 3. 環境変数リファレンス
+
+`.env` の全設定項目:
+
+### 認証
+
+```env
+# Claude Max サブスクの場合は不要（claude login で認証済み）
+# API キーの場合のみ設定
+# ANTHROPIC_API_KEY=sk-ant-...
+```
+
+### LLM
+
+```env
+# タイチョー（実行隊長）のデフォルトモデル
+LLM_MODEL=sonnet
+
+# Web UI チャットのデフォルトモデル (haiku / sonnet / opus)
+CHAT_MODEL=haiku
+```
+
+### Cron
+
+```env
+# キュー処理スケジュール (cron expression, Asia/Tokyo)
+CRON_SCHEDULE=0 1 * * *
+
+# レポートスケジュール
+CRON_REPORT_SCHEDULE=0 9 * * *
+```
+
+### Queue
+
+```env
+QUEUE_DATA_DIR=./data
+QUEUE_MAX_BATCH_SIZE=5         # 1回のバッチで最大何件処理するか
+QUEUE_COOLDOWN_MS=60000        # ジョブ間の待機時間（ms）
+QUEUE_MAX_RETRIES=2            # 最大リトライ回数
+QUEUE_RETRY_BASE_MS=300000     # リトライ基本待機時間（5分、exponential backoff）
+```
+
+### タイチョー（実行隊長）
+
+```env
+TAICHO_MAX_RETRIES=3           # 最大リトライ回数
+TAICHO_TIMEOUT_MS=1800000      # タイムアウト（30分）
+TAICHO_STRATEGY=claude-cli     # 実装戦略
+```
+
+### Web UI
+
+```env
+WEB_PORT=3100
+# WEB_HOST=                    # 空欄で Tailscale IP を自動検出。Tailscale なしなら 127.0.0.1
+WEB_USERNAME=admin             # Basic Auth ユーザー名（Tailscale なし環境で必要）
+WEB_PASSWORD=                  # Basic Auth パスワード
+```
+
+### Usage Monitor
+
+```env
+USAGE_SCRAPE_SCHEDULE=*/20 * * * *
+USAGE_REPORT_SCHEDULE=0 9 * * *
+USAGE_ALERT_THRESHOLD=80
+USAGE_CHROME_USER_DATA_DIR=./data/chrome-usage-profile
+USAGE_MONITOR_TIMEOUT_MS=60000
+```
+
+## 4. プロジェクト登録
+
+`projects.json` でAI が作業する対象リポジトリを登録する:
+
+```json
+[
+  {
+    "slug": "my-project",
+    "repo": "owner/repo-name",
+    "localPath": "/path/to/your/local/repo"
+  }
+]
+```
+
+| フィールド | 説明 |
+|-----------|------|
+| `slug` | プロジェクト識別子（URL やログで使用） |
+| `repo` | GitHub リポジトリ（`owner/repo` 形式） |
+| `localPath` | ローカルの git clone パス（絶対パス） |
+| `chatModel` | プロジェクト固有のチャットモデル（省略可、デフォルト: `CHAT_MODEL`） |
+
+**自動スキャン**: Web UI 起動時に `WORK_DIR`（デフォルト `~/work`）配下の git リポジトリを自動検出する。手動登録不要で使い始められる。
+
+## 5. 起動
+
+```bash
+# Web UI のみ（開発モード、ホットリロード付き）
+npm run web:dev
+
+# Web UI のみ（本番）
+npm run web
+
+# Cron + Queue（バックグラウンドジョブ処理）
+npm run dev
+
+# ビルド → 本番起動
+npm run build && npm run start
+```
+
+| コマンド | 内容 |
+|---------|------|
+| `npm run setup` | 対話式セットアップ |
+| `npm run dev` | 開発モード（Cron + Queue、ホットリロード） |
+| `npm run web` | Web UI 起動 |
+| `npm run web:dev` | Web UI 開発モード（ホットリロード） |
+| `npm run build` | TypeScript ビルド |
+| `npm run start` | 本番起動（要ビルド） |
+| `npm run test` | テスト実行 |
+
+> **注意**: `npm run dev`（Cron + Queue）と `npm run web`（Web UI）は別プロセス。両方必要な場合はそれぞれ起動する。
+
+## 6. サーバー常時起動設定
+
+### macOS（launchd）
+
+`~/Library/LaunchAgents/com.claude-crew.web.plist` を作成:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -210,14 +249,15 @@ npm run setup
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.issue-ai-bot</string>
+    <string>com.claude-crew.web</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/local/bin/node</string>
-        <string>/Users/teruya/workspace/issue-ai-bot/dist/index.js</string>
+        <string>/usr/local/bin/npx</string>
+        <string>tsx</string>
+        <string>src/web/server.ts</string>
     </array>
     <key>WorkingDirectory</key>
-    <string>/Users/teruya/workspace/issue-ai-bot</string>
+    <string>/path/to/claude-crew</string>
     <key>EnvironmentVariables</key>
     <dict>
         <key>NODE_ENV</key>
@@ -228,45 +268,87 @@ npm run setup
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>/Users/teruya/workspace/issue-ai-bot/logs/stdout.log</string>
+    <string>/path/to/claude-crew/data/logs/web.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/teruya/workspace/issue-ai-bot/logs/stderr.log</string>
+    <string>/path/to/claude-crew/data/logs/web.err.log</string>
 </dict>
 </plist>
 ```
 
+> `/path/to/claude-crew` を実際のパスに置き換えること。
+
 ```bash
-# サービス登録
-launchctl load ~/Library/LaunchAgents/com.issue-ai-bot.plist
+# サービス登録・起動
+launchctl load ~/Library/LaunchAgents/com.claude-crew.web.plist
 
 # サービス停止
-launchctl unload ~/Library/LaunchAgents/com.issue-ai-bot.plist
+launchctl unload ~/Library/LaunchAgents/com.claude-crew.web.plist
 
 # ログ確認
-tail -f logs/stdout.log
+tail -f data/logs/web.log
 ```
 
-## 6. Tailscale 設定
+### Linux（systemd）
 
-MacBook 2018 サーバーが Tailscale ネットワークに接続済みであれば、
-スマホや別PCからDiscord経由で指示を出すだけで利用可能。
+`/etc/systemd/system/claude-crew-web.service` を作成:
+
+```ini
+[Unit]
+Description=claude-crew Web UI
+After=network.target
+
+[Service]
+Type=simple
+User=your-username
+WorkingDirectory=/path/to/claude-crew
+ExecStart=/usr/bin/npx tsx src/web/server.ts
+Restart=always
+RestartSec=10
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+# サービス有効化・起動
+sudo systemctl enable claude-crew-web
+sudo systemctl start claude-crew-web
+
+# 状態確認
+sudo systemctl status claude-crew-web
+
+# ログ確認
+journalctl -u claude-crew-web -f
+```
+
+## 7. Tailscale 設定（オプション）
+
+Tailscale を使うと、スマホや別 PC から Web UI にリモートアクセスできる。
 
 ```bash
 # Tailscale の状態確認
 tailscale status
 
-# MacBook の Tailscale IP 確認
-tailscale ip
+# Tailscale IP 確認
+tailscale ip -4
 ```
+
+Web UI は Tailscale IP を自動検出してバインドする。`.env` で `WEB_HOST` を手動指定する必要はない。
+
+**認証**: Tailscale ACL に委譲。Tailscale ネットワーク内のデバイスからのみアクセス可能。
+
+**Tailscale なしの場合**: Web UI は `127.0.0.1`（localhost のみ）にバインドされる。LAN に公開する場合は `WEB_HOST=0.0.0.0` を設定し、`WEB_USERNAME` / `WEB_PASSWORD` で Basic Auth を有効にすること。
 
 ## トラブルシューティング
 
 | 症状 | 対処 |
 |------|------|
-| 「Integration requires code grant」エラー | Developer Portal > OAuth2 > 「Require OAuth2 Code Grant」を OFF にする |
-| Bot がサーバーに表示されない | コード（`npm run dev`）が起動しているか確認。Bot は起動していないとオフライン |
-| スラッシュコマンドが出ない | `projects.json` の `guildId` が正しいか確認 |
-| Discord Bot がオフライン | `launchctl list \| grep issue-ai-bot` でサービス確認 |
+| `claude` コマンドが見つからない | `npm i -g @anthropic-ai/claude-code` でインストール |
+| Claude CLI 認証エラー | `claude login` で再認証 |
 | GitHub API エラー | `gh auth status` で認証状態を確認 |
-| Claude CLI エラー | `claude --version` でCLI存在確認 |
-| Cron が動かない | `npm run start` でプロセスが起動しているか確認 |
+| Web UI にアクセスできない | `tailscale status` で接続確認。Tailscale なしなら `http://localhost:3100` |
+| Web UI が `127.0.0.1` にバインドされる | Tailscale 未接続。リモートアクセスが必要なら Tailscale を起動するか `WEB_HOST=0.0.0.0` を設定 |
+| Cron が動かない | `npm run dev` でプロセスが起動しているか確認 |
+| projects.json が見つからない | `npm run setup` を実行するか、`projects.json.example` をコピーして編集 |
+| テストが落ちる | `npm run test` でエラーメッセージを確認。環境依存の問題がないか確認 |

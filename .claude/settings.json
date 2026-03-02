@@ -1,17 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "mcp__serena__think_about_collected_information",
-      "Bash(gh api:*)",
-      "Bash(npm:*)",
-      "Bash(git:*)",
-      "Bash(npx tsx:*)",
-      "Bash(docker:*)",
+      "Bash(*)",
       "Edit",
       "Write",
       "Read",
       "Glob",
-      "Grep"
+      "Grep",
+      "WebFetch",
+      "WebSearch",
+      "mcp__*",
+      "Task",
+      "TodoWrite",
+      "NotebookEdit"
     ]
   },
   "hooks": {
