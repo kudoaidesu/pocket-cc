@@ -12,17 +12,32 @@ import { serveStatic } from '@hono/node-server/serve-static'
 import { serve } from '@hono/node-server'
 import { readFileSync, writeFileSync, readdirSync, existsSync, statSync } from 'node:fs'
 import { resolve, join, basename } from 'node:path'
-import { homedir } from 'node:os'
+import { homedir, networkInterfaces } from 'node:os'
 import { execFileSync } from 'node:child_process'
 import { isTailscaleIp, isProjectPathAllowed } from './path-guard.js'
 import { chatRoutes } from './routes/chat.js'
+import { observerRoutes } from './routes/observer.js'
 import { createLogger } from '../utils/logger.js'
 
 const log = createLogger('web:server')
 
 // --- 設定 ---
 const PORT = Number(process.env.WEB_PORT || '3100')
-const HOST = process.env.WEB_HOST || '100.116.180.63' // Tailscale IP
+
+/** ネットワークインターフェースからTailscale IPを動的検出 */
+function detectTailscaleIp(): string {
+  const ifaces = networkInterfaces()
+  for (const iface of Object.values(ifaces)) {
+    for (const addr of iface ?? []) {
+      if (addr.family === 'IPv4' && isTailscaleIp(addr.address)) {
+        return addr.address
+      }
+    }
+  }
+  return '127.0.0.1' // Tailscaleが使えない環境ではローカルのみ
+}
+
+const HOST = process.env.WEB_HOST || detectTailscaleIp()
 
 // --- プロジェクト一覧（projects.json + 自動スキャン） ---
 interface ProjectEntry {
@@ -461,6 +476,17 @@ app.get('/api/skills', (c) => {
     } catch { /* dir not found */ }
   }
   return c.json({ items: items.sort((a, b) => a.name.localeCompare(b.name)) })
+})
+
+// --- Observer UI ---
+app.route('/api/observe', observerRoutes)
+app.get('/observer', (c) => {
+  try {
+    const html = readFileSync(resolve(process.cwd(), 'src/web/public/observer.html'), 'utf-8')
+    return c.html(html)
+  } catch {
+    return c.text('observer.html not found', 404)
+  }
 })
 
 // --- SPA フォールバック ---

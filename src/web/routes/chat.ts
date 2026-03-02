@@ -12,6 +12,7 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { homedir } from 'node:os'
 import { createChatStream, abortStream } from '../services/chat-service.js'
+import { runClaudeCli } from '../../llm/claude-cli.js'
 import { validateInput } from '../../utils/sanitize.js'
 import { isValidSessionId, isProjectPathAllowed } from '../path-guard.js'
 import { createLogger } from '../../utils/logger.js'
@@ -25,7 +26,7 @@ const log = createLogger('web:chat')
  * - 先頭の空白・改行をトリム
  * - UUID/ハッシュ値のみの場合は空文字を返す（呼び出し元でフォールバック）
  */
-function cleanPreview(raw: string): string {
+export function cleanPreview(raw: string): string {
   let text = raw
   // システムタグを中身ごと除去（閉じタグあり）
   text = text.replace(/<(ide_opened_file|ide_selection|system-reminder|user-prompt-submit-hook)[^>]*>[\s\S]*?<\/\1>/g, '')
@@ -97,7 +98,7 @@ export function getSessions(): SessionEntry[] {
  * ~/.claude/projects/ からAgent SDKのセッションファイルを直接スキャン
  * cwdパスをハッシュ化したディレクトリ名でプロジェクトを特定
  */
-function cwdToProjectDir(cwd: string): string {
+export function cwdToProjectDir(cwd: string): string {
   // Agent SDKはパスの / と _ を - に変換してディレクトリ名にする
   return cwd.replace(/[/_]/g, '-')
 }
@@ -591,5 +592,200 @@ chatRoutes.get('/compact-status/:sessionId', (c) => {
     return c.json({ status: 'none' })
   }
   return c.json(job)
+})
+
+// ── セッションサマリー（AI要約） ────────────
+
+interface SummaryEntry {
+  summary: string
+  generatedAt: number
+  messageCount: number
+}
+
+const SUMMARIES_FILE = join(projectRoot, 'data', 'session-summaries.json')
+const summaryCache = new Map<string, SummaryEntry>()
+
+function loadSummaryCache(): void {
+  try {
+    const raw = readFileSync(SUMMARIES_FILE, 'utf-8')
+    const entries: Array<[string, SummaryEntry]> = JSON.parse(raw)
+    for (const [key, val] of entries) summaryCache.set(key, val)
+    log.info(`Loaded ${summaryCache.size} session summaries from disk`)
+  } catch { /* file doesn't exist yet */ }
+}
+
+function persistSummaryCache(): void {
+  try {
+    mkdirSync(dirname(SUMMARIES_FILE), { recursive: true })
+    writeFileSync(SUMMARIES_FILE, JSON.stringify(Array.from(summaryCache.entries()), null, 2))
+  } catch (e) {
+    log.warn(`Failed to persist summaries: ${e}`)
+  }
+}
+
+loadSummaryCache()
+
+/** JONLからユーザー/アシスタントのテキストのみ抽出し、要約用トランスクリプトを返す */
+async function extractSummaryTranscript(filePath: string): Promise<{ transcript: string; messageCount: number }> {
+  const lines: { role: string; text: string }[] = []
+
+  const rl = createInterface({
+    input: createReadStream(filePath, { encoding: 'utf-8' }),
+    crlfDelay: Infinity,
+  })
+
+  for await (const line of rl) {
+    if (!line.trim()) continue
+    try {
+      const record = JSON.parse(line) as {
+        type?: string
+        message?: { content?: Array<{ type: string; text?: string }> }
+      }
+      const role = record.type
+      if (role !== 'user' && role !== 'assistant') continue
+      if (!record.message?.content) continue
+
+      for (const c of record.message.content) {
+        if (c.type === 'text' && c.text) {
+          const cleaned = c.text.replace(/<(ide_opened_file|ide_selection|system-reminder|user-prompt-submit-hook)[^>]*>[\s\S]*?(<\/\1>|$)/g, '').trim()
+          if (cleaned) {
+            lines.push({ role, text: cleaned.slice(0, 500) })
+          }
+        }
+      }
+    } catch { /* skip */ }
+  }
+
+  // 先頭15 + 末尾15（重複なし）
+  const head = lines.slice(0, 15)
+  const tail = lines.length > 30 ? lines.slice(-15) : lines.slice(15)
+  const selected = [...head, ...tail]
+
+  let transcript = ''
+  for (const m of selected) {
+    const prefix = m.role === 'user' ? 'User' : 'Assistant'
+    transcript += `${prefix}: ${m.text}\n\n`
+    if (transcript.length > 8000) break
+  }
+
+  return { transcript: transcript.slice(0, 8000), messageCount: lines.length }
+}
+
+// GET /api/chat/summary/:sessionId — AI生成セッション要約
+chatRoutes.get('/summary/:sessionId', async (c) => {
+  const sessionId = c.req.param('sessionId')
+  const project = c.req.query('project')
+
+  if (!sessionId || !project) {
+    return c.json({ summary: null })
+  }
+  if (!isValidSessionId(sessionId)) {
+    return c.json({ error: 'Invalid sessionId' }, 400)
+  }
+  if (!isProjectPathAllowed(project)) {
+    return c.json({ error: 'Access denied' }, 403)
+  }
+
+  const claudeDir = join(homedir(), '.claude', 'projects', cwdToProjectDir(project))
+  const filePath = join(claudeDir, `${sessionId}.jsonl`)
+
+  if (!existsSync(filePath)) {
+    return c.json({ summary: null })
+  }
+
+  try {
+    // まずメッセージ数を素早くカウント（キャッシュ判定用）
+    const { transcript, messageCount } = await extractSummaryTranscript(filePath)
+
+    // メッセージが少なすぎる場合はLLM不要
+    if (messageCount < 2) {
+      return c.json({ summary: null, reason: 'too_short' })
+    }
+
+    // キャッシュ確認
+    const cached = summaryCache.get(sessionId)
+    if (cached && messageCount - cached.messageCount < 3) {
+      return c.json({ summary: cached.summary })
+    }
+
+    // LLMで要約生成
+    const result = await runClaudeCli({
+      prompt: transcript,
+      systemPrompt: [
+        'あなたはセッション要約を生成するアシスタントです。',
+        '以下のチャット記録を読み、3行で簡潔に要約してください。',
+        '- 1行目: ユーザーが何を依頼したか',
+        '- 2行目: 何が実行されたか',
+        '- 3行目: 結果・現在の状態',
+        '各行は50文字以内。箇条書き記号は不要。出力は要約の3行のみ。',
+      ].join('\n'),
+      model: 'claude-haiku-4-5-20251001',
+      skipPermissions: true,
+      allowedTools: [],
+      timeoutMs: 30_000,
+    })
+
+    const summary = result.content.trim()
+
+    // キャッシュ保存
+    summaryCache.set(sessionId, { summary, generatedAt: Date.now(), messageCount })
+    persistSummaryCache()
+
+    return c.json({ summary })
+  } catch (e) {
+    log.warn(`Summary generation failed for ${sessionId.slice(0, 12)}: ${e}`)
+    return c.json({ summary: null, error: 'generation_failed' })
+  }
+})
+
+// GET /api/chat/suggest-name/:sessionId — セッション名をAI提案
+chatRoutes.get('/suggest-name/:sessionId', async (c) => {
+  const sessionId = c.req.param('sessionId')
+  const project = c.req.query('project')
+
+  if (!sessionId || !project) {
+    return c.json({ name: null })
+  }
+  if (!isValidSessionId(sessionId)) {
+    return c.json({ error: 'Invalid sessionId' }, 400)
+  }
+  if (!isProjectPathAllowed(project)) {
+    return c.json({ error: 'Access denied' }, 403)
+  }
+
+  const claudeDir = join(homedir(), '.claude', 'projects', cwdToProjectDir(project))
+  const filePath = join(claudeDir, `${sessionId}.jsonl`)
+
+  if (!existsSync(filePath)) {
+    return c.json({ name: null })
+  }
+
+  try {
+    const { transcript, messageCount } = await extractSummaryTranscript(filePath)
+    if (messageCount < 1) {
+      return c.json({ name: null })
+    }
+
+    // 先頭2000文字だけで十分
+    const result = await runClaudeCli({
+      prompt: transcript.slice(0, 2000),
+      systemPrompt: [
+        'このチャット記録の内容を表す短いタイトルを1つ生成してください。',
+        '条件:',
+        '- 日本語で20文字以内',
+        '- 体言止め（例: 「タブ更新機能の追加」「認証バグの修正」）',
+        '- タイトルのみ出力。説明や記号は不要。',
+      ].join('\n'),
+      model: 'claude-haiku-4-5-20251001',
+      skipPermissions: true,
+      allowedTools: [],
+      timeoutMs: 15_000,
+    })
+
+    return c.json({ name: result.content.trim().slice(0, 30) })
+  } catch (e) {
+    log.warn(`Name suggestion failed for ${sessionId.slice(0, 12)}: ${e}`)
+    return c.json({ name: null })
+  }
 })
 

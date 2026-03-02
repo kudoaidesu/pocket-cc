@@ -6,14 +6,14 @@ import { isPathAllowed, isTailscaleIp, isValidSessionId } from './path-guard.js'
 
 describe('path-guard security', () => {
   describe('isPathAllowed()', () => {
-    const allowedRoots = ['/Users/ai_server/work/claude-crew', '/Users/ai_server/work/other-project']
+    const allowedRoots = ['/Users/ai-server/work/claude-crew', '/Users/ai-server/work/other-project']
 
     it('プロジェクトルート自体を許可する', () => {
-      expect(isPathAllowed('/Users/ai_server/work/claude-crew', allowedRoots)).toBe(true)
+      expect(isPathAllowed('/Users/ai-server/work/claude-crew', allowedRoots)).toBe(true)
     })
 
     it('プロジェクトルート配下のパスを許可する', () => {
-      expect(isPathAllowed('/Users/ai_server/work/claude-crew/src/web/server.ts', allowedRoots)).toBe(true)
+      expect(isPathAllowed('/Users/ai-server/work/claude-crew/src/web/server.ts', allowedRoots)).toBe(true)
     })
 
     it('プロジェクトルート外のパスを拒否する', () => {
@@ -29,29 +29,29 @@ describe('path-guard security', () => {
     })
 
     it('ホームディレクトリ直下の .ssh を拒否する', () => {
-      expect(isPathAllowed('/Users/ai_server/.ssh', allowedRoots)).toBe(false)
+      expect(isPathAllowed('/Users/ai-server/.ssh', allowedRoots)).toBe(false)
     })
 
     it('パストラバーサル攻撃（..）を拒否する', () => {
       // resolve で正規化されるので /etc/passwd になり拒否される
-      expect(isPathAllowed('/Users/ai_server/work/claude-crew/../../../etc/passwd', allowedRoots)).toBe(false)
+      expect(isPathAllowed('/Users/ai-server/work/claude-crew/../../../etc/passwd', allowedRoots)).toBe(false)
     })
 
     it('プロジェクト名をプレフィックスに持つ別パスを拒否する', () => {
-      expect(isPathAllowed('/Users/ai_server/work/claude-crew-malicious', allowedRoots)).toBe(false)
+      expect(isPathAllowed('/Users/ai-server/work/claude-crew-malicious', allowedRoots)).toBe(false)
     })
 
     it('複数プロジェクトのどれかに含まれれば許可する', () => {
-      expect(isPathAllowed('/Users/ai_server/work/other-project/src/index.ts', allowedRoots)).toBe(true)
+      expect(isPathAllowed('/Users/ai-server/work/other-project/src/index.ts', allowedRoots)).toBe(true)
     })
 
     it('空のallowedRootsではすべて拒否する', () => {
-      expect(isPathAllowed('/Users/ai_server/work/claude-crew', [])).toBe(false)
+      expect(isPathAllowed('/Users/ai-server/work/claude-crew', [])).toBe(false)
     })
 
     it('コマンドインジェクション文字列を含むパスを拒否する', () => {
       // ";touch /tmp/marker;echo " がパスに含まれていても正しく拒否される
-      expect(isPathAllowed('/Users/ai_server/work/claude-crew";touch /tmp/marker;echo "', allowedRoots)).toBe(false)
+      expect(isPathAllowed('/Users/ai-server/work/claude-crew";touch /tmp/marker;echo "', allowedRoots)).toBe(false)
     })
   })
 

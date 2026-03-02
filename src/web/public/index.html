@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Claude Code</title>
+<title>pocket-cc</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -19,6 +19,7 @@
   --success:#a6e3a1;--success-bg:rgba(166,227,161,.08);
   --diff-add:rgba(166,227,161,.12);--diff-del:rgba(243,139,168,.12);
   --diff-add-text:#a6e3a1;--diff-del-text:#f38ba8;
+  --blue:#89b4fa;--blue-bg:rgba(137,180,250,.12);
   --font-sans:-apple-system,system-ui,'Segoe UI','Helvetica Neue',sans-serif;
   --font-mono:'SF Mono',Menlo,'Cascadia Code','JetBrains Mono',Consolas,monospace;
 }
@@ -28,24 +29,64 @@ svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:ro
 
 /* ── ヘッダー ── */
 .header{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
-.header-logo{display:flex;align-items:center;gap:6px;color:var(--accent);font-weight:700;font-size:13px;font-family:var(--font-mono)}
+.header-logo{display:flex;align-items:center;gap:6px;color:var(--accent);font-weight:700;font-size:13px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .1s;padding:4px 0}
+.header-logo:active{opacity:.7}
 .header-logo svg.ic{font-size:18px}
+.header-logo-chevron{color:var(--muted);display:flex;align-items:center;margin-left:2px}
+.header-logo-chevron svg.ic{font-size:10px}
 .header-spacer{flex:1}
-.header-btn{background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:10px 14px;font-size:14px;font-family:var(--font-mono);cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;min-height:42px}
+.header-btn{background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:10px 14px;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;min-height:42px}
 .header-btn:hover{color:var(--text);border-color:var(--border-light);background:var(--surface-hover)}
 .header-btn.active{color:var(--accent);border-color:var(--accent-border)}
 .header-btn svg.ic{font-size:18px}
+
+/* ── タブアクションパネル ── */
+.tab-bar-wrap{position:relative;flex-shrink:0}
+.tap-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:7}
+.tap-overlay.open{display:block}
+.tab-action-panel{display:none;position:absolute;left:0;right:0;top:100%;background:var(--surface);border:1px solid var(--border-light);border-top:none;border-radius:0 0 10px 10px;box-shadow:0 12px 32px rgba(0,0,0,.6);z-index:8;padding:12px 14px;animation:tapSlideDown .15s ease-out}
+.tab-action-panel.open{display:block}
+@keyframes tapSlideDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.tap-info{display:flex;flex-direction:column;gap:6px;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border);font-size:12px}
+.tap-field{display:flex;align-items:baseline;gap:8px;min-height:18px}
+.tap-label{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.3px;flex-shrink:0;min-width:52px}
+.tap-val{color:var(--text);word-break:break-all;line-height:1.3}
+.tap-val.muted{color:var(--muted)}
+.tap-val .tap-status{font-weight:600}
+.tap-val .tap-status.s-idle{color:var(--success)}
+.tap-val .tap-status.s-active{color:var(--accent)}
+.tap-summary{white-space:pre-line;line-height:1.5;font-size:12px;color:var(--text)}
+.tap-summary .typing-dots{display:inline-flex}
+.tap-name-row{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
+.tap-name-suggest{color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tap-name-apply{background:none;border:1px solid var(--accent-border);color:var(--accent);border-radius:6px;padding:2px 8px;font-size:10px;cursor:pointer;flex-shrink:0;transition:all .1s}
+.tap-name-apply:hover{background:var(--accent-dim)}
+.tap-name-edit{background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:2px 8px;font-size:10px;cursor:pointer;flex-shrink:0;transition:all .1s}
+.tap-name-edit:hover{color:var(--text);border-color:var(--border-light)}
+.tap-dismiss{background:none;border:none;color:var(--muted);cursor:pointer;padding:6px;margin-left:auto;display:flex;align-items:center;flex-shrink:0;border-radius:4px;transition:all .1s}
+.tap-dismiss:hover{color:var(--text);background:var(--surface-hover)}
+.tap-actions{display:flex;align-items:center;gap:6px}
+.tap-action-btn{display:flex;align-items:center;justify-content:center;gap:5px;padding:8px 14px;min-height:40px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;cursor:pointer;transition:all .1s;white-space:nowrap}
+.tap-action-btn:hover{background:var(--surface-hover);border-color:var(--border-light)}
+.tap-action-btn:active{transform:scale(.96)}
+.tap-action-btn:disabled{opacity:.3;cursor:default;transform:none}
+.tap-action-btn svg.ic{font-size:14px}
+.tap-action-btn.danger{color:var(--danger);margin-left:auto}
+.tap-action-btn.danger:hover{background:var(--danger-bg);border-color:rgba(243,139,168,.3)}
+.tab .tab-chevron{color:var(--muted);display:flex;align-items:center;flex-shrink:0;transition:transform .15s}
+.tab .tab-chevron.panel-open{transform:rotate(180deg)}
 .model-select{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;font-family:var(--font-mono);cursor:pointer;min-width:0;flex-shrink:1;min-height:42px}
 .model-select:focus{outline:none;border-color:var(--accent)}
 
 /* ── セッションタブバー ── */
 .tab-bar{display:flex;align-items:center;gap:0;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .tab-bar::-webkit-scrollbar{display:none}
-.tab{display:flex;align-items:center;gap:6px;padding:8px 14px;font-size:13px;font-family:var(--font-mono);color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .1s;min-width:0;max-width:180px;flex-shrink:0}
+.tab{display:flex;align-items:center;gap:6px;padding:8px 14px;font-size:13px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .1s;min-width:0;max-width:180px;flex-shrink:0}
 .tab:hover{color:var(--text);background:var(--surface-hover)}
 .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
 .tab .tab-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tab .tab-streaming{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 1.2s infinite;flex-shrink:0}
+.tab .tab-dot{width:6px;height:6px;border-radius:50%;background:var(--tab-mode-color, var(--accent));flex-shrink:0;transition:background .2s}
+.tab .tab-dot.streaming{animation:pulse 1.2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 .tab .tab-close{color:var(--muted);cursor:pointer;padding:0 2px;border-radius:3px;transition:all .1s;flex-shrink:0;display:flex;align-items:center}
 .tab .tab-close:hover{color:var(--danger);background:var(--danger-bg)}
@@ -65,8 +106,10 @@ svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:ro
 
 /* ── 割り込みインジケーター ── */
 .msg.interrupt{display:flex;justify-content:center;padding:4px 0}
-.msg.interrupt .interrupt-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:6px;background:var(--surface);border:1px solid var(--border);font-size:11px;color:var(--muted);font-family:var(--font-mono)}
+.msg.interrupt .interrupt-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:6px;background:var(--surface);border:1px solid var(--border);font-size:11px;color:var(--muted)}
 .msg.interrupt .interrupt-badge svg{flex-shrink:0}
+.msg.system-notice{display:flex;justify-content:center;padding:4px 0}
+.msg.system-notice .notice-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:6px;background:var(--accent-dim);border:1px solid var(--accent-border);font-size:11px;color:var(--accent)}
 
 /* ── アシスタントメッセージ ── */
 .msg.assistant{display:flex;flex-direction:column;gap:8px}
@@ -130,7 +173,7 @@ pre:hover .code-copy-btn{opacity:1}
 .diff-hunk{color:var(--accent);font-weight:600;margin-top:4px;font-size:11px}
 
 /* ── 警告バッジ ── */
-.warning-badge{display:flex;align-items:center;gap:8px;background:var(--warning-bg);color:var(--warning);border:1px solid rgba(249,226,175,.2);border-radius:8px;padding:8px 12px;font-size:12px;margin:4px 0;font-family:var(--font-mono)}
+.warning-badge{display:flex;align-items:center;gap:8px;background:var(--warning-bg);color:var(--warning);border:1px solid rgba(249,226,175,.2);border-radius:8px;padding:8px 12px;font-size:12px;margin:4px 0}
 .warning-badge svg.ic{font-size:14px;flex-shrink:0}
 
 /* ── コスト表示 ── */
@@ -162,7 +205,7 @@ pre:hover .code-copy-btn{opacity:1}
 .input-footer button{width:38px;height:38px;border:none;border-radius:8px;background:transparent;color:var(--muted);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .1s}
 .input-footer button:hover{background:var(--accent-dim);color:var(--accent)}
 .input-footer button:disabled{opacity:.3;cursor:not-allowed}
-.input-footer button.send-btn{background:var(--accent);color:#1e1e2e;border-radius:8px;width:42px;height:42px;font-size:18px}
+.input-footer button.send-btn{background:var(--accent);color:var(--bg);border-radius:8px;width:42px;height:42px;font-size:18px}
 .input-footer button.send-btn:hover{opacity:.9}
 .input-footer button.send-btn:disabled{opacity:.3}
 .input-footer button.abort-btn{display:none;background:var(--danger-bg);color:var(--danger);width:42px;height:42px;border-radius:8px;font-size:18px}
@@ -176,7 +219,7 @@ pre:hover .code-copy-btn{opacity:1}
 .attach-chip .attach-thumb{width:24px;height:24px;border-radius:3px;object-fit:cover}
 
 /* ── トースト通知 ── */
-.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.5);font-family:var(--font-mono);font-size:13px;color:var(--text);max-width:90vw;min-width:200px;animation:fadeIn .15s}
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.5);font-size:13px;color:var(--text);max-width:90vw;min-width:200px;animation:fadeIn .15s}
 .toast h3{margin:0 0 8px;font-size:14px;color:var(--accent)}
 .toast p{margin:4px 0;color:var(--muted)}
 .toast .toast-value{color:var(--text-bright);font-weight:600}
@@ -223,6 +266,38 @@ pre:hover .code-copy-btn{opacity:1}
 .load-more-btn{width:100%;padding:10px;margin-top:6px;background:var(--surface-hover);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;cursor:pointer;font-family:var(--font-sans);transition:all .1s}
 .load-more-btn:hover{background:var(--border);color:var(--text)}
 
+/* ── 設定パネル ── */
+.settings-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:15;display:none;backdrop-filter:blur(2px)}
+.settings-overlay.open{display:flex;align-items:center;justify-content:center}
+.settings-panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:min(320px,90vw);box-shadow:0 12px 40px rgba(0,0,0,.4);animation:tapSlideDown .15s}
+.settings-header{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border)}
+.settings-title{font-size:15px;font-weight:700;color:var(--text-bright);flex:1}
+.settings-body{padding:8px 0}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;min-height:48px}
+.settings-label{font-size:14px;color:var(--text)}
+.settings-toggle{background:var(--surface-hover);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;min-width:72px;text-align:center;transition:all .15s;font-family:var(--font-sans);display:flex;align-items:center;gap:6px;justify-content:center}
+.settings-toggle:hover{border-color:var(--border-light);background:var(--accent-dim);color:var(--accent)}
+[data-theme="light"] .settings-panel{box-shadow:0 12px 40px rgba(0,0,0,.15)}
+
+/* ── 機能メニュー ── */
+.features-menu{position:absolute;top:100%;right:0;margin-top:4px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,.3);z-index:12;animation:tapSlideDown .12s;display:none}
+.features-menu.open{display:block}
+.features-menu-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;color:var(--text);font-size:13px;cursor:pointer;transition:background .1s;border:none;background:none;width:100%;text-align:left;font-family:var(--font-sans)}
+.features-menu-item:hover{background:var(--surface-hover)}
+.features-menu-item svg.ic{font-size:16px;color:var(--muted);flex-shrink:0}
+.features-menu-item .fm-label{flex:1}
+.features-menu-item .fm-badge{font-size:10px;color:var(--muted);background:var(--surface-hover);padding:1px 6px;border-radius:4px}
+[data-theme="light"] .features-menu{box-shadow:0 8px 24px rgba(0,0,0,.1)}
+
+/* ── タブアクションパネル: モードセレクター ── */
+.tap-mode-section{padding:8px 14px;border-bottom:1px solid var(--border)}
+.tap-mode-label{font-size:10px;text-transform:uppercase;color:var(--muted);letter-spacing:.05em;margin-bottom:6px}
+.tap-mode-row{display:flex;gap:6px;flex-wrap:wrap}
+.tap-mode-btn{display:flex;align-items:center;gap:4px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}
+.tap-mode-btn:hover{border-color:var(--border-light);color:var(--text)}
+.tap-mode-btn.active{color:var(--mode-btn-color);border-color:var(--mode-btn-color);background:var(--surface-hover)}
+.tap-mode-btn svg.ic{font-size:12px}
+
 /* ── ソースビューア ── */
 .source-viewer{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:20;backdrop-filter:blur(2px)}
 .source-viewer-content{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--bg);display:flex;flex-direction:column}
@@ -243,7 +318,7 @@ pre:hover .code-copy-btn{opacity:1}
 /* ── サービス一覧 ── */
 .service-item{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--surface)}
 .service-item .port-badge{background:var(--accent-dim);color:var(--accent);padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600;font-family:var(--font-mono)}
-.service-item .open-btn{margin-left:auto;background:var(--accent);color:#1e1e2e;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-family:var(--font-mono);white-space:nowrap}
+.service-item .open-btn{margin-left:auto;background:var(--accent);color:var(--bg);border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-family:var(--font-mono);white-space:nowrap}
 .service-item .open-btn:hover{opacity:.9}
 .link-item{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:all .1s;-webkit-tap-highlight-color:transparent}
 .link-item:hover,.link-item:active{border-color:var(--border-light);background:var(--surface-hover)}
@@ -266,20 +341,9 @@ pre:hover .code-copy-btn{opacity:1}
   .input-footer button.send-btn{width:40px;height:40px}
   .messages{padding:10px}
 }
-@media(max-width:360px){
-  .header-logo svg.ic{font-size:14px}
-}
-
-/* ── Plan Mode バナー ── */
-.plan-banner{display:none;align-items:center;gap:8px;padding:6px 12px;background:var(--accent-dim);border-bottom:1px solid var(--accent-border);font-size:12px;font-family:var(--font-mono);color:var(--accent);flex-shrink:0}
-.plan-banner.active{display:flex}
-.plan-banner svg.ic{font-size:13px;flex-shrink:0}
-.plan-banner .plan-label{font-weight:600}
-.plan-banner .plan-exit{margin-left:auto;background:none;border:1px solid var(--accent-border);color:var(--accent);border-radius:4px;padding:2px 8px;font-size:11px;font-family:var(--font-mono);cursor:pointer}
-.plan-banner .plan-exit:hover{background:var(--accent-border)}
 
 /* ── Compacting バナー ── */
-.compact-banner{display:none;align-items:center;gap:8px;padding:6px 12px;background:var(--warning-bg);border-bottom:1px solid rgba(249,226,175,.15);font-size:12px;font-family:var(--font-mono);color:var(--warning);flex-shrink:0}
+.compact-banner{display:none;align-items:center;gap:8px;padding:6px 12px;background:var(--warning-bg);border-top:1px solid rgba(249,226,175,.15);font-size:12px;color:var(--warning);flex-shrink:0}
 .compact-banner.active{display:flex}
 .compact-banner svg.ic{font-size:13px;flex-shrink:0}
 
@@ -289,39 +353,73 @@ pre:hover .code-copy-btn{opacity:1}
 .cmd-item{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;transition:background .1s;font-size:13px}
 .cmd-item:hover,.cmd-item.focused{background:var(--surface-hover)}
 .cmd-item svg.ic{font-size:15px;color:var(--accent);flex-shrink:0}
-.cmd-item .cmd-name{color:var(--text-bright);font-weight:600;font-family:var(--font-mono)}
+.cmd-item .cmd-name{color:var(--text-bright);font-weight:600}
 .cmd-item .cmd-desc{color:var(--muted);font-size:12px;margin-left:auto}
 
 /* ── ツール承認UI (モバイル) ── */
-.tool-approve{margin:4px 0;border:1px solid var(--warning);border-radius:8px;overflow:hidden;background:var(--warning-bg);font-family:var(--font-mono);font-size:12px}
+.tool-approve{margin:4px 0;border:1px solid var(--warning);border-radius:8px;overflow:hidden;background:var(--warning-bg);font-size:12px}
 .tool-approve-header{display:flex;align-items:center;gap:8px;padding:10px 12px;color:var(--warning)}
 .tool-approve-header svg.ic{font-size:15px;flex-shrink:0}
 .tool-approve-header .tool-approve-name{font-weight:700}
 .tool-approve-body{padding:8px 12px;background:var(--bg);border-top:1px solid rgba(249,226,175,.15);font-size:12px;color:var(--text);max-height:150px;overflow:auto;white-space:pre-wrap;word-break:break-all}
 .tool-approve-actions{display:flex;gap:8px;padding:8px 12px;border-top:1px solid rgba(249,226,175,.15)}
-.tool-approve-actions button{flex:1;padding:8px;border:none;border-radius:6px;font-size:13px;font-family:var(--font-mono);font-weight:600;cursor:pointer}
-.tool-approve-actions .btn-allow{background:var(--success);color:#1e1e2e}
+.tool-approve-actions button{flex:1;padding:8px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer}
+.tool-approve-actions .btn-allow{background:var(--success);color:var(--bg)}
 .tool-approve-actions .btn-deny{background:var(--danger-bg);color:var(--danger);border:1px solid rgba(243,139,168,.3)}
+
+/* ── ライトテーマ (Catppuccin Latte) ── */
+[data-theme="light"]{
+  --bg:#eff1f5;--surface:#ffffff;--surface-hover:#f2f4f8;
+  --border:#dce0e8;--border-light:#ccd0da;
+  --text:#4c4f69;--text-bright:#1e1e2e;--muted:#8c8fa1;
+  --accent:#8839ef;--accent-dim:rgba(136,57,239,.08);--accent-border:rgba(136,57,239,.2);
+  --user-bg:#e6e9ef;--user-border:#ccd0da;
+  --warning:#df8e1d;--warning-bg:rgba(223,142,29,.08);
+  --danger:#d20f39;--danger-bg:rgba(210,15,57,.06);
+  --success:#40a02b;--success-bg:rgba(64,160,43,.06);
+  --diff-add:rgba(64,160,43,.1);--diff-del:rgba(210,15,57,.1);
+  --diff-add-text:#40a02b;--diff-del-text:#d20f39;
+  --blue:#1e66f5;--blue-bg:rgba(30,102,245,.08);
+}
+[data-theme="light"] .tab-action-panel{box-shadow:0 12px 32px rgba(0,0,0,.12)}
+[data-theme="light"] .tap-overlay{background:rgba(0,0,0,.2)}
+[data-theme="light"] .drawer-content{box-shadow:-4px 0 24px rgba(0,0,0,.1)}
+[data-theme="light"] .cmd-menu{box-shadow:0 -4px 16px rgba(0,0,0,.08)}
+[data-theme="light"] .tool-approve-body{border-top-color:rgba(223,142,29,.15)}
+[data-theme="light"] .tool-approve-actions{border-top-color:rgba(223,142,29,.15)}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div class="header-logo" id="headerLogo"></div>
+  <div class="header-logo" id="headerLogo" onclick="openDrawer()" title="Menu"></div>
   <div class="header-spacer"></div>
-  <button class="header-btn" id="planToggle" onclick="cyclePermissionMode()" title="Permission Mode"></button>
-  <button class="header-btn" id="menuBtn" onclick="openDrawer()" title="Menu"></button>
+  <div style="position:relative">
+    <button class="header-btn" id="featuresBtn" onclick="toggleFeaturesMenu()" title="Features"></button>
+    <div class="features-menu" id="featuresMenu">
+      <button class="features-menu-item" onclick="closeFeaturesMenu();window.location='/observer'">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+        <span class="fm-label">Observer</span>
+      </button>
+    </div>
+  </div>
+  <button class="header-btn" id="settingsBtn" onclick="openSettingsPanel()" title="Settings"></button>
 </div>
-<div class="plan-banner" id="planBanner"></div>
-<div class="compact-banner" id="compactBanner"></div>
-
-<div class="tab-bar" id="tabBar">
-  <div class="tab-add" id="tabAddBtn" onclick="createNewTab()" title="New Chat"></div>
+<div class="tab-bar-wrap">
+  <div class="tab-bar" id="tabBar">
+    <div class="tab-add" id="tabAddBtn" onclick="createNewTab()" title="New Chat"></div>
+  </div>
+  <div id="tapOverlay" class="tap-overlay" onclick="closeTabActionPanel()"></div>
+  <div id="tabActionPanel" class="tab-action-panel">
+    <div class="tap-info" id="tapInfo"></div>
+    <div class="tap-actions" id="tapActions"></div>
+  </div>
 </div>
 
 <div id="sessionsContainer"></div>
 
 <div class="input-area" style="position:relative">
+  <div class="compact-banner" id="compactBanner"></div>
   <div id="gitBar" class="git-statusbar">
     <div class="git-statusbar-left" onclick="openDrawer('git')" title="Git status"><span id="gitBarBranch" style="opacity:.5">—</span></div>
     <div class="git-statusbar-right" id="gitBarRight"></div>
@@ -330,11 +428,11 @@ pre:hover .code-copy-btn{opacity:1}
   <div class="cmd-menu" id="cmdMenu"></div>
   <input type="file" id="fileInput" multiple style="display:none">
   <div class="input-box">
-    <textarea id="input" rows="1" placeholder="Ask Claude anything..." enterkeyhint="enter"></textarea>
+    <textarea id="input" rows="1" placeholder="Ask Claude anything..." enterkeyhint="enter" data-i18n-placeholder="chat.placeholder"></textarea>
     <div class="input-footer">
       <button id="cmdBtn" onclick="toggleCmdMenu()" title="Commands (/)"></button>
       <button id="filesBtn" onclick="document.getElementById('fileInput').click()" title="Upload file"></button>
-      <select id="model" class="model-select">
+      <select id="model" class="model-select" onchange="onModelChange()">
         <option value="default">default (auto)</option>
         <option value="claude-sonnet-4-6" selected>claude-sonnet-4-6</option>
         <option value="claude-opus-4-6">claude-opus-4-6</option>
@@ -354,13 +452,13 @@ pre:hover .code-copy-btn{opacity:1}
 <div class="drawer" id="drawer" onclick="closeDrawer()">
   <div class="drawer-content" onclick="event.stopPropagation()">
     <div class="drawer-tabs">
-      <button class="drawer-tab active" data-tab="sessions" onclick="switchDrawerTab('sessions')">Sessions</button>
-      <button class="drawer-tab" data-tab="files" onclick="switchDrawerTab('files')">Files</button>
-      <button class="drawer-tab" data-tab="git" onclick="switchDrawerTab('git')">Git</button>
-      <button class="drawer-tab" data-tab="services" onclick="switchDrawerTab('services')">Services</button>
-      <button class="drawer-tab" data-tab="tools" onclick="switchDrawerTab('tools')">Tools</button>
-      <button class="drawer-tab" data-tab="links" onclick="switchDrawerTab('links')">Links</button>
-      <button class="drawer-tab" data-tab="projects" onclick="switchDrawerTab('projects')">Projects</button>
+      <button class="drawer-tab active" data-tab="sessions" onclick="switchDrawerTab('sessions')" data-i18n="drawer.sessions">Sessions</button>
+      <button class="drawer-tab" data-tab="files" onclick="switchDrawerTab('files')" data-i18n="drawer.files">Files</button>
+      <button class="drawer-tab" data-tab="git" onclick="switchDrawerTab('git')" data-i18n="drawer.git">Git</button>
+      <button class="drawer-tab" data-tab="services" onclick="switchDrawerTab('services')" data-i18n="drawer.services">Services</button>
+      <button class="drawer-tab" data-tab="tools" onclick="switchDrawerTab('tools')" data-i18n="drawer.tools">Tools</button>
+      <button class="drawer-tab" data-tab="links" onclick="switchDrawerTab('links')" data-i18n="drawer.links">Links</button>
+      <button class="drawer-tab" data-tab="projects" onclick="switchDrawerTab('projects')" data-i18n="drawer.projects">Projects</button>
     </div>
     <div id="sessionsTab" class="drawer-tab-content active">
       <div id="currentProjectLabel" style="font-size:12px;color:var(--muted);padding:0 0 8px;font-family:var(--font-mono)"></div>
@@ -420,6 +518,26 @@ pre:hover .code-copy-btn{opacity:1}
   </div>
 </div>
 
+<!-- 設定パネル -->
+<div class="settings-overlay" id="settingsOverlay" onclick="closeSettingsPanel()">
+  <div class="settings-panel" onclick="event.stopPropagation()">
+    <div class="settings-header">
+      <span class="settings-title" data-i18n="settings.title">Settings</span>
+      <button class="tap-dismiss" onclick="closeSettingsPanel()" id="settingsCloseBtn"></button>
+    </div>
+    <div class="settings-body">
+      <div class="settings-row">
+        <span class="settings-label" data-i18n="settings.theme">Theme</span>
+        <button class="settings-toggle" id="settingsThemeBtn" onclick="toggleTheme();updateSettingsThemeBtn()"></button>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label" data-i18n="settings.language">Language</span>
+        <button class="settings-toggle" id="settingsLangBtn" onclick="toggleLang();updateSettingsLangBtn()"></button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ソースビューアモーダル -->
 <div class="source-viewer" id="sourceViewer" style="display:none" onclick="closeSourceViewer()">
   <div class="source-viewer-content" onclick="event.stopPropagation()">
@@ -432,12 +550,15 @@ pre:hover .code-copy-btn{opacity:1}
   </div>
 </div>
 
+<script src="/static/theme.js"></script>
+<script src="/static/i18n.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>
 <script>
 // ── Lucide インラインSVGアイコン ──
 const ICONS = {
   terminal:      '<path d="m4 17 6-6-6-6"/><path d="M12 19h8"/>',
   clock:         '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  'refresh-cw':  '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/>',
   folder:        '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
   plus:          '<path d="M5 12h14"/><path d="M12 5v14"/>',
   x:             '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
@@ -477,6 +598,10 @@ const ICONS = {
   'chevron-down':'<path d="m6 9 6 6 6-6"/>',
   'eye':            '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
   'git-commit':     '<circle cx="12" cy="12" r="3"/><line x1="3" x2="9" y1="12" y2="12"/><line x1="15" x2="21" y1="12" y2="12"/>',
+  'settings':       '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  'sun':            '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+  'moon':           '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  'grid':           '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/>',
 }
 
 function ic(name, size) {
@@ -492,9 +617,9 @@ const TOOL_ICON_MAP = {
 }
 
 // --- ヘッダー等にアイコンを注入 ---
-document.getElementById('headerLogo').innerHTML = ic('terminal', 18) + '<span id="title">claude-crew</span>'
-document.getElementById('planToggle').innerHTML = ic('shield', 14) + '<span class="btn-label"> Default</span>'
-document.getElementById('menuBtn').innerHTML = ic('menu', 14)
+document.getElementById('headerLogo').innerHTML = ic('terminal', 18) + '<span id="title">pocket-cc</span><span class="header-logo-chevron">' + ic('chevron-down', 10) + '</span>'
+document.getElementById('featuresBtn').innerHTML = ic('grid', 14)
+document.getElementById('settingsBtn').innerHTML = ic('settings', 14)
 document.getElementById('tabAddBtn').innerHTML = ic('plus', 14)
 document.getElementById('cmdBtn').innerHTML = ic('slash', 14)
 document.getElementById('filesBtn').innerHTML = ic('upload', 14)
@@ -502,6 +627,7 @@ document.getElementById('abort').innerHTML = ic('square', 14)
 document.getElementById('send').innerHTML = ic('send', 14)
 document.getElementById('fileSearchIcon').innerHTML = ic('search', 14)
 document.getElementById('sourceCloseBtn').innerHTML = ic('x', 16)
+document.getElementById('settingsCloseBtn').innerHTML = ic('x', 14)
 document.getElementById('sourceCopyBtn').innerHTML = ic('copy', 12) + ' Copy'
 
 // --- State ---
@@ -518,10 +644,17 @@ const sessionsContainer = document.getElementById('sessionsContainer')
 let activeTabId = null
 const tabs = new Map()
 
+window.addEventListener('langchange', function() {
+  // Update drawer tab labels
+  document.querySelectorAll('.drawer-tab[data-i18n]').forEach(function(el) {
+    el.textContent = t(el.getAttribute('data-i18n'))
+  })
+})
+
 function genTabId() { return 'tab-' + Date.now() + '-' + Math.random().toString(36).slice(2,6) }
 
 // --- セッション永続化 (localStorage) --- Project別にタブ状態を保持
-const STORAGE_KEY = 'claude-crew-tabs'
+const STORAGE_KEY = 'pocket-cc-tabs'
 
 function saveTabs() {
   try {
@@ -531,13 +664,12 @@ function saveTabs() {
     if (!store.projects) store.projects = {}
 
     store.currentProject = currentProject
-    store.permissionMode = permissionMode
 
     // 現在のプロジェクトのタブを保存
     if (currentProject) {
       const projTabs = []
       tabs.forEach((tab, tabId) => {
-        projTabs.push({ tabId, sessionId: tab.sessionId, label: tab.label })
+        projTabs.push({ tabId, sessionId: tab.sessionId, label: tab.label, permissionMode: tab.permissionMode || 'plan' })
       })
       store.projects[currentProject] = { activeTabId, tabs: projTabs }
     }
@@ -571,7 +703,8 @@ function restoreProjectTabs(projectPath) {
         pendingMessage: null,
         messagesEl,
         fullTexts: new WeakMap(),
-        label: cleanLabel(saved.label) || 'New Chat',
+        label: cleanLabel(saved.label) || t('chat.newChat'),
+        permissionMode: saved.permissionMode || store.permissionMode || 'plan',
       })
 
       if (saved.sessionId) {
@@ -601,19 +734,12 @@ function restoreTabs() {
     // プロジェクト復元
     if (store.currentProject) currentProject = store.currentProject
 
-    // Permission Mode復元
-    if (store.permissionMode && typeof PERM_MODES !== 'undefined' && PERM_MODES[store.permissionMode]) {
-      // setPermissionModeはタブ復元後に呼ぶ
-    }
-
     // 現在プロジェクトのタブ復元
     if (!currentProject) return false
     const restored = restoreProjectTabs(currentProject)
 
-    // Permission Mode復元（タブ復元後に実行）
-    if (store.permissionMode && typeof PERM_MODES !== 'undefined' && PERM_MODES[store.permissionMode]) {
-      setPermissionMode(store.permissionMode)
-    }
+    // アクティブタブのモード色を反映
+    if (restored) updateInputBoxModeColor()
 
     return restored
   } catch (e) {
@@ -624,6 +750,7 @@ function restoreTabs() {
 
 /** Project切替: 現在タブを退避→新Projectのタブを復元 */
 function switchProjectTabs(newProjectPath) {
+  closeTabActionPanel()
   // 現在のタブを保存
   saveTabs()
 
@@ -692,44 +819,38 @@ function copyCode(btn) {
 
 // --- モデル選択（ヘッダーのselectのみで管理） ---
 
-// --- Permission Mode ---
+// --- Permission Mode (per-tab) ---
 // 4 states: 'plan' → 'default' → 'auto-accept' → 'yolo' → 'plan'
-let permissionMode = 'plan'
 const PERM_MODES = {
   'default':     { label: 'Default', icon: 'shield', color: 'var(--border)', banner: false },
   'plan':        { label: 'Plan', icon: 'map-pin', color: '#007acc', banner: true, bannerBg: 'rgba(0,122,204,.1)', bannerBorder: 'rgba(0,122,204,.3)', bannerText: 'Claude will plan before acting' },
   'auto-accept': { label: 'Auto', icon: 'zap', color: 'var(--text)', banner: true, bannerBg: 'rgba(205,214,230,.08)', bannerBorder: 'rgba(205,214,230,.2)', bannerText: 'Auto-accept — Claude will act without asking' },
   'yolo':        { label: 'YOLO', icon: 'alert-triangle', color: 'var(--danger)', banner: true, bannerBg: 'var(--danger-bg)', bannerBorder: 'rgba(243,139,168,.3)', bannerText: 'YOLO — All tools allowed, no limits (--dangerously-allow-all-tools)' },
 }
+function getActivePermissionMode() {
+  const tab = tabs.get(activeTabId)
+  return tab ? (tab.permissionMode || 'plan') : 'plan'
+}
 function cyclePermissionMode() {
+  const current = getActivePermissionMode()
   const order = ['plan', 'default', 'auto-accept', 'yolo']
-  const idx = (order.indexOf(permissionMode) + 1) % order.length
+  const idx = (order.indexOf(current) + 1) % order.length
   setPermissionMode(order[idx])
 }
-function setPermissionMode(mode) {
-  permissionMode = mode
+function setPermissionMode(mode, silent) {
+  const tab = tabs.get(activeTabId)
+  if (tab) tab.permissionMode = mode
   saveTabs()
-  const cfg = PERM_MODES[mode]
-  const btn = document.getElementById('planToggle')
-  const banner = document.getElementById('planBanner')
-  btn.innerHTML = ic(cfg.icon, 14) + `<span class="btn-label"> ${cfg.label}</span>`
-  btn.classList.toggle('active', mode !== 'default')
-  btn.style.color = mode !== 'default' ? cfg.color : ''
-  if (cfg.banner) {
-    banner.classList.add('active')
-    banner.style.background = cfg.bannerBg
-    banner.style.borderColor = cfg.bannerBorder
-    banner.style.color = cfg.color
-    banner.innerHTML = `${ic(cfg.icon, 13)} <span class="plan-label">${cfg.label} Mode</span>`
-  } else {
-    banner.classList.remove('active')
-    banner.innerHTML = ''
-    banner.style = ''
+  if (!silent && tab) {
+    const el = document.createElement('div')
+    el.className = 'msg system-notice'
+    el.innerHTML = `<div class="notice-badge">Mode → ${esc(mode)}</div>`
+    tab.messagesEl.appendChild(el)
+    scrollToBottom(activeTabId)
   }
   updateInputBoxModeColor()
+  renderTabs()
 }
-// backward compat
-function togglePlanMode() { cyclePermissionMode() }
 
 // --- Compacting 表示 ---
 function showCompacting(show) {
@@ -777,11 +898,11 @@ function updateTokenUsage(inputTokens, contextWindow) {
 function triggerCompact() {
   const tab = tabs.get(activeTabId)
   if (!tab?.sessionId) {
-    showToast(`<p>No active session to compact</p>`, 2000)
+    showToast(`<p>${t('toast.noActiveSession')}</p>`, 2000)
     return
   }
   if (tab.sending) {
-    showToast(`<p>Wait for current response to finish</p>`, 2000)
+    showToast(`<p>${t('toast.waitForResponse')}</p>`, 2000)
     return
   }
 
@@ -790,7 +911,7 @@ function triggerCompact() {
 
   const pill = document.getElementById('tokenPill')
   pill.classList.add('compact-running')
-  pill.innerHTML = `${ic('zap', 12)} Compacting...`
+  pill.innerHTML = `${ic('zap', 12)} ${t('compacting')}`
 
   const cwd = currentProject || ''
   const model = document.getElementById('model').value || 'sonnet'
@@ -845,7 +966,7 @@ function pollCompactStatus(sessionId) {
           pill.classList.remove('compact-running')
           showCompactDone('manual', job.preTokens)
           lastInputTokens = 0
-          pill.innerHTML = `${ic('cpu', 12)} compacted`
+          pill.innerHTML = `${ic('cpu', 12)} ${t('compacted')}`
           setTimeout(() => { if (!lastInputTokens) pill.style.display = 'none' }, 5000)
           // キューされたメッセージを自動送信
           flushPendingAfterCompact(activeTabId)
@@ -891,7 +1012,7 @@ function checkCompactJobOnTabSwitch(tab) {
         showCompacting(true)
         pill.style.display = 'flex'
         pill.classList.add('compact-running')
-        pill.innerHTML = `${ic('zap', 12)} Compacting...`
+        pill.innerHTML = `${ic('zap', 12)} ${t('compacting')}`
         pollCompactStatus(tab.sessionId)
       }
     })
@@ -927,7 +1048,7 @@ function renderCmdMenu(filter = '') {
   const filtered = CMD_ITEMS.map((c, i) => ({ ...c, idx: i })).filter(c => !filter || c.name.slice(1).startsWith(filter))
   menu.innerHTML = ''
   if (filtered.length === 0) {
-    menu.innerHTML = '<div class="cmd-item" style="color:var(--muted)">No matching commands</div>'
+    menu.innerHTML = '<div class="cmd-item" style="color:var(--muted)">' + t('noMatchingCommands') + '</div>'
     return
   }
   for (const c of filtered) {
@@ -973,12 +1094,11 @@ function copyLastResponse() {
   const msgs = tab.messagesEl.querySelectorAll('.msg.assistant .content')
   if (msgs.length === 0) return
   const lastContent = msgs[msgs.length - 1]
-  const fullText = tab.fullTexts.get(lastContent)
-  const text = fullText || lastContent.textContent
+  const text = collectSegmentTexts(lastContent, tab)
   navigator.clipboard.writeText(text).then(() => {
-    showToast(`<h3>${ic('check', 16)} Copied!</h3><p>Last response copied to clipboard</p>`, 1500)
+    showToast(`<h3>${ic('check', 16)} ${t('toast.copied')}</h3><p>${t('toast.copiedClipboard')}</p>`, 1500)
   }).catch(() => {
-    showToast(`<h3 style="color:var(--danger)">Copy failed</h3><p>Clipboard access denied</p>`, 2000)
+    showToast(`<h3 style="color:var(--danger)">${t('toast.copyFailed')}</h3><p>${t('toast.clipboardDenied')}</p>`, 2000)
   })
 }
 
@@ -997,12 +1117,14 @@ function exportConversation() {
   const tab = tabs.get(activeTabId)
   if (!tab) return
   const msgs = tab.messagesEl.querySelectorAll('.msg')
-  if (msgs.length === 0) { showToast('<p>No messages to export</p>', 1500); return }
+  if (msgs.length === 0) { showToast(`<p>${t('toast.noMessages')}</p>`, 1500); return }
   let md = `# ${tab.label}\n\n`
   msgs.forEach(msg => {
+    if (msg.classList.contains('interrupt') || msg.classList.contains('system-notice')) return
     const role = msg.classList.contains('user') ? 'User' : 'Assistant'
-    const content = msg.querySelector('.content')
-    const text = tab.fullTexts.get(content) || content.textContent
+    const el = msg.querySelector('.content') || msg.querySelector('.bubble')
+    if (!el) return
+    const text = el.classList.contains('content') ? collectSegmentTexts(el, tab) : el.textContent
     md += `## ${role}\n\n${text}\n\n---\n\n`
   })
   navigator.clipboard.writeText(md).then(() => {
@@ -1013,8 +1135,30 @@ function exportConversation() {
     a.href = URL.createObjectURL(blob)
     a.download = (tab.label || 'chat') + '.md'
     a.click()
-    showToast(`<h3>${ic('check', 16)} Downloaded!</h3>`, 1500)
+    showToast(`<h3>${ic('check', 16)} ${t('toast.downloaded')}</h3>`, 1500)
   })
+}
+
+const MODEL_STORAGE_KEY = 'pocket-cc-model'
+
+function onModelChange() {
+  const model = document.getElementById('model').value
+  localStorage.setItem(MODEL_STORAGE_KEY, model)
+  const tab = tabs.get(activeTabId)
+  if (!tab) return
+  const el = document.createElement('div')
+  el.className = 'msg system-notice'
+  el.innerHTML = `<div class="notice-badge">Model → ${esc(model)}</div>`
+  tab.messagesEl.appendChild(el)
+  scrollToBottom(activeTabId)
+}
+
+function restoreModel() {
+  const saved = localStorage.getItem(MODEL_STORAGE_KEY)
+  if (!saved) return
+  const sel = document.getElementById('model')
+  const opt = [...sel.options].find(o => o.value === saved)
+  if (opt) sel.value = saved
 }
 
 function showStatusToast() {
@@ -1046,7 +1190,7 @@ function clearCurrentTab() {
   tab.messagesEl.innerHTML = ''
   tab.fullTexts = new WeakMap()
   tab.sessionId = null
-  tab.label = 'New Chat'
+  tab.label = t('chat.newChat')
   renderTabs()
   saveTabs()
 }
@@ -1160,7 +1304,8 @@ function createNewTab(label) {
     pendingMessage: null,
     messagesEl,
     fullTexts: new WeakMap(),
-    label: label || 'New Chat',
+    label: label || t('chat.newChat'),
+    permissionMode: 'plan',
   })
 
   renderTabs()
@@ -1170,6 +1315,7 @@ function createNewTab(label) {
 }
 
 function switchTab(tabId) {
+  closeTabActionPanel()
   if (!tabs.has(tabId)) return
   activeTabId = tabId
   tabs.forEach((t, id) => {
@@ -1178,6 +1324,7 @@ function switchTab(tabId) {
   renderTabs()
   const tab = tabs.get(tabId)
   updateStreamingUI(tab.sending)
+  updateInputBoxModeColor()
   saveTabs()
   // タブ切替時にコンパクトジョブ状態を確認
   checkCompactJobOnTabSwitch(tab)
@@ -1211,6 +1358,215 @@ function closeTab(tabId) {
   saveTabs()
 }
 
+// --- タブアクションパネル ---
+let tabPanelOpen = false
+
+function toggleTabActionPanel() {
+  if (tabPanelOpen) { closeTabActionPanel(); return }
+  tabPanelOpen = true
+  document.getElementById('tapOverlay').classList.add('open')
+  document.getElementById('tabActionPanel').classList.add('open')
+  // シェブロンを回転
+  const chev = document.querySelector('.tab.active .tab-chevron')
+  if (chev) chev.classList.add('panel-open')
+  populateTabActionPanel()
+  setTimeout(() => {
+    document.addEventListener('click', _tapOutside)
+    document.addEventListener('keydown', _tapEscape)
+  }, 0)
+}
+
+function closeTabActionPanel() {
+  tabPanelOpen = false
+  document.getElementById('tapOverlay').classList.remove('open')
+  document.getElementById('tabActionPanel').classList.remove('open')
+  document.querySelectorAll('.tab-chevron').forEach(c => c.classList.remove('panel-open'))
+  document.removeEventListener('click', _tapOutside)
+  document.removeEventListener('keydown', _tapEscape)
+}
+
+function _tapOutside(e) {
+  const panel = document.getElementById('tabActionPanel')
+  if (!panel.contains(e.target) && !e.target.closest('.tab.active')) closeTabActionPanel()
+}
+function _tapEscape(e) { if (e.key === 'Escape') closeTabActionPanel() }
+
+const _summaryCache = new Map()
+
+async function fetchSummary(sessionId, project) {
+  const el = document.getElementById('tapSummary')
+  if (!el) return
+
+  const cached = _summaryCache.get(sessionId)
+  if (cached) { el.innerHTML = esc(cached).replace(/\n/g, '<br>'); return }
+
+  try {
+    const res = await fetch(`/api/chat/summary/${encodeURIComponent(sessionId)}?${new URLSearchParams({ project })}`)
+    const data = await res.json()
+    const target = document.getElementById('tapSummary')
+    if (!target) return
+    if (data.summary) {
+      _summaryCache.set(sessionId, data.summary)
+      target.innerHTML = esc(data.summary).replace(/\n/g, '<br>')
+    } else {
+      const tab = tabs.get(activeTabId)
+      const fallback = tab?.label && tab.label !== t('chat.newChat') ? tab.label : '—'
+      target.innerHTML = `<span style="color:var(--muted)">${esc(fallback)}</span>`
+    }
+  } catch {
+    const target = document.getElementById('tapSummary')
+    if (target) target.innerHTML = '<span style="color:var(--muted)">Failed to load</span>'
+  }
+}
+
+const _nameCache = new Map()
+
+async function fetchSuggestName(sessionId, project) {
+  const el = document.getElementById('tapNameSuggest')
+  if (!el) return
+
+  const cached = _nameCache.get(sessionId)
+  if (cached) {
+    renderNameSuggestion(el, cached)
+    return
+  }
+
+  try {
+    const res = await fetch(`/api/chat/suggest-name/${encodeURIComponent(sessionId)}?${new URLSearchParams({ project })}`)
+    const data = await res.json()
+    const target = document.getElementById('tapNameSuggest')
+    if (!target) return
+    if (data.name) {
+      _nameCache.set(sessionId, data.name)
+      renderNameSuggestion(target, data.name)
+    } else {
+      target.innerHTML = `<span style="color:var(--muted)">—</span>`
+    }
+  } catch {
+    const target = document.getElementById('tapNameSuggest')
+    if (target) target.innerHTML = `<span style="color:var(--muted)">—</span>`
+  }
+}
+
+function renderNameSuggestion(el, name) {
+  el.innerHTML = `
+    <span class="tap-name-row">
+      <span class="tap-name-suggest">${esc(name)}</span>
+      <button class="tap-name-apply" onclick="applyNameSuggestion('${esc(name).replace(/'/g, "\\'")}')">Apply</button>
+      <button class="tap-name-edit" onclick="editNameSuggestion('${esc(name).replace(/'/g, "\\'")}')">Edit</button>
+    </span>
+  `
+}
+
+function applyNameSuggestion(name) {
+  const tab = tabs.get(activeTabId)
+  if (!tab) return
+  tab.label = name
+  renderTabs()
+  saveTabs()
+  closeTabActionPanel()
+}
+
+function editNameSuggestion(prefill) {
+  closeTabActionPanel()
+  const tab = tabs.get(activeTabId)
+  if (!tab) return
+  const name = prompt('Session name:', prefill)
+  if (name && name.trim()) {
+    tab.label = name.trim()
+    renderTabs()
+    saveTabs()
+  }
+}
+
+function populateTabActionPanel() {
+  const tab = tabs.get(activeTabId)
+  if (!tab) return
+
+  const sid = tab.sessionId
+  const msgCount = tab.messagesEl.querySelectorAll('.msg').length
+  let status = 'idle'
+  if (tab.compacting) status = 'compacting'
+  else if (tab.sending) status = 'streaming'
+  const sClass = status === 'idle' ? 's-idle' : 's-active'
+
+  const info = document.getElementById('tapInfo')
+  info.innerHTML = `
+    <div class="tap-field">
+      <span class="tap-label">Session</span>
+      <span class="tap-val ${sid ? 'muted' : ''}">${sid ? esc(sid) : 'New'}</span>
+      <button class="tap-dismiss" onclick="closeTabActionPanel()" title="Close panel">${ic('x', 14)}</button>
+    </div>
+    <div class="tap-field">
+      <span class="tap-label">Messages</span>
+      <span class="tap-val">${msgCount}</span>
+    </div>
+    <div class="tap-field">
+      <span class="tap-label">Status</span>
+      <span class="tap-val"><span class="tap-status ${sClass}">${status}</span></span>
+    </div>
+    ${sid ? `<div class="tap-field" style="align-items:flex-start">
+      <span class="tap-label">Summary</span>
+      <span class="tap-val tap-summary" id="tapSummary"><span class="typing-dots"><span></span><span></span><span></span></span></span>
+    </div>` : ''}
+    ${sid ? `<div class="tap-field">
+      <span class="tap-label">Name</span>
+      <span class="tap-val" id="tapNameSuggest"><span class="typing-dots" style="display:inline-flex"><span></span><span></span><span></span></span></span>
+    </div>` : ''}
+  `
+
+  // サマリー + 名前提案の非同期取得
+  if (sid && currentProject) {
+    fetchSummary(sid, currentProject)
+    fetchSuggestName(sid, currentProject)
+  }
+
+  // モードセレクター（前回のものを除去）
+  document.querySelectorAll('#tabActionPanel .tap-mode-section').forEach(el => el.remove())
+  const modeSection = document.createElement('div')
+  modeSection.className = 'tap-mode-section'
+  const currentMode = tab.permissionMode || 'plan'
+  modeSection.innerHTML = '<div class="tap-mode-label">MODE</div>'
+  const modeRow = document.createElement('div')
+  modeRow.className = 'tap-mode-row'
+  for (const m of ['plan', 'default', 'auto-accept', 'yolo']) {
+    const cfg = PERM_MODES[m]
+    const btn = document.createElement('button')
+    btn.className = 'tap-mode-btn' + (m === currentMode ? ' active' : '')
+    btn.style.setProperty('--mode-btn-color', cfg.color)
+    btn.innerHTML = ic(cfg.icon, 12) + ' ' + cfg.label
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      setPermissionMode(m)
+      modeRow.querySelectorAll('.tap-mode-btn').forEach(b => b.classList.remove('active'))
+      btn.classList.add('active')
+    })
+    modeRow.appendChild(btn)
+  }
+  modeSection.appendChild(modeRow)
+  const panel = document.getElementById('tabActionPanel')
+  panel.insertBefore(modeSection, document.getElementById('tapActions'))
+
+  // アクションボタン
+  const actions = [
+    { icon: 'list-checks', label: 'Sessions', fn: () => { closeTabActionPanel(); openDrawer('sessions') } },
+    { icon: 'refresh-cw', label: 'Refresh', fn: () => { closeTabActionPanel(); refreshActiveTab() }, disabled: !sid || tab.sending },
+    { icon: 'eraser', label: 'Clear', fn: () => { closeTabActionPanel(); clearCurrentTab() } },
+    { icon: 'trash-2', label: 'Close Tab', fn: () => { closeTabActionPanel(); closeTab(activeTabId) }, danger: true, hidden: tabs.size <= 1 },
+  ]
+  const container = document.getElementById('tapActions')
+  container.innerHTML = ''
+  for (const a of actions) {
+    if (a.hidden) continue
+    const btn = document.createElement('button')
+    btn.className = 'tap-action-btn' + (a.danger ? ' danger' : '')
+    btn.disabled = !!a.disabled
+    btn.innerHTML = `${ic(a.icon, 14)} ${a.label}`
+    btn.addEventListener('click', (e) => { e.stopPropagation(); a.fn() })
+    container.appendChild(btn)
+  }
+}
+
 function renderTabs() {
   const addBtn = tabBar.querySelector('.tab-add')
   tabBar.querySelectorAll('.tab').forEach(t => t.remove())
@@ -1218,20 +1574,25 @@ function renderTabs() {
   tabs.forEach((tab, tabId) => {
     const el = document.createElement('div')
     el.className = 'tab' + (tabId === activeTabId ? ' active' : '')
-    el.onclick = (e) => { if (!e.target.closest('.tab-close')) switchTab(tabId) }
+    el.onclick = (e) => {
+      if (e.target.closest('.tab-close')) return
+      if (tabId === activeTabId) { toggleTabActionPanel() }
+      else { closeTabActionPanel(); switchTab(tabId) }
+    }
 
+    const modeColor = PERM_MODES[tab.permissionMode || 'plan'].color
     let inner = ''
-    if (tab.sending) inner += '<span class="tab-streaming"></span>'
+    if (tab.sending) inner += `<span class="tab-dot streaming" style="--tab-mode-color:${modeColor}"></span>`
     inner += `<span class="tab-label">${esc(tab.label)}</span>`
+    if (tabId === activeTabId) inner += `<span class="tab-chevron">${ic('chevron-down', 10)}</span>`
+    el.innerHTML = inner
+
     if (tabs.size > 1) {
       const closeSpan = document.createElement('span')
       closeSpan.className = 'tab-close'
       closeSpan.innerHTML = ic('x', 11)
       closeSpan.addEventListener('click', (e) => { e.stopPropagation(); closeTab(tabId) })
-      el.innerHTML = inner
       el.appendChild(closeSpan)
-    } else {
-      el.innerHTML = inner
     }
     tabBar.insertBefore(el, addBtn)
   })
@@ -1240,7 +1601,7 @@ function renderTabs() {
 function updateTabLabel(tabId, label) {
   const tab = tabs.get(tabId)
   if (tab) {
-    tab.label = label.slice(0, 30) || 'New Chat'
+    tab.label = label.slice(0, 30) || t('chat.newChat')
     renderTabs()
     saveTabs()
   }
@@ -1256,7 +1617,8 @@ function updateStreamingUI(streaming) {
 }
 
 function updateInputBoxModeColor() {
-  const cfg = PERM_MODES[permissionMode]
+  const mode = getActivePermissionMode()
+  const cfg = PERM_MODES[mode]
   document.querySelector('.input-box').style.setProperty('--mode-color', cfg.color)
 }
 
@@ -1282,6 +1644,9 @@ function abortCurrentTab() {
 let cachedProjects = []
 
 async function init() {
+  // localStorageからモデル選択を復元
+  restoreModel()
+
   // localStorageからタブ・プロジェクト・Permission Modeを復元
   const restored = restoreTabs()
 
@@ -1428,6 +1793,48 @@ function openDrawer(tab) {
 }
 function closeDrawer() { document.getElementById('drawer').classList.remove('open') }
 
+// --- Settings Panel ---
+// --- Features Menu ---
+function toggleFeaturesMenu() {
+  const menu = document.getElementById('featuresMenu')
+  const isOpen = menu.classList.toggle('open')
+  if (isOpen) {
+    // 外クリックで閉じる
+    setTimeout(() => document.addEventListener('click', _closeFeaturesOnOutside, { once: true }), 0)
+  }
+}
+function closeFeaturesMenu() {
+  document.getElementById('featuresMenu').classList.remove('open')
+}
+function _closeFeaturesOnOutside(e) {
+  if (!e.target.closest('.features-menu') && !e.target.closest('#featuresBtn')) {
+    closeFeaturesMenu()
+  } else if (document.getElementById('featuresMenu').classList.contains('open')) {
+    document.addEventListener('click', _closeFeaturesOnOutside, { once: true })
+  }
+}
+
+function openSettingsPanel() {
+  document.getElementById('settingsOverlay').classList.add('open')
+  updateSettingsThemeBtn()
+  updateSettingsLangBtn()
+}
+function closeSettingsPanel() {
+  document.getElementById('settingsOverlay').classList.remove('open')
+}
+function updateSettingsThemeBtn() {
+  const btn = document.getElementById('settingsThemeBtn')
+  if (!btn) return
+  const isDark = (document.documentElement.dataset.theme || 'dark') === 'dark'
+  btn.innerHTML = isDark ? ic('sun', 14) + ' Light' : ic('moon', 14) + ' Dark'
+}
+function updateSettingsLangBtn() {
+  const btn = document.getElementById('settingsLangBtn')
+  if (!btn) return
+  const lang = window.getCurrentLang ? window.getCurrentLang() : 'en'
+  btn.textContent = lang === 'ja' ? 'English' : '日本語'
+}
+
 function switchDrawerTab(tab) {
   document.querySelectorAll('.drawer-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab))
   ;['sessions', 'projects', 'files', 'git', 'services', 'tools', 'links'].forEach(id => {
@@ -1508,7 +1915,7 @@ function renderSessionList(list, total, append) {
   const container = document.getElementById('sessionList')
   if (!append) {
     if (list.length === 0) {
-      container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">No sessions yet</div>'
+      container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">' + t('noSessions') + '</div>'
       return
     }
     container.innerHTML = ''
@@ -1563,6 +1970,18 @@ function findTabBySessionId(sessionId) {
   return null
 }
 
+// --- アクティブタブリフレッシュ ---
+async function refreshActiveTab() {
+  const tab = tabs.get(activeTabId)
+  if (!tab?.sessionId || tab.sending) return
+
+  tab._historyLoaded = false
+  tab.messagesEl.innerHTML = ''
+  tab.fullTexts = new WeakMap()
+
+  await loadSessionHistory(activeTabId)
+}
+
 // --- 会話履歴の読み込み・描画 ---
 async function loadSessionHistory(tabId) {
   const tab = tabs.get(tabId)
@@ -1572,7 +1991,7 @@ async function loadSessionHistory(tabId) {
   tab.messagesEl.innerHTML = ''
   const loading = document.createElement('div')
   loading.className = 'typing'
-  loading.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div> Loading history...'
+  loading.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div> ' + t('loadingHistory')
   tab.messagesEl.appendChild(loading)
 
   try {
@@ -1616,12 +2035,11 @@ function renderHistoryMessages(tabId, messages) {
         currentAssistantEl = addMessage(tabId, 'assistant', '')
         currentContent = currentAssistantEl.querySelector('.content')
       }
-      const existingText = tab.fullTexts.get(currentContent) || ''
+      const seg = getCurrentTextSegment(currentContent, tab)
+      const existingText = tab.fullTexts.get(seg) || ''
       const newText = existingText + (existingText ? '\n\n' : '') + (msg.text || '')
-      tab.fullTexts.set(currentContent, newText)
-      const preserved = currentContent.querySelectorAll('.tool-detail')
-      const preservedHTML = Array.from(preserved).map(el => el.outerHTML).join('')
-      currentContent.innerHTML = preservedHTML + marked.parse(newText)
+      tab.fullTexts.set(seg, newText)
+      seg.innerHTML = marked.parse(newText)
     }
     else if (msg.role === 'assistant' && msg.type === 'tool_use') {
       if (!currentAssistantEl) {
@@ -1685,7 +2103,7 @@ async function sendMessage() {
     autoResize()
     const banner = document.getElementById('compactBanner')
     banner.classList.add('active')
-    banner.innerHTML = `${ic('zap', 13)} <span>Compacting... message queued, will send after</span>`
+    banner.innerHTML = `${ic('zap', 13)} <span>${t('compacting')} message queued, will send after</span>`
     return
   }
 
@@ -1717,7 +2135,7 @@ async function sendMessage() {
   inputEl.value = ''
   autoResize()
 
-  if (tab.label === 'New Chat') {
+  if (tab.label === t('chat.newChat')) {
     updateTabLabel(activeTabId, cleanLabel(raw) || 'File upload')
   }
 
@@ -1742,7 +2160,7 @@ async function sendMessage() {
         project: currentProject,
         sessionId: tab.sessionId,
         model: document.getElementById('model').value,
-        permissionMode,
+        permissionMode: tab.permissionMode || 'plan',
         images: fileImages.length > 0 ? fileImages : undefined,
       }),
       signal: fetchController.signal,
@@ -1779,7 +2197,7 @@ async function sendMessage() {
       // 割り込み中断: タイピングドットを削除、コンテンツが空なら要素ごと削除
       const typing = content.querySelector('.typing')
       if (typing) typing.remove()
-      if (!content.textContent.trim() && !content.querySelector('.tool-detail')) {
+      if (!content.querySelector('.text-segment') && !content.querySelector('.tool-detail') && !content.querySelector('.warning-badge')) {
         assistantEl.remove()
       }
       addInterruptIndicator(tabId)
@@ -1797,6 +2215,28 @@ async function sendMessage() {
   scrollToBottom(tabId)
 }
 
+// --- テキストセグメント管理 ---
+// contentの最後の子要素が.text-segmentならそれを返し、なければ新規作成してappend
+function getCurrentTextSegment(content, tab) {
+  const lastChild = content.lastElementChild
+  if (lastChild && lastChild.classList.contains('text-segment')) {
+    return lastChild
+  }
+  const seg = document.createElement('div')
+  seg.className = 'text-segment'
+  content.appendChild(seg)
+  return seg
+}
+
+// --- テキストセグメントからマークダウンテキストを収集 ---
+function collectSegmentTexts(content, tab) {
+  const segments = content.querySelectorAll('.text-segment')
+  if (segments.length > 0) {
+    return Array.from(segments).map(seg => tab.fullTexts.get(seg) || seg.textContent).join('\n\n')
+  }
+  return content.textContent
+}
+
 function handleSSE(tabId, event, data, content, msgEl) {
   const tab = tabs.get(tabId)
   if (!tab) return
@@ -1805,11 +2245,9 @@ function handleSSE(tabId, event, data, content, msgEl) {
     const typing = content.querySelector('.typing')
     if (typing) typing.remove()
 
-    if (!tab.fullTexts.has(content)) tab.fullTexts.set(content, '')
-    tab.fullTexts.set(content, tab.fullTexts.get(content) + data)
-    const preserved = content.querySelectorAll('.tool-detail, .warning-badge')
-    const preservedHTML = Array.from(preserved).map(el => el.outerHTML).join('')
-    content.innerHTML = preservedHTML + marked.parse(tab.fullTexts.get(content))
+    const seg = getCurrentTextSegment(content, tab)
+    tab.fullTexts.set(seg, (tab.fullTexts.get(seg) || '') + data)
+    seg.innerHTML = marked.parse(tab.fullTexts.get(seg))
     scrollToBottom(tabId)
   }
 
@@ -1818,9 +2256,7 @@ function handleSSE(tabId, event, data, content, msgEl) {
       const info = JSON.parse(data)
       if (info.status === 'input' && info.detail) {
         const panel = createToolDetailPanel(info.detail)
-        const firstText = content.querySelector('p, h1, h2, h3, ul, ol, pre, blockquote, table')
-        if (firstText) firstText.before(panel)
-        else content.prepend(panel)
+        content.appendChild(panel)
         scrollToBottom(tabId)
       }
       if (info.status === 'output' && info.detail) {
@@ -1867,9 +2303,13 @@ function handleSSE(tabId, event, data, content, msgEl) {
   if (event === 'result') {
     try {
       const r = JSON.parse(data)
-      if (r.sessionId) { tab.sessionId = r.sessionId; saveTabs() }
-      if (r.text && !tab.fullTexts.has(content)) {
-        content.innerHTML = marked.parse(r.text)
+      if (r.sessionId) { tab.sessionId = r.sessionId; _summaryCache.delete(r.sessionId); _nameCache.delete(r.sessionId); saveTabs() }
+      if (r.text && !content.querySelector('.text-segment')) {
+        const seg = document.createElement('div')
+        seg.className = 'text-segment'
+        seg.innerHTML = marked.parse(r.text)
+        content.appendChild(seg)
+        tab.fullTexts.set(seg, r.text)
       }
       if (r.cost) sessionTotalCost += r.cost
       if (r.turns) sessionTotalTurns += r.turns
@@ -1899,8 +2339,12 @@ function handleSSE(tabId, event, data, content, msgEl) {
         showCompacting(true)
         if (tab) tab.compacting = true
       }
-      if (s.permissionMode) {
-        setPermissionMode(s.permissionMode === 'plan' ? 'plan' : s.permissionMode === 'auto-accept' ? 'auto-accept' : 'default')
+      if (s.permissionMode && tab) {
+        const mode = s.permissionMode === 'plan' ? 'plan' : s.permissionMode === 'auto-accept' ? 'auto-accept' : 'default'
+        tab.permissionMode = mode
+        if (tabId === activeTabId) updateInputBoxModeColor()
+        renderTabs()
+        saveTabs()
       }
     } catch {}
   }
@@ -2019,7 +2463,7 @@ function cleanUserMessage(raw) {
   t = t.replace(/^The user opened the file\b.*$/gm, '')
   t = t.replace(/^The user's IDE selection.*$/gm, '')
   t = t.replace(/^This (may or may not|is|represents).*$/gm, '')
-  t = t.replace(/\s+/g, ' ').trim()
+  t = t.replace(/[^\S\n]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
   return t || null
 }
 
@@ -2028,7 +2472,7 @@ function addInterruptIndicator(tabId) {
   if (!tab) return
   const el = document.createElement('div')
   el.className = 'msg interrupt'
-  el.innerHTML = `<div class="interrupt-badge"><svg width="12" height="12" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="14" height="14" rx="3" stroke="currentColor" stroke-width="1.5"/><rect x="5" y="5" width="6" height="6" rx="1" fill="currentColor"/></svg>Request interrupted</div>`
+  el.innerHTML = `<div class="interrupt-badge"><svg width="12" height="12" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="14" height="14" rx="3" stroke="currentColor" stroke-width="1.5"/><rect x="5" y="5" width="6" height="6" rx="1" fill="currentColor"/></svg>${t('requestInterrupted')}</div>`
   tab.messagesEl.appendChild(el)
   scrollToBottom(tabId)
   return el
@@ -2130,7 +2574,7 @@ if (isTouchDevice) {
 // =====================================================
 async function loadTools() {
   const container = document.getElementById('toolsList')
-  container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">Loading...</div>'
+  container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">' + t('loading') + '</div>'
   try {
     const [mcpRes, skillsRes] = await Promise.all([
       fetch('/api/mcp' + (currentProject ? '?project=' + encodeURIComponent(currentProject) : '')),
@@ -2191,12 +2635,12 @@ async function loadTools() {
 // =====================================================
 async function loadServices() {
   const container = document.getElementById('servicesList')
-  container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">Loading...</div>'
+  container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">' + t('loading') + '</div>'
   try {
     const res = await fetch('/api/processes')
     const data = await res.json()
     if (!data.items || data.items.length === 0) {
-      container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">No listening services found</div>'
+      container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">' + t('noServicesFound') + '</div>'
       return
     }
     container.innerHTML = ''
@@ -2204,7 +2648,7 @@ async function loadServices() {
     const localOnly = data.items.filter(p => !p.accessible)
 
     if (accessible.length === 0 && localOnly.length === 0) {
-      container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">No listening services found</div>'
+      container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">' + t('noServicesFound') + '</div>'
       return
     }
 
@@ -2247,7 +2691,7 @@ async function loadServices() {
 // =====================================================
 // Links (ブックマーク)
 // =====================================================
-const LINKS_STORAGE_KEY = 'claude-crew-links'
+const LINKS_STORAGE_KEY = 'pocket-cc-links'
 const DEFAULT_LINKS = [
   { title: 'Claude Usage', url: 'https://claude.ai/settings/usage' },
   { title: 'ChatGPT Codex Usage', url: 'https://chatgpt.com/codex/settings/usage' },
@@ -2270,7 +2714,7 @@ function loadLinks() {
   const links = getLinks()
   container.innerHTML = ''
   if (links.length === 0) {
-    container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">No links yet</div>'
+    container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">' + t('noLinksYet') + '</div>'
     return
   }
   links.forEach((link, idx) => {
@@ -2333,7 +2777,7 @@ async function loadFileTree(path) {
   const container = document.getElementById('fileTree')
   const dirPath = path || currentProject
   if (!dirPath) {
-    container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">No project selected</div>'
+    container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">' + t('noProjectSelected') + '</div>'
     return
   }
   fileTreePath = dirPath
@@ -2341,7 +2785,7 @@ async function loadFileTree(path) {
   const pathLabel = document.getElementById('fileCurrentPath')
   const relPath = dirPath.replace(currentProject, '').replace(/^\//, '') || '/'
   pathLabel.textContent = relPath
-  container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px">Loading...</div>'
+  container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px">' + t('loading') + '</div>'
   try {
     const res = await fetch('/api/files?path=' + encodeURIComponent(dirPath))
     const data = await res.json()
@@ -2381,7 +2825,7 @@ async function loadFileTree(path) {
       container.appendChild(el)
     })
   } catch (e) {
-    container.innerHTML = `<div style="color:var(--danger);font-size:13px;padding:8px">Error loading files</div>`
+    container.innerHTML = `<div style="color:var(--danger);font-size:13px;padding:8px">${t('errorLoadingFiles')}</div>`
   }
 }
 
@@ -2407,7 +2851,7 @@ function onFileSearch() {
       const data = await res.json()
       resultsEl.style.display = 'block'
       if (!data.items || data.items.length === 0) {
-        resultsEl.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:4px">No matches</div>'
+        resultsEl.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:4px">' + t('noMatches') + '</div>'
         return
       }
       resultsEl.innerHTML = ''
@@ -2438,7 +2882,7 @@ async function openSourceViewer(filePath, fileName) {
   const title = document.getElementById('sourceViewerTitle')
   const code = document.getElementById('sourceViewerCode')
   title.textContent = fileName || filePath.split('/').pop()
-  code.textContent = 'Loading...'
+  code.textContent = t('loading')
   viewer.style.display = 'block'
 
   try {
@@ -2459,7 +2903,7 @@ async function openSourceViewer(filePath, fileName) {
       currentSourceContent = data.content
     }
   } catch (e) {
-    code.textContent = 'Failed to load file'
+    code.textContent = t('failedToLoadFile')
     currentSourceContent = ''
   }
 }
@@ -2483,10 +2927,10 @@ function copySourceContent() {
 async function loadGitStatus() {
   const container = document.getElementById('gitStatus')
   if (!currentProject) {
-    container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">No project selected</div>'
+    container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">' + t('noProjectSelected') + '</div>'
     return
   }
-  container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">Loading...</div>'
+  container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">' + t('loading') + '</div>'
   try {
     const res = await fetch('/api/git/status?project=' + encodeURIComponent(currentProject))
     const data = await res.json()
@@ -2558,7 +3002,7 @@ async function loadGitStatus() {
     if (branchToggle) branchToggle.addEventListener('click', () => toggleBranchList())
     updateGitBar(data)
   } catch (e) {
-    container.innerHTML = `<div style="color:var(--danger);font-size:13px;padding:16px">Failed to load Git status</div>`
+    container.innerHTML = `<div style="color:var(--danger);font-size:13px;padding:16px">${t('failedToLoadGit')}</div>`
   }
 }
 
