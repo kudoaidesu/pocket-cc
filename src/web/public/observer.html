@@ -29,9 +29,9 @@ svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:ro
 .header-back{background:none;border:none;color:var(--muted);cursor:pointer;padding:8px;display:flex;align-items:center;border-radius:6px;transition:all .15s}
 .header-back:hover{color:var(--text);background:var(--surface-hover)}
 .header-back svg.ic{font-size:18px}
-.header-title{flex:1;font-weight:700;font-size:14px;font-family:var(--font-mono);color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.header-sub{font-size:11px;color:var(--muted);font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px}
-.project-select{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;font-family:var(--font-mono);cursor:pointer;max-width:140px;min-height:36px}
+.header-title{flex:1;font-weight:700;font-size:14px;color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.header-sub{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px}
+.project-select{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;cursor:pointer;max-width:140px;min-height:36px}
 .project-select:focus{outline:none;border-color:var(--accent)}
 .header-refresh{background:none;border:none;color:var(--muted);cursor:pointer;padding:8px;display:flex;align-items:center;border-radius:6px;transition:all .15s}
 .header-refresh:hover{color:var(--text);background:var(--surface-hover)}
@@ -52,7 +52,7 @@ svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:ro
 .depth-bar .bar{width:4px;height:12px;border-radius:2px;background:var(--muted)}
 .depth-bar .bar.active{background:var(--accent)}
 .depth-bar .bar.child{background:var(--blue)}
-.load-more{display:block;width:100%;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-family:var(--font-mono);font-size:13px;cursor:pointer;text-align:center;margin-top:8px;transition:all .15s}
+.load-more{display:block;width:100%;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:13px;cursor:pointer;text-align:center;margin-top:8px;transition:all .15s}
 .load-more:hover{color:var(--text);border-color:var(--accent-border)}
 
 /* ── Level 2: ツリービュー ── */
@@ -62,7 +62,7 @@ svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:ro
 .node-meta{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);font-family:var(--font-mono);flex-wrap:wrap}
 .node-meta span{display:inline-flex;align-items:center;gap:3px}
 
-.tree-section-title{font-size:12px;color:var(--muted);font-family:var(--font-mono);margin-bottom:10px;padding:0 4px;display:flex;align-items:center;gap:8px}
+.tree-section-title{font-size:12px;color:var(--muted);margin-bottom:10px;padding:0 4px;display:flex;align-items:center;gap:8px}
 .tree-section-title::after{content:'';flex:1;height:1px;background:var(--border)}
 
 .tree-children{border-left:2px solid var(--border);margin-left:8px;padding-left:0}
@@ -76,7 +76,7 @@ svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:ro
 .child-label .node-label{font-size:13px;color:var(--text-bright);font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* subagent type バッジ */
-.type-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;font-family:var(--font-mono);flex-shrink:0}
+.type-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;flex-shrink:0}
 .type-badge.explore{background:var(--blue-bg);color:var(--blue)}
 .type-badge.plan{background:var(--accent-dim);color:var(--accent)}
 .type-badge.code,.type-badge.general-purpose{background:var(--success-bg);color:var(--success)}
@@ -88,7 +88,7 @@ svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:ro
 /* ── Level 3: ノード詳細 ── */
 .layer-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .layer-tabs::-webkit-scrollbar{display:none}
-.layer-tab{flex:1;min-width:0;padding:10px 6px;text-align:center;font-size:12px;font-family:var(--font-mono);color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .1s;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+.layer-tab{flex:1;min-width:0;padding:10px 6px;text-align:center;font-size:12px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .1s;white-space:nowrap;-webkit-tap-highlight-color:transparent}
 .layer-tab:hover{color:var(--text);background:var(--surface-hover)}
 .layer-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
 .layer-tab.refreshing{opacity:.5;pointer-events:none}
@@ -107,12 +107,12 @@ svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:ro
 .context-breadcrumb .crumb{color:var(--text);cursor:pointer;text-decoration:underline;text-decoration-color:var(--border);text-underline-offset:2px}
 .context-breadcrumb .crumb:hover{color:var(--accent);text-decoration-color:var(--accent)}
 .context-breadcrumb .sep{color:var(--muted);font-size:10px}
-.node-type-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;font-family:var(--font-mono)}
+.node-type-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
 .node-type-badge.root{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-border)}
 .node-type-badge.subagent{background:var(--blue-bg);color:var(--blue);border:1px solid rgba(137,180,250,.25)}
 .parent-instruction{margin:12px 16px 0;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;border-left:3px solid var(--accent)}
-.parent-instruction-label{font-size:10px;font-family:var(--font-mono);color:var(--accent);text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:4px}
-.parent-instruction-label .translate-btn{margin-left:auto;font-size:10px;font-family:var(--font-mono);background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:1px 7px;cursor:pointer;transition:all .15s;text-transform:none}
+.parent-instruction-label{font-size:10px;color:var(--accent);text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:4px}
+.parent-instruction-label .translate-btn{margin-left:auto;font-size:10px;background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:1px 7px;cursor:pointer;transition:all .15s;text-transform:none}
 .parent-instruction-label .translate-btn:hover{color:var(--accent);border-color:var(--accent-border)}
 .parent-instruction-label .translate-btn:disabled{opacity:.5;cursor:default}
 .parent-instruction-text{font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap;word-break:break-word;max-height:200px;overflow-y:auto}
@@ -148,17 +148,17 @@ svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:ro
 
 /* Layer 5: Governance */
 .gov-section{margin-bottom:16px}
-.gov-title{font-size:12px;font-family:var(--font-mono);color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.gov-title{font-size:12px;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:6px}
 .gov-item{padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;font-size:12px;font-family:var(--font-mono)}
 .gov-item.danger{border-color:rgba(243,139,168,.3);background:var(--danger-bg)}
 .gov-item.danger .gov-label{color:var(--danger)}
-.gov-clean{display:flex;align-items:center;gap:8px;padding:16px;color:var(--success);font-family:var(--font-mono);font-size:13px}
+.gov-clean{display:flex;align-items:center;gap:8px;padding:16px;color:var(--success);font-size:13px}
 
 /* ── ローディング ── */
 .skeleton{background:linear-gradient(90deg,var(--surface) 25%,var(--surface-hover) 50%,var(--surface) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:8px;height:80px;margin-bottom:10px}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
-.empty-state{text-align:center;padding:40px 20px;color:var(--muted);font-family:var(--font-mono);font-size:13px}
+.empty-state{text-align:center;padding:40px 20px;color:var(--muted);font-size:13px}
 .empty-state svg.ic{font-size:32px;margin-bottom:12px;display:block;margin:0 auto 12px}
 
 /* ── レスポンシブ ── */
@@ -170,6 +170,22 @@ svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:ro
   .layer-tab .tab-label{font-size:10px}
   .conv-msg.user{margin-left:10%}
 }
+
+/* ── ライトテーマ (Catppuccin Latte) ── */
+[data-theme="light"]{
+  --bg:#eff1f5;--surface:#ffffff;--surface-hover:#f2f4f8;
+  --border:#dce0e8;--border-light:#ccd0da;
+  --text:#4c4f69;--text-bright:#1e1e2e;--muted:#8c8fa1;
+  --accent:#8839ef;--accent-dim:rgba(136,57,239,.08);--accent-border:rgba(136,57,239,.2);
+  --warning:#df8e1d;--warning-bg:rgba(223,142,29,.08);
+  --danger:#d20f39;--danger-bg:rgba(210,15,57,.06);
+  --success:#40a02b;--success-bg:rgba(64,160,43,.06);
+  --blue:#1e66f5;--blue-bg:rgba(30,102,245,.08);
+  --font-sans:-apple-system,system-ui,'Segoe UI','Helvetica Neue',sans-serif;
+  --font-mono:'SF Mono',Menlo,'Cascadia Code','JetBrains Mono',Consolas,monospace;
+}
+[data-theme="light"] .session-card{box-shadow:0 1px 3px rgba(0,0,0,.06)}
+[data-theme="light"] .skeleton{background:linear-gradient(90deg,#e6e9ef 25%,#f2f4f8 50%,#e6e9ef 75%);background-size:200% 100%}
 </style>
 </head>
 <body>
@@ -189,23 +205,23 @@ svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:ro
 <div class="layer-tabs" id="layerTabs" style="display:none">
   <div class="layer-tab active" data-layer="interface" onclick="switchLayer('interface')">
     <span class="tab-icon"><svg class="ic" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6"/><path d="M12 19h8"/></svg></span>
-    <span class="tab-label">受付</span>
+    <span class="tab-label" data-i18n="obs.tab.interface">受付</span>
   </div>
   <div class="layer-tab" data-layer="orchestration" onclick="switchLayer('orchestration')">
     <span class="tab-icon"><svg class="ic" viewBox="0 0 24 24"><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg></span>
-    <span class="tab-label">指揮</span>
+    <span class="tab-label" data-i18n="obs.tab.orchestration">指揮</span>
   </div>
   <div class="layer-tab" data-layer="execution" onclick="switchLayer('execution')">
     <span class="tab-icon"><svg class="ic" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76Z"/></svg></span>
-    <span class="tab-label">実行</span>
+    <span class="tab-label" data-i18n="obs.tab.execution">実行</span>
   </div>
   <div class="layer-tab" data-layer="state" onclick="switchLayer('state')">
     <span class="tab-icon"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
-    <span class="tab-label">状態</span>
+    <span class="tab-label" data-i18n="obs.tab.state">状態</span>
   </div>
   <div class="layer-tab" data-layer="governance" onclick="switchLayer('governance')">
     <span class="tab-icon"><svg class="ic" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg></span>
-    <span class="tab-label">監査</span>
+    <span class="tab-label" data-i18n="obs.tab.governance">監査</span>
   </div>
 </div>
 
@@ -213,11 +229,23 @@ svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:ro
 
 <div class="main" id="main"></div>
 
+<script src="/static/theme.js"></script>
+<script src="/static/i18n.js"></script>
 <script>
 // ── State ─────────────────────────────────────
 const navStack = [] // [{level, sessionId?, agentId?, label?}]
 let currentProject = ''
 let sessions = []
+
+window.addEventListener('langchange', function() {
+  // Re-render current view to apply translations
+  var state = navStack[navStack.length - 1]
+  if (state) {
+    if (state.level === 'sessions') loadSessions()
+    else if (state.level === 'tree') loadTree(state.sessionId)
+    else if (state.level === 'detail') loadDetail(state.sessionId, state.agentId)
+  }
+})
 
 // ── Icons ─────────────────────────────────────
 const ICONS = {
@@ -426,7 +454,7 @@ function render(state) {
       renderSessions()
       break
     case 'tree':
-      headerTitle.textContent = 'Session Tree'
+      headerTitle.textContent = t('obs.sessionTree')
       headerSub.textContent = state.sessionId?.slice(0, 8) + '...'
       renderTree(state.sessionId)
       break
@@ -449,7 +477,7 @@ async function renderSessions() {
     sessions = data.items || []
 
     if (sessions.length === 0) {
-      main.innerHTML = `<div class="empty-state">${ic('inbox', 32)}<div>セッションが見つかりません</div></div>`
+      main.innerHTML = `<div class="empty-state">${ic('inbox', 32)}<div>${t('obs.noSessions')}</div></div>`
       return
     }
 
@@ -475,7 +503,7 @@ async function renderSessions() {
       </div>`
     }).join('')
   } catch (e) {
-    main.innerHTML = `<div class="empty-state">${ic('alert-triangle', 32)}<div>読み込みエラー: ${esc(e.message)}</div></div>`
+    main.innerHTML = `<div class="empty-state">${ic('alert-triangle', 32)}<div>${t('obs.loadError')}: ${esc(e.message)}</div></div>`
   }
 }
 
@@ -512,7 +540,7 @@ async function renderTree(sessionId) {
 
     // Children
     if (tree.children && tree.children.length > 0) {
-      html += `<div class="tree-section-title">Subagents (${tree.children.length})</div>`
+      html += `<div class="tree-section-title">${t('obs.subagents')} (${tree.children.length})</div>`
       html += '<div class="tree-children">'
       for (const child of tree.children) {
         const typeClass = badgeClass(child.subagentType)
@@ -537,7 +565,7 @@ async function renderTree(sessionId) {
 
     main.innerHTML = html
   } catch (e) {
-    main.innerHTML = `<div class="empty-state">${ic('alert-triangle', 32)}<div>ツリー読み込みエラー</div></div>`
+    main.innerHTML = `<div class="empty-state">${ic('alert-triangle', 32)}<div>${t('obs.treeLoadError')}</div></div>`
   }
 }
 
@@ -566,7 +594,7 @@ async function renderDetail(sessionId, agentId, keepLayer) {
     updateLayerTabCounts()
     renderLayer(currentLayer)
   } catch (e) {
-    main.innerHTML = `<div class="empty-state">${ic('alert-triangle', 32)}<div>詳細読み込みエラー</div></div>`
+    main.innerHTML = `<div class="empty-state">${ic('alert-triangle', 32)}<div>${t('obs.detailLoadError')}</div></div>`
   }
 }
 
@@ -581,19 +609,19 @@ async function toggleTranslation() {
 
   if (_showingTranslation) {
     textEl.textContent = _originalInstruction
-    btn.textContent = '翻訳'
+    btn.textContent = t('obs.translate')
     _showingTranslation = false
     return
   }
 
   if (_translatedInstruction) {
     textEl.textContent = _translatedInstruction
-    btn.textContent = '原文'
+    btn.textContent = t('obs.original')
     _showingTranslation = true
     return
   }
 
-  btn.textContent = '翻訳中...'
+  btn.textContent = t('obs.translating')
   btn.disabled = true
   try {
     const res = await fetch('/api/observe/translate', {
@@ -605,13 +633,13 @@ async function toggleTranslation() {
     if (data.translated) {
       _translatedInstruction = data.translated
       textEl.textContent = _translatedInstruction
-      btn.textContent = '原文'
+      btn.textContent = t('obs.original')
       _showingTranslation = true
     } else {
-      btn.textContent = '翻訳'
+      btn.textContent = t('obs.translate')
     }
   } catch {
-    btn.textContent = '翻訳'
+    btn.textContent = t('obs.translate')
   } finally {
     btn.disabled = false
   }
@@ -652,8 +680,8 @@ function renderContextBanner(data, state) {
   if (isSubagent && meta.parentInstruction) {
     html += `<div class="parent-instruction" id="parentInstructionCard">
       <div class="parent-instruction-label">
-        ${ic('arrow-down-right', 12)} 親からの指示
-        <button class="translate-btn" id="translateBtn" onclick="toggleTranslation()">翻訳</button>
+        ${ic('arrow-down-right', 12)} ${t('obs.parentInstruction')}
+        <button class="translate-btn" id="translateBtn" onclick="toggleTranslation()">${t('obs.translate')}</button>
       </div>
       <div class="parent-instruction-text" id="instructionText">${esc(meta.parentInstruction)}</div>
     </div>`
@@ -683,7 +711,7 @@ async function switchLayer(layer) {
         updateLayerTabCounts()
         renderLayer(layer)
       } catch (e) {
-        main.innerHTML = `<div class="empty-state">${ic('alert-triangle', 32)}<div>更新エラー</div></div>`
+        main.innerHTML = `<div class="empty-state">${ic('alert-triangle', 32)}<div>${t('obs.updateError')}</div></div>`
       } finally {
         if (tab) tab.classList.remove('refreshing')
       }
@@ -754,7 +782,7 @@ function renderLayer(layer) {
 
 function renderInterface(el, data) {
   if (!data?.messages?.length) {
-    el.innerHTML = `<div class="empty-state">${ic('inbox', 32)}<div>テキストメッセージなし</div></div>`
+    el.innerHTML = `<div class="empty-state">${ic('inbox', 32)}<div>${t('obs.noMessages')}</div></div>`
     return
   }
   el.innerHTML = data.messages.map(m => {
@@ -768,7 +796,7 @@ function renderInterface(el, data) {
 
 function renderOrchestration(el, data) {
   if (!data?.delegations?.length) {
-    el.innerHTML = `<div class="empty-state">${ic('inbox', 32)}<div>Agent委譲なし（flatセッション）</div></div>`
+    el.innerHTML = `<div class="empty-state">${ic('inbox', 32)}<div>${t('obs.noDelegations')}</div></div>`
     return
   }
   el.innerHTML = data.delegations.map((d, i) => {
@@ -789,7 +817,7 @@ function renderOrchestration(el, data) {
 
 function renderExecution(el, data) {
   if (!data?.tools?.length) {
-    el.innerHTML = `<div class="empty-state">${ic('inbox', 32)}<div>ツール実行なし</div></div>`
+    el.innerHTML = `<div class="empty-state">${ic('inbox', 32)}<div>${t('obs.noTools')}</div></div>`
     return
   }
 
@@ -816,7 +844,7 @@ function renderExecution(el, data) {
 }
 
 function renderState(el, data) {
-  if (!data) { el.innerHTML = '<div class="empty-state">データなし</div>'; return }
+  if (!data) { el.innerHTML = '<div class="empty-state">' + t('obs.noData') + '</div>'; return }
   let html = ''
   html += stateRow('Models', data.models?.join(', ') || 'N/A')
   if (data.duration) {
@@ -831,7 +859,7 @@ function renderState(el, data) {
 }
 
 function renderGovernance(el, data) {
-  if (!data) { el.innerHTML = '<div class="empty-state">データなし</div>'; return }
+  if (!data) { el.innerHTML = '<div class="empty-state">' + t('obs.noData') + '</div>'; return }
 
   let html = ''
 
@@ -846,7 +874,7 @@ function renderGovernance(el, data) {
       </div>`
     }
   } else {
-    html += '<div style="color:var(--muted);font-size:12px;padding:4px 0">None detected</div>'
+    html += '<div style="color:var(--muted);font-size:12px;padding:4px 0">' + t('obs.noneDetected') + '</div>'
   }
   html += '</div>'
 
@@ -858,13 +886,13 @@ function renderGovernance(el, data) {
       html += `<div class="gov-item">${esc(e)}</div>`
     }
   } else {
-    html += '<div style="color:var(--muted);font-size:12px;padding:4px 0">None</div>'
+    html += '<div style="color:var(--muted);font-size:12px;padding:4px 0">' + t('obs.none') + '</div>'
   }
   html += '</div>'
 
   // Clean badge
   if ((!data.dangerousCommands || data.dangerousCommands.length === 0) && (!data.errors || data.errors.length === 0)) {
-    html += `<div class="gov-clean">${ic('check-circle', 18)} Clean session</div>`
+    html += `<div class="gov-clean">${ic('check-circle', 18)} ${t('obs.cleanSession')}</div>`
   }
 
   el.innerHTML = html
@@ -884,11 +912,12 @@ function esc(str) {
 }
 
 function timeAgo(ts) {
-  const diff = Date.now() - ts
-  if (diff < 60000) return 'just now'
-  if (diff < 3600000) return Math.floor(diff / 60000) + '分前'
-  if (diff < 86400000) return Math.floor(diff / 3600000) + '時間前'
-  return Math.floor(diff / 86400000) + '日前'
+  if (!ts) return ''
+  var diff = Date.now() - new Date(ts).getTime()
+  if (diff < 60000) return t('time.justNow')
+  if (diff < 3600000) return Math.floor(diff / 60000) + t('time.minAgo')
+  if (diff < 86400000) return Math.floor(diff / 3600000) + t('time.hoursAgo')
+  return Math.floor(diff / 86400000) + t('time.daysAgo')
 }
 
 function formatTime(isoStr) {
