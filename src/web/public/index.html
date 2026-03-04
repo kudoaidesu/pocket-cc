@@ -732,6 +732,13 @@ function saveTabs() {
   } catch (e) { console.warn('Failed to save tabs:', e) }
 }
 
+/** localStorage の旧モード名を新名に移行 */
+function migratePermissionMode(mode) {
+  if (mode === 'default') return 'ask'
+  if (mode === 'auto-accept') return 'auto'
+  return mode
+}
+
 /** 指定プロジェクトのタブをDOMに復元する */
 function restoreProjectTabs(projectPath) {
   try {
@@ -758,7 +765,7 @@ function restoreProjectTabs(projectPath) {
         messagesEl,
         fullTexts: new WeakMap(),
         label: cleanLabel(saved.label) || t('chat.newChat'),
-        permissionMode: saved.permissionMode || store.permissionMode || 'plan',
+        permissionMode: migratePermissionMode(saved.permissionMode || store.permissionMode || 'plan'),
       })
 
       if (saved.sessionId) {
@@ -874,12 +881,12 @@ function copyCode(btn) {
 // --- モデル選択（ヘッダーのselectのみで管理） ---
 
 // --- Permission Mode (per-tab) ---
-// 4 states: 'plan' → 'default' → 'auto-accept' → 'yolo' → 'plan'
+// 4 states: 'plan' → 'ask' → 'auto' → 'yolo' → 'plan'
 const PERM_MODES = {
-  'default':     { label: 'Default', icon: 'shield', color: 'var(--border)', banner: false },
-  'plan':        { label: 'Plan', icon: 'map-pin', color: '#007acc', banner: true, bannerBg: 'rgba(0,122,204,.1)', bannerBorder: 'rgba(0,122,204,.3)', bannerText: 'Claude will plan before acting' },
-  'auto-accept': { label: 'Auto', icon: 'zap', color: 'var(--text)', banner: true, bannerBg: 'rgba(205,214,230,.08)', bannerBorder: 'rgba(205,214,230,.2)', bannerText: 'Auto-accept — Claude will act without asking' },
-  'yolo':        { label: 'YOLO', icon: 'alert-triangle', color: 'var(--danger)', banner: true, bannerBg: 'var(--danger-bg)', bannerBorder: 'rgba(243,139,168,.3)', bannerText: 'YOLO — All tools allowed, no limits (--dangerously-allow-all-tools)' },
+  'ask':  { label: 'Ask',  icon: 'shield', color: '#e67e22', banner: true, bannerBg: 'rgba(230,126,34,.1)', bannerBorder: 'rgba(230,126,34,.3)', bannerText: 'Ask — Claude will ask before acting' },
+  'plan': { label: 'Plan', icon: 'map-pin', color: '#007acc', banner: true, bannerBg: 'rgba(0,122,204,.1)', bannerBorder: 'rgba(0,122,204,.3)', bannerText: 'Claude will plan before acting' },
+  'auto': { label: 'Auto', icon: 'zap', color: 'var(--text)', banner: true, bannerBg: 'rgba(205,214,230,.08)', bannerBorder: 'rgba(205,214,230,.2)', bannerText: 'Auto-accept — Claude will act without asking' },
+  'yolo': { label: 'YOLO', icon: 'alert-triangle', color: 'var(--danger)', banner: true, bannerBg: 'var(--danger-bg)', bannerBorder: 'rgba(243,139,168,.3)', bannerText: 'YOLO — All tools allowed, no limits (--dangerously-allow-all-tools)' },
 }
 function getActivePermissionMode() {
   const tab = tabs.get(activeTabId)
@@ -887,7 +894,7 @@ function getActivePermissionMode() {
 }
 function cyclePermissionMode() {
   const current = getActivePermissionMode()
-  const order = ['plan', 'default', 'auto-accept', 'yolo']
+  const order = ['plan', 'ask', 'auto', 'yolo']
   const idx = (order.indexOf(current) + 1) % order.length
   setPermissionMode(order[idx])
 }
@@ -1369,6 +1376,7 @@ function createNewTab(label) {
     sendingPromise: null,
     compacting: false,
     pendingMessage: null,
+    inputText: '',
     messagesEl,
     fullTexts: new WeakMap(),
     label: label || t('chat.newChat'),
@@ -1384,12 +1392,18 @@ function createNewTab(label) {
 function switchTab(tabId) {
   closeTabActionPanel()
   if (!tabs.has(tabId)) return
+  // 現在のタブの入力テキストを保存
+  const prevTab = tabs.get(activeTabId)
+  if (prevTab && activeTabId !== tabId) prevTab.inputText = inputEl.value
   activeTabId = tabId
   tabs.forEach((t, id) => {
     t.messagesEl.classList.toggle('active', id === tabId)
   })
   renderTabs()
   const tab = tabs.get(tabId)
+  // 新タブの入力テキストを復元
+  inputEl.value = tab.inputText || ''
+  autoResize()
   updateStreamingUI(tab.sending)
   updateInputBoxModeColor()
   saveTabs()
@@ -2195,6 +2209,7 @@ async function sendMessage() {
   }
 
   tab.sending = true
+  tab.inputText = ''
   const fetchController = new AbortController()
   tab.fetchController = fetchController
   updateStreamingUI(true)
@@ -2515,7 +2530,9 @@ function handleSSE(tabId, event, data, content, msgEl) {
         if (tab) tab.compacting = true
       }
       if (s.permissionMode && tab) {
-        const mode = s.permissionMode === 'plan' ? 'plan' : s.permissionMode === 'auto-accept' ? 'auto-accept' : 'default'
+        // SDK名 → UI名の逆マッピング
+        const sdkToUi = { plan: 'plan', default: 'ask', acceptEdits: 'auto', bypassPermissions: 'yolo' }
+        const mode = sdkToUi[s.permissionMode] || 'ask'
         tab.permissionMode = mode
         if (tabId === activeTabId) updateInputBoxModeColor()
         renderTabs()
@@ -2814,11 +2831,36 @@ function formatDiff(oldStr, newStr, filePath) {
   return html
 }
 
+function detectDevServerUrls(text) {
+  const pattern = /https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0):(\d+)[^\s]*/g
+  const matches = [...text.matchAll(pattern)]
+  return [...new Map(matches.map(m => [m[2], m[0]])).values()] // ポートでユニーク化
+}
+
 function appendToolOutput(panel, output) {
   const body = panel.querySelector('.tool-detail-body')
   if (!body) return
   if (output) {
     body.innerHTML += `<div style="margin-top:6px;border-top:1px solid var(--border);padding-top:6px;color:var(--muted)">${esc(output)}</div>`
+    // Dev Server URLを検出してボタンを挿入
+    const urls = detectDevServerUrls(output)
+    if (urls.length > 0) {
+      let bar = panel.querySelector('.dev-url-bar')
+      if (!bar) {
+        bar = document.createElement('div')
+        bar.className = 'dev-url-bar'
+        panel.appendChild(bar)
+      }
+      urls.forEach(url => {
+        const port = url.match(/:(\d+)/)?.[1] || ''
+        const tailscaleUrl = url.replace(/^(https?:\/\/)(localhost|127\.0\.0\.1|0\.0\.0\.0)/, `$1${window.location.hostname}`)
+        const btn = document.createElement('button')
+        btn.className = 'dev-url-btn'
+        btn.innerHTML = `<span class="port-label">:${port}</span> Open ↗`
+        btn.onclick = () => window.open(tailscaleUrl, '_blank')
+        bar.appendChild(btn)
+      })
+    }
   }
 }
 

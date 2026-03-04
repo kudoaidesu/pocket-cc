@@ -24,8 +24,8 @@ describe('chat-service', () => {
       expect(opts.allowDangerouslySkipPermissions).toBe(false)
     })
 
-    it('permissionMode=default で SDK default になる（承認UI対応）', () => {
-      const opts = buildQueryOptions({ ...baseParams, permissionMode: 'default' })
+    it('permissionMode=ask で SDK default になる（承認UI対応）', () => {
+      const opts = buildQueryOptions({ ...baseParams, permissionMode: 'ask' })
       expect(opts.permissionMode).toBe('default')
       expect(opts.allowDangerouslySkipPermissions).toBe(false)
     })
@@ -36,8 +36,8 @@ describe('chat-service', () => {
       expect(opts.allowDangerouslySkipPermissions).toBe(true)
     })
 
-    it('permissionMode=auto-accept で acceptEdits になる', () => {
-      const opts = buildQueryOptions({ ...baseParams, permissionMode: 'auto-accept' })
+    it('permissionMode=auto で acceptEdits になる', () => {
+      const opts = buildQueryOptions({ ...baseParams, permissionMode: 'auto' })
       expect(opts.permissionMode).toBe('acceptEdits')
       expect(opts.allowDangerouslySkipPermissions).toBe(false)
     })
@@ -377,14 +377,14 @@ describe('chat-service', () => {
       expect(opts.allowDangerouslySkipPermissions).toBe(false)
     })
 
-    it('permissionMode "auto-accept" → acceptEdits モード', () => {
-      const opts = buildQueryOptions({ message: 'hello', cwd: '/tmp', model: 'sonnet', permissionMode: 'auto-accept' })
+    it('permissionMode "auto" → acceptEdits モード', () => {
+      const opts = buildQueryOptions({ message: 'hello', cwd: '/tmp', model: 'sonnet', permissionMode: 'auto' })
       expect(opts.permissionMode).toBe('acceptEdits')
       expect(opts.allowDangerouslySkipPermissions).toBe(false)
     })
 
-    it('permissionMode "default" → SDK default モード（承認UI対応）', () => {
-      const opts = buildQueryOptions({ message: 'hello', cwd: '/tmp', model: 'sonnet', permissionMode: 'default' })
+    it('permissionMode "ask" → SDK default モード（承認UI対応）', () => {
+      const opts = buildQueryOptions({ message: 'hello', cwd: '/tmp', model: 'sonnet', permissionMode: 'ask' })
       expect(opts.permissionMode).toBe('default')
       expect(opts.allowDangerouslySkipPermissions).toBe(false)
     })

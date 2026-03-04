@@ -123,14 +123,14 @@ export function buildQueryOptions(
   canUseTool?: CanUseTool,
 ): Record<string, unknown> {
   // permissionMode mapping:
-  //   'plan'        → plan (計画モード、デフォルト)
-  //   'default'     → default (危険操作は承認要求、AskUserQuestion対応)
-  //   'auto-accept' → acceptEdits (編集のみ自動承認)
-  //   'yolo'        → bypassPermissions + dangerouslySkipPermissions (全自動)
+  //   'plan' → plan (計画モード、デフォルト)
+  //   'ask'  → default (危険操作は承認要求、AskUserQuestion対応)
+  //   'auto' → acceptEdits (編集のみ自動承認)
+  //   'yolo' → bypassPermissions + dangerouslySkipPermissions (全自動)
   const mode = params.permissionMode || (params.planMode ? 'plan' : 'plan')
   const sdkMode = mode === 'plan' ? 'plan'
-    : mode === 'auto-accept' ? 'acceptEdits'
-    : mode === 'default' ? 'default'
+    : mode === 'ask' ? 'default'
+    : mode === 'auto' ? 'acceptEdits'
     : mode === 'yolo' ? 'bypassPermissions'
     : 'plan'
   const options: Record<string, unknown> = {
