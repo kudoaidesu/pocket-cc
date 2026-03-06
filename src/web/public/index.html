@@ -2932,6 +2932,7 @@ function handleSSE(tabId, event, data, content, msgEl) {
   if (event === 'ask-question') {
     try {
       const d = JSON.parse(data)
+      if (content.querySelector(`[data-request-id="${CSS.escape(d.requestId)}"]`)) return
       const panel = createAskQuestionPanel(d.requestId, d.questions)
       content.appendChild(panel)
       scrollToBottom(tabId)
@@ -2941,6 +2942,7 @@ function handleSSE(tabId, event, data, content, msgEl) {
   if (event === 'tool-approval') {
     try {
       const d = JSON.parse(data)
+      if (content.querySelector(`[data-request-id="${CSS.escape(d.requestId)}"]`)) return
       const panel = createToolApprovalPanel(d.requestId, d.toolName, d.input, d.description, d.decisionReason)
       content.appendChild(panel)
       scrollToBottom(tabId)
@@ -3008,17 +3010,27 @@ function createAskQuestionPanel(requestId, questions) {
     })
   })
 
-  panel.querySelector('.ask-submit').addEventListener('click', () => {
-    fetch('/api/chat/respond', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ requestId, type: 'answer', answers: selections }),
-    })
-    // コンパクト化: 回答サマリー1行に
-    const answerSummary = Object.values(selections).join(', ')
-    panel.classList.add('answered')
-    panel.querySelector('.ask-question-header').innerHTML =
-      `<span style="color:var(--success)">${ic('check', 12)}</span> <span style="color:var(--muted);font-size:11px">${esc(answerSummary).slice(0, 60)}</span>`
+  panel.querySelector('.ask-submit').addEventListener('click', async () => {
+    const btn = panel.querySelector('.ask-submit')
+    btn.disabled = true
+    btn.textContent = 'Sending...'
+    try {
+      const res = await fetch('/api/chat/respond', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, type: 'answer', answers: selections }),
+      })
+      if (!res.ok) throw new Error(`${res.status}`)
+      const answerSummary = Object.values(selections).join(', ')
+      const truncated = answerSummary.length > 60 ? answerSummary.slice(0, 60) + '...' : answerSummary
+      panel.classList.add('answered')
+      panel.querySelector('.ask-question-header').innerHTML =
+        `<span style="color:var(--success)">${ic('check', 12)}</span> <span style="color:var(--muted);font-size:11px">${esc(truncated)}</span>`
+    } catch {
+      btn.disabled = false
+      btn.textContent = 'Retry'
+      btn.style.color = 'var(--danger)'
+    }
   })
 
   return panel
@@ -3113,29 +3125,36 @@ function createToolApprovalPanel(requestId, toolName, input, description, decisi
     })
   }
 
-  function resolve(approved) {
-    fetch('/api/chat/respond', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ requestId, type: 'approval', approved }),
-    })
-    // ExitPlanMode 承認時: plan → ask に自動切替
-    if (approved && toolName === 'ExitPlanMode') {
-      const tab = tabs.get(activeTabId)
-      if (tab && tab.permissionMode === 'plan') {
-        setPermissionMode('ask', false) // 通知付き
+  async function resolve(approved) {
+    // ボタンを即座に無効化して二重クリック防止
+    panel.querySelectorAll('.btn-allow, .btn-deny').forEach(b => { b.disabled = true })
+    try {
+      const res = await fetch('/api/chat/respond', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, type: 'approval', approved }),
+      })
+      if (!res.ok) throw new Error(`${res.status}`)
+      // ExitPlanMode 承認時: plan → ask に自動切替
+      if (approved && toolName === 'ExitPlanMode') {
+        const tab = tabs.get(activeTabId)
+        if (tab && tab.permissionMode === 'plan') {
+          setPermissionMode('ask', false)
+        }
       }
+      // コンパクト化: 1行表示に変化
+      panel.classList.add('resolved')
+      const statusColor = approved ? 'var(--success)' : 'var(--danger)'
+      const statusIcon = approved ? ic('check', 12) : ic('x', 12)
+      const statusText = approved ? 'Allowed' : 'Denied'
+      panel.querySelector('.tool-approve-header').innerHTML = `
+        <span style="color:${statusColor}">${statusIcon}</span>
+        <span class="tool-approve-name">${esc(toolName)}</span>
+        <span style="flex:1;font-size:11px;color:${statusColor}">${statusText}</span>
+      `
+    } catch {
+      panel.querySelectorAll('.btn-allow, .btn-deny').forEach(b => { b.disabled = false })
     }
-    // コンパクト化: 1行表示に変化
-    panel.classList.add('resolved')
-    const statusColor = approved ? 'var(--success)' : 'var(--danger)'
-    const statusIcon = approved ? ic('check', 12) : ic('x', 12)
-    const statusText = approved ? 'Allowed' : 'Denied'
-    panel.querySelector('.tool-approve-header').innerHTML = `
-      <span style="color:${statusColor}">${statusIcon}</span>
-      <span class="tool-approve-name">${esc(toolName)}</span>
-      <span style="flex:1;font-size:11px;color:${statusColor}">${statusText}</span>
-    `
   }
 
   panel.querySelector('.btn-allow').addEventListener('click', () => resolve(true))
