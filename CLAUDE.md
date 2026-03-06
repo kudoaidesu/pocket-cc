@@ -144,14 +144,14 @@ projects.json          # プロジェクト登録（slug, repo, localPath）
 - **ビジョン**: Issue駆動 × AI駆動の自律型開発ワークフローを構築する
 - **ターゲット**: 個人開発者（自分自身）がスマホや別PCから指示を出し、AIが夜間にIssueを処理する
 - **制約**:
-  - サーバー: MacBook 2018 (Intel CPU) 常時稼働
+  - サーバー: Mac mini M2 常時稼働
   - ネットワーク: Tailscale経由のリモートアクセス
   - LLM: Claude Code CLI/Agent SDK（Maxサブスク枠、ローカル実行）
 
 ## アーキテクチャ概要
 
 ```
-[スマホ/別PC]                     [MacBook 2018 サーバー]
+[スマホ/別PC]                     [Mac mini M2 サーバー]
     │                                     │
     └── Tailscale VPN ───────── Web UI (Hono)
                                           │

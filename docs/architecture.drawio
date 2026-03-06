@@ -24,8 +24,8 @@
           <mxGeometry x="280" y="200" width="120" height="50" as="geometry"/>
         </mxCell>
 
-        <!-- MacBook サーバー -->
-        <mxCell id="server-group" value="MacBook 2018 サーバー (常時稼働)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0f0f0;strokeColor=#333333;fontColor=#333333;fontSize=13;fontStyle=1;verticalAlign=top;spacingTop=8;dashed=0;" vertex="1" parent="1">
+        <!-- Mac mini M2 サーバー -->
+        <mxCell id="server-group" value="Mac mini M2 サーバー (常時稼働)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0f0f0;strokeColor=#333333;fontColor=#333333;fontSize=13;fontStyle=1;verticalAlign=top;spacingTop=8;dashed=0;" vertex="1" parent="1">
           <mxGeometry x="450" y="30" width="680" height="760" as="geometry"/>
         </mxCell>
 
