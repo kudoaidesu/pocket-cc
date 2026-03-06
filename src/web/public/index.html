@@ -216,9 +216,15 @@ pre:hover .code-copy-btn{opacity:1}
 .input-footer button.send-btn:disabled{opacity:.3}
 .input-footer button.abort-btn{display:none;background:var(--danger-bg);color:var(--danger);width:42px;height:42px;border-radius:8px;font-size:18px}
 .input-footer button.abort-btn:hover{background:rgba(243,139,168,.2)}
-.model-chip,.mode-chip{width:auto!important;padding:4px 10px!important;font-size:12px!important;font-family:var(--font-mono);border-radius:12px!important;white-space:nowrap;border:1px solid var(--border)!important}
+.model-chip,.mode-chip{width:auto!important;padding:4px 10px!important;font-size:12px!important;font-family:var(--font-mono);border-radius:12px!important;white-space:nowrap;border:1px solid var(--border)!important;position:relative}
 .model-chip{background:var(--surface)!important;color:var(--text)!important}
 .mode-chip{background:var(--surface)!important;color:var(--text)!important}
+.chip-dropdown{position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;z-index:9999;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.chip-dropdown-item{padding:7px 12px;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;font-family:var(--font-mono)}
+.chip-dropdown-item:hover{background:var(--accent-dim)}
+.chip-dropdown-item.active{color:var(--accent)}
+.chip-dropdown-item .chip-dd-name{font-weight:600}
+.chip-dropdown-item .chip-dd-desc{font-size:11px;color:var(--muted);font-family:var(--font-sans)}
 .attachments{display:none;flex-wrap:wrap;gap:6px;padding:8px 10px 4px}
 .attachments:not(:empty){display:flex}
 .attach-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:var(--font-mono);color:var(--text);max-width:200px}
@@ -489,8 +495,8 @@ pre:hover .code-copy-btn{opacity:1}
     <textarea id="input" rows="1" placeholder="Ask Claude anything..." enterkeyhint="enter" data-i18n-placeholder="chat.placeholder"></textarea>
     <div class="input-footer">
       <button id="filesBtn" onclick="document.getElementById('fileInput').click()" title="Upload file"></button>
-      <button id="modelBtn" class="model-chip" onclick="cycleModel()" title="Model"></button>
-      <button id="modeBtn" class="mode-chip" onclick="cyclePermissionMode()" title="Mode"></button>
+      <button id="modelBtn" class="model-chip" onclick="showModelDropdown(event)" title="Model"></button>
+      <button id="modeBtn" class="mode-chip" onclick="showModeDropdown(event)" title="Mode"></button>
       <span style="flex:1"></span>
       <button class="abort-btn" id="abort" onclick="abortCurrentTab()" title="Stop"></button>
       <button class="send-btn" id="send" onclick="sendMessage()" title="Send (Enter)"></button>
@@ -509,6 +515,7 @@ pre:hover .code-copy-btn{opacity:1}
       <button class="drawer-tab" data-tab="tools" onclick="switchDrawerTab('tools')" data-i18n="drawer.tools">Tools</button>
       <button class="drawer-tab" data-tab="links" onclick="switchDrawerTab('links')" data-i18n="drawer.links">Links</button>
       <button class="drawer-tab" data-tab="projects" onclick="switchDrawerTab('projects')" data-i18n="drawer.projects">Projects</button>
+      <button class="drawer-tab" data-tab="issues" onclick="switchDrawerTab('issues')">Issues</button>
     </div>
     <div id="sessionsTab" class="drawer-tab-content active">
       <div id="currentProjectLabel" style="font-size:12px;color:var(--muted);padding:0 0 8px;font-family:var(--font-mono)"></div>
@@ -528,6 +535,16 @@ pre:hover .code-copy-btn{opacity:1}
         </div>
       </div>
       <div id="projectList"></div>
+    </div>
+    <div id="issuesTab" class="drawer-tab-content">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="display:flex;gap:4px">
+          <button id="issueFilterOpen" onclick="setIssueFilter('open')" style="background:var(--accent);border:none;color:#fff;font-size:11px;padding:3px 10px;border-radius:10px;cursor:pointer;font-family:var(--font-mono)">Open</button>
+          <button id="issueFilterClosed" onclick="setIssueFilter('closed')" style="background:none;border:1px solid var(--border);color:var(--muted);font-size:11px;padding:3px 10px;border-radius:10px;cursor:pointer;font-family:var(--font-mono)">Closed</button>
+        </div>
+        <button onclick="showIssueModal()" style="background:none;border:1px solid var(--border);color:var(--accent);font-size:12px;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:var(--font-mono)">+ New</button>
+      </div>
+      <div id="issueList" style="overflow-y:auto;max-height:calc(100vh - 200px)"></div>
     </div>
     <div id="filesTab" class="drawer-tab-content">
       <div style="margin-bottom:8px">
@@ -564,6 +581,20 @@ pre:hover .code-copy-btn{opacity:1}
         </div>
       </div>
       <div id="linksList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Issue作成モーダル -->
+<div id="issueModal" onclick="closeIssueModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;align-items:center;justify-content:center">
+  <div onclick="event.stopPropagation()" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;width:min(480px,90vw);display:flex;flex-direction:column;gap:12px">
+    <div style="font-size:15px;font-weight:700;color:var(--text)">New Issue</div>
+    <input id="issueTitle" type="text" placeholder="Title" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:14px;font-family:var(--font-sans)" />
+    <textarea id="issueBody" placeholder="Description (optional)" rows="5" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:14px;font-family:var(--font-sans);resize:vertical"></textarea>
+    <input id="issueLabels" type="text" placeholder="Labels (comma-separated, optional)" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:14px;font-family:var(--font-sans)" />
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button onclick="closeIssueModal()" style="background:none;border:1px solid var(--border);color:var(--muted);font-size:13px;padding:7px 18px;border-radius:8px;cursor:pointer">Cancel</button>
+      <button id="issueSubmitBtn" onclick="submitIssue()" style="background:var(--accent);border:none;color:#fff;font-size:13px;padding:7px 18px;border-radius:8px;cursor:pointer;font-weight:600">Create</button>
     </div>
   </div>
 </div>
@@ -899,6 +930,75 @@ function cyclePermissionMode() {
   const order = ['plan', 'ask', 'auto', 'yolo']
   const idx = (order.indexOf(current) + 1) % order.length
   setPermissionMode(order[idx], true)
+}
+
+let _chipDropdownEl = null
+function closeChipDropdown() {
+  if (_chipDropdownEl) { _chipDropdownEl.remove(); _chipDropdownEl = null }
+}
+document.addEventListener('click', closeChipDropdown)
+
+function showModeDropdown(e) {
+  e.stopPropagation()
+  closeChipDropdown()
+  const current = getActivePermissionMode()
+  const modeItems = [
+    { id: 'plan', name: 'Plan', desc: 'Requires approval' },
+    { id: 'ask', name: 'Ask', desc: 'Asks before acting' },
+    { id: 'auto', name: 'Auto', desc: 'Acts automatically' },
+    { id: 'yolo', name: 'YOLO', desc: 'All tools, no limits' },
+  ]
+  const dd = document.createElement('div')
+  dd.className = 'chip-dropdown'
+  for (const item of modeItems) {
+    const el = document.createElement('div')
+    el.className = 'chip-dropdown-item' + (item.id === current ? ' active' : '')
+    el.innerHTML = `<span class="chip-dd-name">${item.name}</span><span class="chip-dd-desc">${item.desc}</span>`
+    el.onclick = (ev) => { ev.stopPropagation(); setPermissionMode(item.id, false); closeChipDropdown() }
+    dd.appendChild(el)
+  }
+  positionDropdown(dd, e.currentTarget)
+  _chipDropdownEl = dd
+}
+
+function showModelDropdown(e) {
+  e.stopPropagation()
+  closeChipDropdown()
+  const tab = tabs.get(activeTabId)
+  const current = tab?.model || 'claude-sonnet-4-6'
+  const dd = document.createElement('div')
+  dd.className = 'chip-dropdown'
+  for (const modelId of MODEL_ORDER) {
+    const el = document.createElement('div')
+    el.className = 'chip-dropdown-item' + (modelId === current ? ' active' : '')
+    el.innerHTML = `<span class="chip-dd-name">${modelId}</span><span class="chip-dd-desc">${MODEL_DESCS[modelId] || ''}</span>`
+    el.onclick = (ev) => {
+      ev.stopPropagation()
+      if (tab) { tab.model = modelId; localStorage.setItem(MODEL_STORAGE_KEY, modelId); saveTabs(); updateModelChip() }
+      const msgEl = document.createElement('div')
+      msgEl.className = 'msg system-notice'
+      msgEl.innerHTML = `<div class="notice-badge">Model → ${esc(modelId)}</div>`
+      if (tab) { tab.messagesEl.appendChild(msgEl); scrollToBottom(activeTabId) }
+      closeChipDropdown()
+    }
+    dd.appendChild(el)
+  }
+  positionDropdown(dd, e.currentTarget)
+  _chipDropdownEl = dd
+}
+
+function positionDropdown(dd, btn) {
+  document.body.appendChild(dd)
+  const rect = btn.getBoundingClientRect()
+  const ddH = dd.offsetHeight || 150
+  const spaceAbove = rect.top
+  const spaceBelow = window.innerHeight - rect.bottom
+  const top = spaceAbove > spaceBelow || spaceBelow < ddH + 10
+    ? rect.top - ddH - 6
+    : rect.bottom + 6
+  const left = Math.min(rect.left, window.innerWidth - dd.offsetWidth - 8)
+  dd.style.top = Math.max(8, top) + 'px'
+  dd.style.left = Math.max(8, left) + 'px'
 }
 function setPermissionMode(mode, silent) {
   const tab = tabs.get(activeTabId)
@@ -1239,7 +1339,8 @@ function exportConversation() {
 
 const MODEL_STORAGE_KEY = 'pocket-cc-model'
 const MODEL_ORDER = ['claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5']
-const MODEL_LABELS = { 'claude-sonnet-4-6': 'Sonnet', 'claude-opus-4-6': 'Opus', 'claude-haiku-4-5': 'Haiku', 'default': 'Auto' }
+const MODEL_LABELS = { 'claude-sonnet-4-6': 'claude-sonnet-4-6', 'claude-opus-4-6': 'claude-opus-4-6', 'claude-haiku-4-5': 'claude-haiku-4-5', 'default': 'Auto' }
+const MODEL_DESCS = { 'claude-sonnet-4-6': 'Fast & balanced', 'claude-opus-4-6': 'Most capable', 'claude-haiku-4-5': 'Lightweight' }
 
 function getModelLabel(model) { return MODEL_LABELS[model] || model }
 
@@ -1428,7 +1529,7 @@ function createNewTab(label) {
     messagesEl,
     fullTexts: new WeakMap(),
     label: label || t('chat.newChat'),
-    permissionMode: 'plan',
+    permissionMode: 'ask',
     model: localStorage.getItem(MODEL_STORAGE_KEY) || 'claude-sonnet-4-6',
   })
 
@@ -1956,6 +2057,109 @@ function _closeFeaturesOnOutside(e) {
   }
 }
 
+// --- Issues ---
+let _issueFilter = 'open'
+
+function setIssueFilter(state) {
+  _issueFilter = state
+  document.getElementById('issueFilterOpen').style.cssText = state === 'open'
+    ? 'background:var(--accent);border:none;color:#fff;font-size:11px;padding:3px 10px;border-radius:10px;cursor:pointer;font-family:var(--font-mono)'
+    : 'background:none;border:1px solid var(--border);color:var(--muted);font-size:11px;padding:3px 10px;border-radius:10px;cursor:pointer;font-family:var(--font-mono)'
+  document.getElementById('issueFilterClosed').style.cssText = state === 'closed'
+    ? 'background:var(--accent);border:none;color:#fff;font-size:11px;padding:3px 10px;border-radius:10px;cursor:pointer;font-family:var(--font-mono)'
+    : 'background:none;border:1px solid var(--border);color:var(--muted);font-size:11px;padding:3px 10px;border-radius:10px;cursor:pointer;font-family:var(--font-mono)'
+  loadIssues()
+}
+
+async function loadIssues() {
+  const el = document.getElementById('issueList')
+  if (!el) return
+  el.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px">Loading...</div>'
+  try {
+    const slug = currentProject || ''
+    const res = await fetch(`/api/issues?project=${encodeURIComponent(slug)}&state=${_issueFilter}`)
+    const issues = await res.json()
+    if (issues.error) { el.innerHTML = `<div style="color:var(--danger);font-size:12px;padding:8px">${esc(issues.error)}</div>`; return }
+    if (!issues.length) { el.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px">No issues found.</div>'; return }
+    renderIssuesByAssignee(el, issues)
+  } catch (e) {
+    el.innerHTML = `<div style="color:var(--danger);font-size:12px;padding:8px">Error: ${esc(String(e))}</div>`
+  }
+}
+
+function renderIssuesByAssignee(el, issues) {
+  const groups = new Map()
+  for (const issue of issues) {
+    const assignees = issue.assignees && issue.assignees.length ? issue.assignees : [{ login: '(Unassigned)' }]
+    for (const a of assignees) {
+      if (!groups.has(a.login)) groups.set(a.login, [])
+      groups.get(a.login).push(issue)
+    }
+  }
+  // Unassigned last
+  const order = [...groups.keys()].sort((a, b) => a === '(Unassigned)' ? 1 : b === '(Unassigned)' ? -1 : a.localeCompare(b))
+  el.innerHTML = ''
+  for (const login of order) {
+    const groupIssues = groups.get(login)
+    const group = document.createElement('div')
+    group.style.cssText = 'margin-bottom:14px'
+    group.innerHTML = `<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:0 2px 6px;display:flex;align-items:center;gap:6px">
+      <span>${esc(login)}</span><span style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1px 7px;font-size:10px;font-weight:400">${groupIssues.length}</span>
+    </div>`
+    for (const issue of groupIssues) {
+      const card = document.createElement('div')
+      card.style.cssText = 'padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:5px;cursor:pointer;transition:border-color .1s'
+      card.onmouseenter = () => { card.style.borderColor = 'var(--accent)' }
+      card.onmouseleave = () => { card.style.borderColor = 'var(--border)' }
+      card.onclick = () => { if (issue.url) window.open(issue.url, '_blank') }
+      const labels = issue.labels.slice(0, 3).map(l => `<span style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:10px;font-family:var(--font-mono)">${esc(typeof l === 'string' ? l : l.name)}</span>`).join(' ')
+      card.innerHTML = `<div style="display:flex;align-items:flex-start;gap:6px">
+        <span style="font-size:11px;color:var(--muted);font-family:var(--font-mono);flex-shrink:0">#${issue.number}</span>
+        <span style="font-size:13px;line-height:1.4;flex:1;word-break:break-word">${esc(issue.title)}</span>
+      </div>${labels ? `<div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:3px">${labels}</div>` : ''}`
+      group.appendChild(card)
+    }
+    el.appendChild(group)
+  }
+}
+
+function showIssueModal() {
+  document.getElementById('issueModal').style.display = 'flex'
+  document.getElementById('issueTitle').value = ''
+  document.getElementById('issueBody').value = ''
+  document.getElementById('issueLabels').value = ''
+  setTimeout(() => document.getElementById('issueTitle').focus(), 50)
+}
+
+function closeIssueModal() {
+  document.getElementById('issueModal').style.display = 'none'
+}
+
+async function submitIssue() {
+  const title = document.getElementById('issueTitle').value.trim()
+  if (!title) { alert('Title is required'); return }
+  const body = document.getElementById('issueBody').value.trim()
+  const labelsRaw = document.getElementById('issueLabels').value.trim()
+  const labels = labelsRaw ? labelsRaw.split(',').map(s => s.trim()).filter(Boolean) : []
+  const btn = document.getElementById('issueSubmitBtn')
+  btn.disabled = true; btn.textContent = 'Creating...'
+  try {
+    const res = await fetch('/api/issues', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, body, labels, project: currentProject || '' })
+    })
+    const data = await res.json()
+    if (data.error) { alert('Error: ' + data.error); return }
+    closeIssueModal()
+    loadIssues()
+  } catch (e) {
+    alert('Error: ' + e)
+  } finally {
+    btn.disabled = false; btn.textContent = 'Create'
+  }
+}
+
 function openSettingsPanel() {
   document.getElementById('settingsOverlay').classList.add('open')
   updateSettingsThemeBtn()
@@ -1979,7 +2183,7 @@ function updateSettingsLangBtn() {
 
 function switchDrawerTab(tab) {
   document.querySelectorAll('.drawer-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab))
-  ;['sessions', 'projects', 'files', 'git', 'services', 'tools', 'links'].forEach(id => {
+  ;['sessions', 'projects', 'files', 'git', 'services', 'tools', 'links', 'issues'].forEach(id => {
     const el = document.getElementById(id + 'Tab')
     if (el) el.classList.toggle('active', tab === id)
   })
@@ -1993,6 +2197,7 @@ function switchDrawerTab(tab) {
   if (tab === 'services') loadServices()
   if (tab === 'tools') loadTools()
   if (tab === 'links') loadLinks()
+  if (tab === 'issues') loadIssues()
 }
 
 // ドロワータブのスクロールフェード制御

@@ -18,6 +18,7 @@ import { isTailscaleIp, isProjectPathAllowed } from './path-guard.js'
 import { chatRoutes } from './routes/chat.js'
 import { observerRoutes } from './routes/observer.js'
 import { createLogger } from '../utils/logger.js'
+import { listIssues, createIssue } from '../github/issues.js'
 
 const log = createLogger('web:server')
 
@@ -223,6 +224,36 @@ app.delete('/api/projects', async (c) => {
 
   saveProjectsJson(filtered)
   return c.json(getProjects())
+})
+
+// Issue一覧（担当者情報付き）
+app.get('/api/issues', async (c) => {
+  const slug = c.req.query('project')
+  const state = (c.req.query('state') || 'open') as 'open' | 'closed' | 'all'
+  const projects = getProjects()
+  const project = slug ? projects.find((p) => p.slug === slug) : projects[0]
+  const repo = project?.repo || undefined
+  try {
+    const issues = await listIssues(repo, state)
+    return c.json(issues)
+  } catch (e) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// Issue作成
+app.post('/api/issues', async (c) => {
+  const body = await c.req.json<{ title: string; body: string; labels?: string[]; project?: string }>()
+  if (!body.title) return c.json({ error: 'title is required' }, 400)
+  const projects = getProjects()
+  const project = body.project ? projects.find((p) => p.slug === body.project) : projects[0]
+  const repo = project?.repo || undefined
+  try {
+    const issue = await createIssue({ title: body.title, body: body.body || '', labels: body.labels, repo })
+    return c.json(issue)
+  } catch (e) {
+    return c.json({ error: String(e) }, 500)
+  }
 })
 
 // ヘルスチェック

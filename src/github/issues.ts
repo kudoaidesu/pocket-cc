@@ -19,6 +19,16 @@ export interface IssueInfo {
   htmlUrl: string
 }
 
+export interface IssueListItem {
+  number: number
+  title: string
+  state: string
+  labels: string[]
+  assignees: { login: string }[]
+  url: string
+  createdAt: string
+}
+
 function gh(args: string[], repo?: string): Promise<string> {
   const fullArgs = repo ? ['--repo', repo, ...args] : args
   return new Promise((resolve, reject) => {
@@ -87,6 +97,16 @@ export async function addComment(
   await gh(['issue', 'comment', String(issueNumber), '--body', comment], repo)
 
   log.info(`Comment added to Issue #${issueNumber}`)
+}
+
+export async function listIssues(repo?: string, state = 'open'): Promise<IssueListItem[]> {
+  const json = await gh([
+    'issue', 'list',
+    '--state', state,
+    '--json', 'number,title,state,labels,assignees,url,createdAt',
+    '--limit', '100',
+  ], repo)
+  return JSON.parse(json) as IssueListItem[]
 }
 
 function toIssueInfo(data: GhIssueJson): IssueInfo {
