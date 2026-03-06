@@ -3,6 +3,7 @@ import { config } from '../config.js'
 import { createLogger } from '../utils/logger.js'
 import { dequeue, getStats, updateStatus, markForRetry } from './processor.js'
 import { acquireLock, releaseLock } from './rate-limiter.js'
+import { runHealthCheck } from './health-check.js'
 
 const log = createLogger('scheduler')
 
@@ -92,6 +93,20 @@ export function startScheduler(): void {
   )
   tasks.set('queue-process', processTask)
   log.info(`Queue processing scheduled: ${config.cron.schedule}`)
+
+  // ヘルスチェック: 毎時0分
+  const healthTask = cron.schedule(
+    '0 * * * *',
+    () => {
+      const status = runHealthCheck()
+      if (status.stalled) {
+        log.warn('Health check detected stall — consider manual intervention')
+      }
+    },
+    { timezone: 'Asia/Tokyo' },
+  )
+  tasks.set('health-check', healthTask)
+  log.info('Health check scheduled: every hour')
 }
 
 export function stopScheduler(): void {
@@ -104,6 +119,7 @@ export function stopScheduler(): void {
 export function getScheduledTasks(): { name: string; schedule: string }[] {
   return [
     { name: 'queue-process', schedule: config.cron.schedule },
+    { name: 'health-check', schedule: '0 * * * *' },
   ]
 }
 

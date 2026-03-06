@@ -256,9 +256,16 @@ app.post('/api/issues', async (c) => {
   }
 })
 
-// ヘルスチェック
+// ヘルスチェック（キュー状態を含む）
 app.get('/api/health', (c) => {
-  return c.json({ ok: true, timestamp: Date.now() })
+  let queueDetail = null
+  try {
+    const raw = readFileSync(resolve(process.cwd(), 'data', 'health-status.json'), 'utf-8')
+    queueDetail = JSON.parse(raw)
+  } catch {
+    // health-status.json がまだ存在しない場合は null
+  }
+  return c.json({ ok: true, timestamp: Date.now(), queue: queueDetail })
 })
 
 // --- ファイルツリー・ソース閲覧 API ---
