@@ -12,7 +12,8 @@
       "mcp__*",
       "Task",
       "TodoWrite",
-      "NotebookEdit"
+      "NotebookEdit",
+      "mcp__playwright__browser_click"
     ]
   },
   "hooks": {
