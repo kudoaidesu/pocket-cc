@@ -992,6 +992,10 @@ function triggerCompact() {
     showToast(`<p>${t('toast.waitForResponse')}</p>`, 2000)
     return
   }
+  // 誤タップ防止: 確認ダイアログ
+  const pill = document.getElementById('tokenPill')
+  const currentUsage = pill?.textContent?.trim() || ''
+  if (!confirm(`コンパクションを実行しますか？\n${currentUsage ? '現在: ' + currentUsage : ''}`)) return
 
   tab.compacting = true
   showCompacting(true)
