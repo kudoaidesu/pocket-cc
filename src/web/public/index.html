@@ -723,7 +723,7 @@ function saveTabs() {
     if (currentProject) {
       const projTabs = []
       tabs.forEach((tab, tabId) => {
-        projTabs.push({ tabId, sessionId: tab.sessionId, label: tab.label, permissionMode: tab.permissionMode || 'plan' })
+        projTabs.push({ tabId, sessionId: tab.sessionId, label: tab.label, permissionMode: tab.permissionMode || 'plan', streamId: tab.streamId || null, lastEventIndex: tab._lastEventIndex ?? -1 })
       })
       store.projects[currentProject] = { activeTabId, tabs: projTabs }
     }
@@ -756,7 +756,8 @@ function restoreProjectTabs(projectPath) {
 
       tabs.set(saved.tabId, {
         sessionId: saved.sessionId,
-        streamId: null,
+        streamId: saved.streamId || null,
+        _lastEventIndex: saved.lastEventIndex ?? -1,
         sending: false,
         fetchController: null,
         sendingPromise: null,
@@ -1778,6 +1779,11 @@ async function init() {
   if (!restored && tabs.size === 0) createNewTab()
   if (currentProject) loadGitStatus()
   updateInputBoxModeColor()
+
+  // ブラウザ再接続: アクティブなストリームがあれば自動復帰
+  tabs.forEach((tab, tabId) => {
+    if (tab.streamId) reconnectStream(tabId)
+  })
 }
 
 function getProjectTabInfo(projectPath) {
@@ -2436,6 +2442,78 @@ async function sendMessage() {
   scrollToBottom(tabId)
 }
 
+// --- ブラウザ再接続: ページロード時にアクティブなストリームに復帰 ---
+async function reconnectStream(tabId) {
+  const tab = tabs.get(tabId)
+  if (!tab?.streamId) return false
+  try {
+    const sr = await fetch(`/api/chat/stream-status/${tab.streamId}`)
+    if (!sr.ok) { tab.streamId = null; saveTabs(); return false }
+    const st = await sr.json()
+    if (st.status !== 'active') { tab.streamId = null; saveTabs(); return false }
+    // ストリームがまだ active → reconnect
+    tab.sending = true
+    const fetchController = new AbortController()
+    tab.fetchController = fetchController
+    updateStreamingUI(activeTabId === tabId)
+    renderTabs()
+    const assistantEl = addMessage(tabId, 'assistant', '')
+    const content = assistantEl.querySelector('.content')
+    content.innerHTML = '<div class="reconnecting"><div class="reconnect-dots"><span></span><span></span><span></span></div> Resuming...</div>'
+    const res = await fetch('/api/chat/reconnect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ streamId: tab.streamId, lastEventIndex: tab._lastEventIndex ?? -1 }),
+      signal: fetchController.signal,
+    })
+    if (!res.ok) {
+      content.innerHTML = ''
+      tab.sending = false; tab.streamId = null; tab.fetchController = null; saveTabs()
+      updateStreamingUI(false); renderTabs()
+      return false
+    }
+    // "Resuming..." を消してSSE読み取り開始
+    const reconEl = content.querySelector('.reconnecting')
+    if (reconEl) reconEl.remove()
+    content.innerHTML = '<div class="typing"><div class="typing-dots"><span></span><span></span><span></span></div></div>'
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const blocks = buffer.split('\n\n')
+        buffer = blocks.pop() || ''
+        for (const block of blocks) {
+          if (!block.trim()) continue
+          let eventName = 'message', eventId = null
+          const dataLines = []
+          for (const line of block.split('\n')) {
+            if (line.startsWith('event:')) eventName = line.slice(6).trim()
+            else if (line.startsWith('id:')) eventId = line.slice(3).trim()
+            else if (line.startsWith('data:')) dataLines.push(line.charAt(5) === ' ' ? line.slice(6) : line.slice(5))
+          }
+          if (eventId !== null) tab._lastEventIndex = parseInt(eventId, 10)
+          const data = dataLines.join('\n')
+          if (data || eventName === 'heartbeat') handleSSE(tabId, eventName, data, content, assistantEl)
+        }
+      }
+    } catch (e) {
+      if (e.name !== 'AbortError') console.warn('Reconnect stream error:', e)
+    }
+    tab.sending = false; tab.streamId = null; tab.fetchController = null; tab._lastEventIndex = undefined
+    saveTabs()
+    if (activeTabId === tabId) updateStreamingUI(false)
+    renderTabs(); scrollToBottom(tabId)
+    return true
+  } catch (e) {
+    tab.sending = false; tab.streamId = null; tab.fetchController = null
+    saveTabs(); return false
+  }
+}
+
 // --- テキストセグメント管理 ---
 // contentの最後の子要素が.text-segmentならそれを返し、なければ新規作成してappend
 function getCurrentTextSegment(content, tab) {
@@ -2512,7 +2590,7 @@ function handleSSE(tabId, event, data, content, msgEl) {
   if (event === 'stream-start') {
     try {
       const s = JSON.parse(data)
-      if (s.streamId) tab.streamId = s.streamId
+      if (s.streamId) { tab.streamId = s.streamId; saveTabs() }
     } catch {}
   }
 
@@ -2520,7 +2598,7 @@ function handleSSE(tabId, event, data, content, msgEl) {
     try {
       const s = JSON.parse(data)
       if (s.sessionId) { tab.sessionId = s.sessionId; saveTabs() }
-      if (s.streamId) tab.streamId = s.streamId
+      if (s.streamId) { tab.streamId = s.streamId; saveTabs() }
     } catch {}
   }
 
