@@ -1762,7 +1762,7 @@ function populateTabActionPanel() {
   modeSection.innerHTML = '<div class="tap-mode-label">MODE</div>'
   const modeRow = document.createElement('div')
   modeRow.className = 'tap-mode-row'
-  for (const m of ['plan', 'default', 'auto-accept', 'yolo']) {
+  for (const m of ['plan', 'ask', 'auto', 'yolo']) {
     const cfg = PERM_MODES[m]
     const btn = document.createElement('button')
     btn.className = 'tap-mode-btn' + (m === currentMode ? ' active' : '')
