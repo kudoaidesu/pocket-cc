@@ -892,6 +892,11 @@ function getActivePermissionMode() {
   const tab = tabs.get(activeTabId)
   return tab ? (tab.permissionMode || 'plan') : 'plan'
 }
+function togglePlanMode() {
+  const current = getActivePermissionMode()
+  const newMode = current === 'plan' ? 'ask' : 'plan'
+  setPermissionMode(newMode, false)
+}
 function cyclePermissionMode() {
   const current = getActivePermissionMode()
   const order = ['plan', 'ask', 'auto', 'yolo']
