@@ -2843,19 +2843,51 @@ function formatToolInput(detail) {
   const inp = detail.input
 
   if (detail.name === 'Edit' && inp.old_string !== undefined && inp.new_string !== undefined) {
-    return formatDiff(inp.old_string || '', inp.new_string || '', inp.file_path || '')
+    let html = formatDiff(inp.old_string || '', inp.new_string || '', inp.file_path || '')
+    if (inp.replace_all) html = `<div style="color:var(--warning);font-size:11px;margin-bottom:4px">replace_all: true</div>` + html
+    return html
   }
   if (detail.name === 'Bash') {
-    return `<div style="color:var(--accent)">$ ${esc(inp.command || '')}</div>`
+    return `<div style="color:var(--accent);font-family:var(--mono)">$ ${esc(inp.command || '')}</div>`
   }
   if (detail.name === 'Write') {
-    const content = inp.content || ''
-    return `<div class="diff-add" style="max-height:200px;overflow:auto;padding:4px 6px">${esc(content)}</div>`
+    return formatNumberedCode(inp.content || '', inp.file_path)
+  }
+  if (detail.name === 'Read') {
+    const meta = [inp.file_path || '']
+    if (inp.offset) meta.push(`offset:${inp.offset}`)
+    if (inp.limit) meta.push(`limit:${inp.limit}`)
+    return `<div style="color:var(--muted);font-size:11px">${esc(meta.join(' '))}</div>`
+  }
+  if (detail.name === 'Grep') {
+    const parts = [`pattern: ${esc(inp.pattern || '')}`]
+    if (inp.path) parts.push(`path: ${esc(inp.path)}`)
+    if (inp.glob) parts.push(`glob: ${esc(inp.glob)}`)
+    if (inp.output_mode) parts.push(`mode: ${inp.output_mode}`)
+    return `<div style="font-family:var(--mono);font-size:12px">${parts.join(' | ')}</div>`
+  }
+  if (detail.name === 'Glob') {
+    const parts = [`pattern: ${esc(inp.pattern || '')}`]
+    if (inp.path) parts.push(`path: ${esc(inp.path)}`)
+    return `<div style="font-family:var(--mono);font-size:12px">${parts.join(' | ')}</div>`
   }
   if (detail.name === 'ExitPlanMode' && inp.plan) {
     return `<div class="md-content">${marked.parse(inp.plan)}</div>`
   }
-  return `<div>${esc(JSON.stringify(inp, null, 2))}</div>`
+  return `<div style="font-family:var(--mono);font-size:12px;white-space:pre-wrap">${esc(JSON.stringify(inp, null, 2))}</div>`
+}
+
+function formatNumberedCode(content, filePath) {
+  const lines = content.split('\n')
+  const maxNum = String(lines.length).length
+  let html = filePath ? `<div style="color:var(--muted);font-size:11px;margin-bottom:4px">${esc(filePath)}</div>` : ''
+  html += '<div style="max-height:200px;overflow:auto;font-family:var(--mono);font-size:12px;line-height:1.4">'
+  lines.forEach((line, i) => {
+    const num = String(i + 1).padStart(maxNum, ' ')
+    html += `<div><span style="color:var(--muted);user-select:none">${num} </span>${esc(line)}</div>`
+  })
+  html += '</div>'
+  return html
 }
 
 function formatDiff(oldStr, newStr, filePath) {
@@ -2874,11 +2906,74 @@ function detectDevServerUrls(text) {
   return [...new Map(matches.map(m => [m[2], m[0]])).values()] // ポートでユニーク化
 }
 
+function formatToolOutput(toolName, output) {
+  if (!output) return ''
+  // Read: 行番号付き表示（cat -n 形式）
+  if (toolName === 'Read' && /^\s*\d+\t/.test(output)) {
+    const lines = output.split('\n').slice(0, 200)
+    let html = '<div style="font-family:var(--mono);font-size:12px;line-height:1.4;max-height:300px;overflow:auto">'
+    for (const line of lines) {
+      const m = line.match(/^(\s*\d+)\t(.*)$/)
+      if (m) {
+        html += `<div><span style="color:var(--muted);user-select:none">${esc(m[1])} </span>${esc(m[2])}</div>`
+      } else {
+        html += `<div>${esc(line)}</div>`
+      }
+    }
+    html += '</div>'
+    return html
+  }
+  // Grep: ファイル:行番号:内容 形式のグルーピング
+  if (toolName === 'Grep' && /^[^\n]+:\d+:/.test(output.trim())) {
+    const lines = output.split('\n').slice(0, 200)
+    const groups = new Map()
+    for (const line of lines) {
+      const m = line.match(/^(.+?):(\d+):(.*)$/)
+      if (m) {
+        const file = m[1]
+        if (!groups.has(file)) groups.set(file, [])
+        groups.get(file).push({ num: m[2], text: m[3] })
+      }
+    }
+    if (groups.size > 0) {
+      let html = '<div style="font-family:var(--mono);font-size:12px;max-height:300px;overflow:auto">'
+      for (const [file, matches] of groups) {
+        html += `<div style="color:var(--accent);font-weight:600;margin-top:4px">${esc(file)}</div>`
+        for (const m of matches) {
+          html += `<div><span style="color:var(--muted);user-select:none">${m.num}: </span>${esc(m.text)}</div>`
+        }
+      }
+      html += '</div>'
+      return html
+    }
+  }
+  // Glob: ファイルリスト
+  if (toolName === 'Glob') {
+    const lines = output.trim().split('\n').filter(l => l.trim())
+    if (lines.length > 0 && lines.every(l => /^[\/\w.\-]/.test(l))) {
+      let html = '<div style="font-family:var(--mono);font-size:12px;max-height:200px;overflow:auto">'
+      for (const line of lines.slice(0, 100)) {
+        html += `<div style="padding:1px 0">${esc(line)}</div>`
+      }
+      if (lines.length > 100) html += `<div style="color:var(--muted)">... ${lines.length - 100} more files</div>`
+      html += '</div>'
+      return html
+    }
+  }
+  // Bash: コマンド出力
+  if (toolName === 'Bash') {
+    return `<div style="font-family:var(--mono);font-size:12px;max-height:300px;overflow:auto;white-space:pre-wrap;color:var(--muted)">${esc(output)}</div>`
+  }
+  // Default
+  return `<div style="color:var(--muted);max-height:300px;overflow:auto;white-space:pre-wrap">${esc(output)}</div>`
+}
+
 function appendToolOutput(panel, output) {
   const body = panel.querySelector('.tool-detail-body')
   if (!body) return
+  const toolName = panel.querySelector('.tool-name')?.textContent || ''
   if (output) {
-    body.innerHTML += `<div style="margin-top:6px;border-top:1px solid var(--border);padding-top:6px;color:var(--muted)">${esc(output)}</div>`
+    body.innerHTML += `<div style="margin-top:6px;border-top:1px solid var(--border);padding-top:6px">${formatToolOutput(toolName, output)}</div>`
     // Dev Server URLを検出してボタンを挿入
     const urls = detectDevServerUrls(output)
     if (urls.length > 0) {
