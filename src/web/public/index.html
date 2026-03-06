@@ -2216,7 +2216,24 @@ async function sendMessage() {
   const tabId = activeTabId
   const imageNames = fileImages.map(i => i.name).join(', ')
   const displayMsg = cleanUserMessage(raw) || (imageNames ? `📎 ${imageNames}` : '(ファイル添付)')
-  addMessage(tabId, 'user', displayMsg)
+  const msgEl = addMessage(tabId, 'user', displayMsg)
+  // 画像がある場合、バブル内にサムネイルを追加表示
+  if (fileImages.length > 0 && msgEl) {
+    const bubble = msgEl.querySelector('.bubble')
+    if (bubble) {
+      const imgRow = document.createElement('div')
+      imgRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:6px'
+      for (const img of fileImages) {
+        const imgEl = document.createElement('img')
+        imgEl.src = `data:${img.mediaType};base64,${img.data}`
+        imgEl.alt = img.name
+        imgEl.title = img.name
+        imgEl.style.cssText = 'max-width:200px;max-height:150px;border-radius:8px;object-fit:cover'
+        imgRow.appendChild(imgEl)
+      }
+      bubble.appendChild(imgRow)
+    }
+  }
   const assistantEl = addMessage(tabId, 'assistant', '')
   const content = assistantEl.querySelector('.content')
   content.innerHTML = '<div class="typing"><div class="typing-dots"><span></span><span></span><span></span></div></div>'
