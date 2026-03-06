@@ -103,6 +103,8 @@ gh auth login
 ```
 src/
 ├── agents/            # AIエージェント
+│   ├── definitions.ts # サブエージェント定義（projects.jsonからワーカー動的生成）
+│   ├── memory.ts      # エージェントメモリ（data/agent-memory/{slug}.md で永続化）
 │   └── taicho/        # タイチョー（実行隊長）: Issue→コード→Draft PR
 │       ├── index.ts       # メインオーケストレーター
 │       ├── types.ts       # 型定義
@@ -113,30 +115,43 @@ src/
 ├── cli/               # CLIツール
 │   ├── index.ts       # CLI エントリーポイント
 │   └── setup.ts       # 対話式セットアップウィザード
+├── db/                # データベース層（SQLite）
+│   ├── index.ts       # DBシングルトン（WALモード、process.exitで自動close）
+│   └── schema.ts      # スキーマ定義 + JSON→SQLiteマイグレーション
 ├── github/            # GitHub連携
 │   ├── issues.ts      # Issue CRUD（gh CLI経由、マルチリポ対応）
 │   └── pulls.ts       # PR操作（gh CLI経由）
 ├── llm/               # LLMレイヤー
 │   └── claude-cli.ts  # Claude CLI ラッパー（1ショット処理用）
 ├── queue/             # ジョブキュー
-│   ├── processor.ts   # キュー管理（JSON永続化、冪等性、リトライ）
+│   ├── processor.ts   # キュー管理（SQLite永続化、冪等性、リトライ）
 │   ├── scheduler.ts   # Cronスケジューラ（バッチ制限）
 │   └── rate-limiter.ts # 同時実行ガード
 ├── web/               # Web UI（スマホ操作用）
 │   ├── server.ts      # Hono サーバー（Tailscaleバインド）
 │   ├── danger-detect.ts # 危険コマンド事後報告
+│   ├── path-guard.ts  # パストラバーサル防止
 │   ├── routes/
-│   │   └── chat.ts    # Agent SDK + SSEストリーミング
+│   │   ├── chat.ts    # Agent SDK + SSEストリーミング
+│   │   └── observer.ts # セッションツリー可視化API（5レイヤー詳細）
+│   ├── services/
+│   │   ├── chat-service.ts    # チャットセッション管理
+│   │   └── permission-bridge.ts # canUseTool → Web UI 許可ブリッジ
 │   └── public/
-│       └── index.html # モバイルファーストチャットUI
+│       ├── index.html  # モバイルファーストチャットUI
+│       ├── observer.html # セッションオブザーバーUI
+│       ├── i18n.js     # 国際化
+│       └── theme.js    # テーマ管理
 ├── utils/             # ユーティリティ
 │   ├── logger.ts      # 構造化ログ
-│   ├── audit.ts       # 監査ログ（JSONL）
+│   ├── audit.ts       # 監査ログ（SQLite）
 │   └── sanitize.ts    # 入力サニタイズ
 ├── config.ts          # 設定管理
 └── index.ts           # エントリーポイント（Cron + Queue）
 
 projects.json          # プロジェクト登録（slug, repo, localPath）
+data/
+└── agent-memory/      # エージェントメモリ（{slug}.md、セッション間永続）
 ```
 
 ## プロジェクト概要
