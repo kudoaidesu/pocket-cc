@@ -914,12 +914,32 @@ function setPermissionMode(mode, silent) {
 }
 
 // --- Compacting 表示 ---
+let _compactDotTimer = null
 function showCompacting(show) {
   const banner = document.getElementById('compactBanner')
+  const pill = document.getElementById('tokenPill')
   banner.classList.toggle('active', show)
-  banner.innerHTML = show
-    ? `${ic('zap', 13)} <span>Compacting context...</span>`
-    : ''
+  if (_compactDotTimer) { clearInterval(_compactDotTimer); _compactDotTimer = null }
+  if (show) {
+    // tokenPill を非表示にして重複を避ける
+    if (pill) pill.style.display = 'none'
+    let dots = 1
+    const span = document.createElement('span')
+    span.id = 'compactDotsText'
+    banner.innerHTML = ''
+    banner.appendChild(document.createRange().createContextualFragment(ic('zap', 13)))
+    banner.appendChild(document.createTextNode(' '))
+    span.textContent = 'Compacting.'
+    banner.appendChild(span)
+    _compactDotTimer = setInterval(() => {
+      dots = (dots % 3) + 1
+      span.textContent = 'Compacting' + '.'.repeat(dots)
+    }, 500)
+  } else {
+    banner.innerHTML = ''
+    // tokenPill を復元
+    if (pill) pill.style.display = 'flex'
+  }
 }
 function showCompactDone(trigger, preTokens) {
   const banner = document.getElementById('compactBanner')
