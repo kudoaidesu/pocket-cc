@@ -13,7 +13,7 @@ const log = createLogger('db:schema')
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 /** 現在のスキーマバージョン。マイグレーション追加時にインクリメントする */
-const CURRENT_VERSION = 1
+const CURRENT_VERSION = 2
 
 export function initSchema(db: Database.Database): void {
   const version = db.pragma('user_version', { simple: true }) as number
@@ -24,6 +24,7 @@ export function initSchema(db: Database.Database): void {
 
   db.transaction(() => {
     if (version < 1) migrateV1(db)
+    if (version < 2) migrateV2(db)
     db.pragma(`user_version = ${CURRENT_VERSION}`)
   })()
 
@@ -92,6 +93,35 @@ function migrateV1(db: Database.Database): void {
     )
   `)
   db.exec('CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit(timestamp DESC)')
+}
+
+// ── v2: Strategy 評価テーブル ─────────────────────────────
+
+function migrateV2(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS strategy_evaluations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      issue_number INTEGER NOT NULL,
+      repository TEXT NOT NULL,
+      strategy TEXT NOT NULL,
+      difficulty TEXT,
+      success INTEGER NOT NULL DEFAULT 0,
+      duration_ms INTEGER,
+      retry_count INTEGER NOT NULL DEFAULT 0,
+      lines_added INTEGER,
+      lines_removed INTEGER,
+      files_changed INTEGER,
+      build_pass INTEGER,
+      test_pass INTEGER,
+      pr_url TEXT,
+      pr_merged INTEGER,
+      manual_fix_commits INTEGER,
+      review_comments INTEGER,
+      created_at TEXT NOT NULL
+    )
+  `)
+  db.exec('CREATE INDEX IF NOT EXISTS idx_eval_strategy ON strategy_evaluations(strategy)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_eval_created ON strategy_evaluations(created_at DESC)')
 }
 
 // ── JSON → SQLite データ移行 ──────────────────────────────

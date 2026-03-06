@@ -1,8 +1,13 @@
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 import { config } from '../../config.js'
 import { addComment } from '../../github/issues.js'
 import { createLogger } from '../../utils/logger.js'
 import { appendAudit } from '../../utils/audit.js'
+import { recordEvaluation } from '../../utils/cost-tracker.js'
 import type { TaichoInput, TaichoResult } from './types.js'
+
+const execFileAsync = promisify(execFile)
 import {
   generateBranchName,
   getBaseBranch,
@@ -17,6 +22,22 @@ import {
 import { getStrategy, getDefaultStrategy } from './strategies/index.js'
 
 const log = createLogger('taicho')
+
+async function getDiffstat(cwd: string, baseBranch: string): Promise<{ linesAdded: number; linesRemoved: number; filesChanged: number }> {
+  try {
+    const { stdout } = await execFileAsync('git', ['diff', '--shortstat', baseBranch], { cwd })
+    const filesMatch = stdout.match(/(\d+) file/)
+    const addMatch = stdout.match(/(\d+) insertion/)
+    const delMatch = stdout.match(/(\d+) deletion/)
+    return {
+      filesChanged: filesMatch ? Number(filesMatch[1]) : 0,
+      linesAdded: addMatch ? Number(addMatch[1]) : 0,
+      linesRemoved: delMatch ? Number(delMatch[1]) : 0,
+    }
+  } catch {
+    return { linesAdded: 0, linesRemoved: 0, filesChanged: 0 }
+  }
+}
 
 export async function runTaicho(input: TaichoInput): Promise<TaichoResult> {
   const { issue, project } = input
@@ -96,6 +117,23 @@ export async function runTaicho(input: TaichoInput): Promise<TaichoResult> {
       )
 
       const durationMs = Date.now() - startTime
+      const diffstat = await getDiffstat(project.localPath, baseBranch)
+
+      // 評価レコードを記録
+      const difficultyLabel = issue.labels?.find((l) => /^difficulty:/.test(l))?.replace('difficulty:', '') as string | undefined
+      recordEvaluation({
+        issueNumber: issue.number,
+        repository: project.repo,
+        strategy: strategy.name,
+        difficulty: difficultyLabel,
+        success: true,
+        durationMs,
+        retryCount: attempt,
+        linesAdded: diffstat.linesAdded,
+        linesRemoved: diffstat.linesRemoved,
+        filesChanged: diffstat.filesChanged,
+        prUrl,
+      })
 
       appendAudit({
         action: 'taicho_complete',
@@ -148,6 +186,18 @@ export async function runTaicho(input: TaichoInput): Promise<TaichoResult> {
 
   const durationMs = Date.now() - startTime
   const error = `Failed after ${maxRetries} attempts. Last error: ${lastError}`
+
+  // 失敗の評価レコードを記録
+  const difficultyLabel = issue.labels?.find((l) => /^difficulty:/.test(l))?.replace('difficulty:', '') as string | undefined
+  recordEvaluation({
+    issueNumber: issue.number,
+    repository: project.repo,
+    strategy: strategy.name,
+    difficulty: difficultyLabel,
+    success: false,
+    durationMs,
+    retryCount: maxRetries,
+  })
 
   void input.onProgress?.({
     stage: 'failed',

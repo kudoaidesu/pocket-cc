@@ -18,6 +18,7 @@ import { isTailscaleIp, isProjectPathAllowed } from './path-guard.js'
 import { chatRoutes } from './routes/chat.js'
 import { observerRoutes } from './routes/observer.js'
 import { createLogger } from '../utils/logger.js'
+import { getStrategyStats, getRecentEvaluations } from '../utils/cost-tracker.js'
 import { listIssues, createIssue } from '../github/issues.js'
 
 const log = createLogger('web:server')
@@ -266,6 +267,14 @@ app.get('/api/health', (c) => {
     // health-status.json がまだ存在しない場合は null
   }
   return c.json({ ok: true, timestamp: Date.now(), queue: queueDetail })
+})
+
+// Strategy 評価レポート
+app.get('/api/evaluations', (c) => {
+  return c.json({
+    stats: getStrategyStats(),
+    recent: getRecentEvaluations(20),
+  })
 })
 
 // --- ファイルツリー・ソース閲覧 API ---
