@@ -1,7 +1,12 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs'
-import { join } from 'node:path'
+/**
+ * ジョブキュー — SQLite 永続化
+ *
+ * 全操作がprepared statementによる原子的クエリ。
+ * JSON load-all/write-all のアンチパターンを排除。
+ */
 import { randomUUID } from 'node:crypto'
 import { config } from '../config.js'
+import { getDb } from '../db/index.js'
 import { createLogger } from '../utils/logger.js'
 
 const log = createLogger('queue')
@@ -24,26 +29,22 @@ export interface QueueItem {
   nextRetryAt?: string
 }
 
-const queueFilePath = join(config.queue.dataDir, 'queue.json')
-
-function ensureDataDir(): void {
-  if (!existsSync(config.queue.dataDir)) {
-    mkdirSync(config.queue.dataDir, { recursive: true })
+/** DB行 → QueueItem 変換 */
+function rowToItem(row: Record<string, unknown>): QueueItem {
+  return {
+    id: row.id as string,
+    issueNumber: row.issue_number as number,
+    repository: row.repository as string,
+    priority: row.priority as Priority,
+    status: row.status as QueueStatus,
+    createdAt: row.created_at as string,
+    scheduledAt: (row.scheduled_at as string) || undefined,
+    completedAt: (row.completed_at as string) || undefined,
+    error: (row.error as string) || undefined,
+    retryCount: row.retry_count as number,
+    maxRetries: row.max_retries as number,
+    nextRetryAt: (row.next_retry_at as string) || undefined,
   }
-}
-
-function loadQueue(): QueueItem[] {
-  ensureDataDir()
-  if (!existsSync(queueFilePath)) {
-    return []
-  }
-  const raw = readFileSync(queueFilePath, 'utf-8')
-  return JSON.parse(raw) as QueueItem[]
-}
-
-function saveQueue(items: QueueItem[]): void {
-  ensureDataDir()
-  writeFileSync(queueFilePath, JSON.stringify(items, null, 2), 'utf-8')
 }
 
 export function enqueue(
@@ -51,17 +52,17 @@ export function enqueue(
   repository: string,
   priority: Priority = 'medium',
 ): QueueItem | null {
-  const items = loadQueue()
+  const db = getDb()
 
-  // 冪等性: 同一 issueNumber+repository が pending/processing にある場合は拒否
-  const duplicate = items.find(
-    (i) =>
-      i.issueNumber === issueNumber &&
-      i.repository === repository &&
-      (i.status === 'pending' || i.status === 'processing'),
-  )
-  if (duplicate) {
-    log.warn(`Duplicate enqueue rejected: Issue #${issueNumber} (${repository}) already ${duplicate.status}`)
+  // 冪等性チェック: 同一issue+repoがpending/processingなら拒否
+  const dup = db.prepare(`
+    SELECT id FROM queue
+    WHERE issue_number = ? AND repository = ? AND status IN ('pending', 'processing')
+    LIMIT 1
+  `).get(issueNumber, repository)
+
+  if (dup) {
+    log.warn(`Duplicate enqueue rejected: Issue #${issueNumber} (${repository})`)
     return null
   }
 
@@ -76,46 +77,61 @@ export function enqueue(
     maxRetries: config.queue.maxRetries,
   }
 
-  items.push(item)
-  saveQueue(items)
+  db.prepare(`
+    INSERT INTO queue (id, issue_number, repository, priority, status,
+      created_at, retry_count, max_retries)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    item.id, item.issueNumber, item.repository, item.priority, item.status,
+    item.createdAt, item.retryCount, item.maxRetries,
+  )
 
   log.info(`Enqueued Issue #${issueNumber} (${priority}) → ${item.id}`)
   return item
 }
 
 export function dequeue(): QueueItem | null {
-  const items = loadQueue()
-  const now = Date.now()
+  const db = getDb()
+  const now = new Date().toISOString()
 
-  const priorityOrder: Priority[] = ['high', 'medium', 'low']
-  let next: QueueItem | undefined
+  // 原子的: SELECT + UPDATE in transaction
+  const result = db.transaction(() => {
+    const row = db.prepare(`
+      SELECT * FROM queue
+      WHERE status = 'pending'
+        AND (next_retry_at IS NULL OR next_retry_at <= ?)
+      ORDER BY
+        CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 END,
+        created_at
+      LIMIT 1
+    `).get(now) as Record<string, unknown> | undefined
 
-  for (const p of priorityOrder) {
-    next = items.find(
-      (i) =>
-        i.status === 'pending' &&
-        i.priority === p &&
-        (!i.nextRetryAt || new Date(i.nextRetryAt).getTime() <= now),
-    )
-    if (next) break
-  }
+    if (!row) return null
 
-  if (!next) return null
+    db.prepare(`
+      UPDATE queue SET status = 'processing', next_retry_at = NULL WHERE id = ?
+    `).run(row.id)
 
-  next.status = 'processing'
-  next.nextRetryAt = undefined
-  saveQueue(items)
+    return { ...row, status: 'processing', next_retry_at: null }
+  })()
 
-  log.info(`Dequeued Issue #${next.issueNumber} → ${next.id}`)
-  return next
+  if (!result) return null
+
+  const item = rowToItem(result)
+  log.info(`Dequeued Issue #${item.issueNumber} → ${item.id}`)
+  return item
 }
 
 export function getAll(): QueueItem[] {
-  return loadQueue()
+  const db = getDb()
+  const rows = db.prepare('SELECT * FROM queue ORDER BY created_at DESC').all() as Array<Record<string, unknown>>
+  return rows.map(rowToItem)
 }
 
 export function getPending(): QueueItem[] {
-  return loadQueue().filter((i) => i.status === 'pending')
+  const db = getDb()
+  const rows = db.prepare('SELECT * FROM queue WHERE status = ?').all('pending') as Array<Record<string, unknown>>
+  return rows.map(rowToItem)
 }
 
 export function updateStatus(
@@ -123,37 +139,34 @@ export function updateStatus(
   status: QueueStatus,
   error?: string,
 ): void {
-  const items = loadQueue()
-  const item = items.find((i) => i.id === id)
-  if (!item) {
+  const db = getDb()
+
+  const completedAt = (status === 'completed' || status === 'failed')
+    ? new Date().toISOString()
+    : null
+
+  const changes = db.prepare(`
+    UPDATE queue SET status = ?, completed_at = COALESCE(?, completed_at), error = COALESCE(?, error)
+    WHERE id = ?
+  `).run(status, completedAt, error ?? null, id)
+
+  if (changes.changes === 0) {
     log.warn(`Queue item not found: ${id}`)
     return
   }
-
-  item.status = status
-  if (status === 'completed' || status === 'failed') {
-    item.completedAt = new Date().toISOString()
-  }
-  if (error) {
-    item.error = error
-  }
-
-  saveQueue(items)
   log.info(`Queue item ${id} → ${status}`)
 }
 
 export function removeCompleted(): number {
-  const items = loadQueue()
-  const before = items.length
-  const remaining = items.filter(
-    (i) => i.status !== 'completed' && i.status !== 'failed',
-  )
-  saveQueue(remaining)
-  const removed = before - remaining.length
-  if (removed > 0) {
-    log.info(`Removed ${removed} completed/failed items`)
+  const db = getDb()
+  const result = db.prepare(`
+    DELETE FROM queue WHERE status IN ('completed', 'failed')
+  `).run()
+
+  if (result.changes > 0) {
+    log.info(`Removed ${result.changes} completed/failed items`)
   }
-  return removed
+  return result.changes
 }
 
 export function getStats(): {
@@ -163,48 +176,53 @@ export function getStats(): {
   failed: number
   total: number
 } {
-  const items = loadQueue()
-  return {
-    pending: items.filter((i) => i.status === 'pending').length,
-    processing: items.filter((i) => i.status === 'processing').length,
-    completed: items.filter((i) => i.status === 'completed').length,
-    failed: items.filter((i) => i.status === 'failed').length,
-    total: items.length,
+  const db = getDb()
+  const rows = db.prepare(`
+    SELECT status, COUNT(*) as count FROM queue GROUP BY status
+  `).all() as Array<{ status: string; count: number }>
+
+  const stats = { pending: 0, processing: 0, completed: 0, failed: 0, total: 0 }
+  for (const row of rows) {
+    if (row.status in stats) {
+      (stats as Record<string, number>)[row.status] = row.count
+    }
+    stats.total += row.count
   }
+  return stats
 }
 
 export function findById(id: string): QueueItem | undefined {
-  return loadQueue().find((i) => i.id === id)
+  const db = getDb()
+  const row = db.prepare('SELECT * FROM queue WHERE id = ?').get(id) as Record<string, unknown> | undefined
+  return row ? rowToItem(row) : undefined
 }
 
 export function removeItem(id: string): boolean {
-  const items = loadQueue()
-  const index = items.findIndex((i) => i.id === id)
-  if (index === -1) return false
-
-  items.splice(index, 1)
-  saveQueue(items)
-  log.info(`Queue item removed: ${id}`)
-  return true
+  const db = getDb()
+  const result = db.prepare('DELETE FROM queue WHERE id = ?').run(id)
+  if (result.changes > 0) {
+    log.info(`Queue item removed: ${id}`)
+    return true
+  }
+  return false
 }
 
 export function markForRetry(id: string, error: string): boolean {
-  const items = loadQueue()
-  const item = items.find((i) => i.id === id)
-  if (!item) {
+  const db = getDb()
+  const row = db.prepare('SELECT * FROM queue WHERE id = ?').get(id) as Record<string, unknown> | undefined
+  if (!row) {
     log.warn(`Queue item not found for retry: ${id}`)
     return false
   }
 
-  const retryCount = (item.retryCount ?? 0) + 1
-  const maxRetries = item.maxRetries ?? config.queue.maxRetries
+  const retryCount = (row.retry_count as number) + 1
+  const maxRetries = row.max_retries as number
 
   if (retryCount > maxRetries) {
     log.info(`Queue item ${id} exceeded max retries (${retryCount}/${maxRetries}). Marking failed.`)
-    item.status = 'failed'
-    item.completedAt = new Date().toISOString()
-    item.error = error
-    saveQueue(items)
+    db.prepare(`
+      UPDATE queue SET status = 'failed', completed_at = ?, error = ? WHERE id = ?
+    `).run(new Date().toISOString(), error, id)
     return false
   }
 
@@ -215,12 +233,11 @@ export function markForRetry(id: string, error: string): boolean {
   )
   const nextRetryAt = new Date(Date.now() + backoffMs).toISOString()
 
-  item.status = 'pending'
-  item.retryCount = retryCount
-  item.error = error
-  item.nextRetryAt = nextRetryAt
+  db.prepare(`
+    UPDATE queue SET status = 'pending', retry_count = ?, error = ?, next_retry_at = ?
+    WHERE id = ?
+  `).run(retryCount, error, nextRetryAt, id)
 
-  saveQueue(items)
   log.info(
     `Queue item ${id} scheduled for retry ${retryCount}/${maxRetries} at ${nextRetryAt} (backoff: ${backoffMs / 1000}s)`,
   )

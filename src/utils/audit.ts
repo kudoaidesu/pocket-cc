@@ -1,6 +1,9 @@
-import { appendFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs'
-import { join, dirname } from 'node:path'
-import { config } from '../config.js'
+/**
+ * 監査ログ — SQLite 永続化
+ *
+ * INSERT はO(1)、読み取りはインデックス付きで末尾N件のみ取得可能。
+ */
+import { getDb } from '../db/index.js'
 
 export interface AuditEntry {
   timestamp: string
@@ -10,32 +13,27 @@ export interface AuditEntry {
   result: 'allow' | 'block' | 'error'
 }
 
-const auditFilePath = join(config.queue.dataDir, 'audit.jsonl')
-
-function ensureDir(): void {
-  const dir = dirname(auditFilePath)
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true })
-  }
-}
-
 export function appendAudit(entry: Omit<AuditEntry, 'timestamp'>): void {
-  ensureDir()
-  const full: AuditEntry = {
-    timestamp: new Date().toISOString(),
-    ...entry,
-  }
-  appendFileSync(auditFilePath, JSON.stringify(full) + '\n', 'utf-8')
+  const db = getDb()
+  db.prepare(`
+    INSERT INTO audit (timestamp, action, actor, detail, result)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(
+    new Date().toISOString(),
+    entry.action,
+    entry.actor,
+    entry.detail,
+    entry.result,
+  )
 }
 
 export function getAuditLog(limit = 100): AuditEntry[] {
-  if (!existsSync(auditFilePath)) return []
+  const db = getDb()
+  const rows = db.prepare(`
+    SELECT timestamp, action, actor, detail, result
+    FROM audit ORDER BY id DESC LIMIT ?
+  `).all(limit) as AuditEntry[]
 
-  const lines = readFileSync(auditFilePath, 'utf-8')
-    .split('\n')
-    .filter((line) => line.trim())
-
-  const entries = lines.map((line) => JSON.parse(line) as AuditEntry)
-
-  return entries.slice(-limit)
+  // 昇順に戻す（古い順）
+  return rows.reverse()
 }
