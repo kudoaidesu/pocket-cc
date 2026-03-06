@@ -225,7 +225,7 @@ pre:hover .code-copy-btn{opacity:1}
 .attach-chip .attach-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .attach-chip .attach-remove{background:none;border:none;color:var(--muted);cursor:pointer;padding:0;margin:0;width:auto;height:auto;font-size:12px;display:flex;align-items:center}
 .attach-chip .attach-remove:hover{color:var(--danger)}
-.attach-chip .attach-thumb{width:24px;height:24px;border-radius:3px;object-fit:cover}
+.attach-chip .attach-thumb{width:48px;height:48px;border-radius:6px;object-fit:cover}
 
 /* ── トースト通知 ── */
 .toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.5);font-size:13px;color:var(--text);max-width:90vw;min-width:200px;animation:fadeIn .15s}
@@ -2270,24 +2270,41 @@ async function sendMessage() {
   }
 
   const tabId = activeTabId
+  // テキストファイル名を fileText から抽出
+  const textFileNames = fileText ? [...fileText.matchAll(/^--- (.+?) ---$/gm)].map(m => m[1]) : []
   const imageNames = fileImages.map(i => i.name).join(', ')
-  const displayMsg = cleanUserMessage(raw) || (imageNames ? `📎 ${imageNames}` : '(ファイル添付)')
+  const allFileNames = [...textFileNames, ...fileImages.map(i => i.name)]
+  const displayMsg = cleanUserMessage(raw) || (allFileNames.length > 0 ? `📎 ${allFileNames.join(', ')}` : '(ファイル添付)')
   const msgEl = addMessage(tabId, 'user', displayMsg)
-  // 画像がある場合、バブル内にサムネイルを追加表示
-  if (fileImages.length > 0 && msgEl) {
+  if (msgEl) {
     const bubble = msgEl.querySelector('.bubble')
     if (bubble) {
-      const imgRow = document.createElement('div')
-      imgRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:6px'
-      for (const img of fileImages) {
-        const imgEl = document.createElement('img')
-        imgEl.src = `data:${img.mediaType};base64,${img.data}`
-        imgEl.alt = img.name
-        imgEl.title = img.name
-        imgEl.style.cssText = 'max-width:200px;max-height:150px;border-radius:8px;object-fit:cover'
-        imgRow.appendChild(imgEl)
+      // テキストファイルカード表示
+      if (textFileNames.length > 0) {
+        const fileRow = document.createElement('div')
+        fileRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:6px'
+        for (const fname of textFileNames) {
+          const card = document.createElement('div')
+          card.style.cssText = 'display:flex;align-items:center;gap:4px;padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:var(--font-mono)'
+          card.innerHTML = `${ic('file-text', 12)} <span style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(fname)}</span>`
+          fileRow.appendChild(card)
+        }
+        bubble.appendChild(fileRow)
       }
-      bubble.appendChild(imgRow)
+      // 画像サムネイル表示
+      if (fileImages.length > 0) {
+        const imgRow = document.createElement('div')
+        imgRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:6px'
+        for (const img of fileImages) {
+          const imgEl = document.createElement('img')
+          imgEl.src = `data:${img.mediaType};base64,${img.data}`
+          imgEl.alt = img.name
+          imgEl.title = img.name
+          imgEl.style.cssText = 'max-width:200px;max-height:150px;border-radius:8px;object-fit:cover'
+          imgRow.appendChild(imgEl)
+        }
+        bubble.appendChild(imgRow)
+      }
     }
   }
   const assistantEl = addMessage(tabId, 'assistant', '')
