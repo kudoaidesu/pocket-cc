@@ -6,18 +6,21 @@
  */
 import { Hono } from 'hono'
 import { streamSSE } from 'hono/streaming'
-import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, openSync, readSync, closeSync, createReadStream, existsSync } from 'node:fs'
+import { readdirSync, statSync, openSync, readSync, closeSync, createReadStream, existsSync } from 'node:fs'
 import { createInterface } from 'node:readline'
-import { join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 import { homedir } from 'node:os'
 import { startStream, readStream, getStreamStatus, abortStream } from '../services/chat-service.js'
 import type { ChatEvent } from '../services/chat-service.js'
 import { resolveRequest, getRequest } from '../services/permission-bridge.js'
 import { runClaudeCli } from '../../llm/claude-cli.js'
 import { validateInput } from '../../utils/sanitize.js'
-import { isValidSessionId, isProjectPathAllowed } from '../path-guard.js'
+import { isValidSessionId, isProjectPathAllowed, FRONT_DESK_SENTINEL } from '../path-guard.js'
 import { createLogger } from '../../utils/logger.js'
+import { getDb } from '../../db/index.js'
+import { config } from '../../config.js'
+import { ensureMemoryFiles } from '../../agents/memory.js'
+import { buildAllAgents, buildFrontDeskPrompt } from '../../agents/definitions.js'
 
 const log = createLogger('web:chat')
 
@@ -47,7 +50,7 @@ export function cleanPreview(raw: string): string {
   return text.slice(0, 200)
 }
 
-// アクティブセッション管理（ファイル永続化）
+// アクティブセッション管理（SQLite永続化）
 export interface SessionEntry {
   sessionId: string
   project: string
@@ -56,36 +59,27 @@ export interface SessionEntry {
   messagePreview: string
 }
 
-// プロジェクトルートの data/ に保存
-const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
-const SESSIONS_FILE = join(projectRoot, 'data', 'sessions.json')
+/** セッションをSQLiteに保存（UPSERT + LRU 50件上限） */
+function saveSession(key: string, entry: SessionEntry): void {
+  const db = getDb()
+  db.prepare(`
+    INSERT INTO sessions (key, session_id, project, model, last_used, message_preview)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(key) DO UPDATE SET
+      session_id = excluded.session_id,
+      project = excluded.project,
+      model = excluded.model,
+      last_used = excluded.last_used,
+      message_preview = excluded.message_preview
+  `).run(key, entry.sessionId, entry.project, entry.model, entry.lastUsed, entry.messagePreview)
 
-const sessions = new Map<string, SessionEntry>()
-
-// 起動時にファイルから復元
-function loadSessions(): void {
-  try {
-    const raw = readFileSync(SESSIONS_FILE, 'utf-8')
-    const entries: Array<[string, SessionEntry]> = JSON.parse(raw)
-    for (const [key, val] of entries) {
-      sessions.set(key, val)
-    }
-    log.info(`Loaded ${sessions.size} sessions from disk`)
-  } catch {
-    // ファイルが無い場合は空で開始
-  }
+  // LRU上限: 50件を超えた古いものを削除
+  db.prepare(`
+    DELETE FROM sessions WHERE key NOT IN (
+      SELECT key FROM sessions ORDER BY last_used DESC LIMIT 50
+    )
+  `).run()
 }
-
-function persistSessions(): void {
-  try {
-    mkdirSync(dirname(SESSIONS_FILE), { recursive: true })
-    writeFileSync(SESSIONS_FILE, JSON.stringify(Array.from(sessions.entries()), null, 2))
-  } catch (e) {
-    log.warn(`Failed to persist sessions: ${e}`)
-  }
-}
-
-loadSessions()
 
 // SSE イベント書き出しヘルパー（POST /api/chat と POST /api/chat/reconnect で共用）
 async function writeEventSSE(
@@ -151,9 +145,20 @@ async function writeEventSSE(
 }
 
 export function getSessions(): SessionEntry[] {
-  return Array.from(sessions.entries())
-    .map(([key, val]) => ({ ...val, id: key }))
-    .sort((a, b) => b.lastUsed - a.lastUsed)
+  const db = getDb()
+  const rows = db.prepare(`
+    SELECT key, session_id, project, model, last_used, message_preview
+    FROM sessions ORDER BY last_used DESC
+  `).all() as Array<Record<string, unknown>>
+
+  return rows.map(row => ({
+    sessionId: row.session_id as string,
+    project: row.project as string,
+    model: row.model as string,
+    lastUsed: row.last_used as number,
+    messagePreview: row.message_preview as string,
+    id: row.key as string,
+  } as SessionEntry & { id: string }))
 }
 
 /**
@@ -401,7 +406,8 @@ chatRoutes.post('/', async (c) => {
   const validation = validateInput(body.message || '')
   const sanitizedMessage = validation.sanitized || body.message || ''
 
-  const cwd = body.project || process.cwd()
+  const isFrontDesk = body.project === FRONT_DESK_SENTINEL
+  const cwd = isFrontDesk ? process.cwd() : (body.project || process.cwd())
 
   // プロジェクトパスのバウンダリチェック
   if (body.project && !isProjectPathAllowed(body.project)) {
@@ -409,6 +415,18 @@ chatRoutes.post('/', async (c) => {
   }
 
   const model = body.model || 'sonnet'
+
+  // フロントデスクモード: エージェント定義 + 追加ディレクトリ + プロンプト注入
+  let agents: Record<string, unknown> | undefined
+  let additionalDirectories: string[] | undefined
+  let appendSystemPrompt: string | undefined
+  if (isFrontDesk) {
+    const projects = config.projects
+    ensureMemoryFiles(projects)
+    agents = buildAllAgents(projects)
+    additionalDirectories = projects.map(p => p.localPath)
+    appendSystemPrompt = buildFrontDeskPrompt(projects)
+  }
 
   // SDK処理開始（HTTP接続から分離 — 接続が切れてもSDKは継続）
   let streamId: string
@@ -421,6 +439,9 @@ chatRoutes.post('/', async (c) => {
       planMode: body.permissionMode === 'plan' || body.planMode,
       permissionMode: body.permissionMode,
       images: body.images,
+      agents,
+      additionalDirectories,
+      appendSystemPrompt,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
@@ -437,24 +458,16 @@ chatRoutes.post('/', async (c) => {
         if (result.sessionId) lastSessionId = result.sessionId
       }
 
-      // セッション保存（ファイル永続化）
+      // セッション保存（SQLite永続化）
       if (lastSessionId) {
         const key = lastSessionId.slice(0, 12)
-        sessions.set(key, {
+        saveSession(key, {
           sessionId: lastSessionId,
           project: cwd,
           model,
           lastUsed: Date.now(),
           messagePreview: cleanPreview(body.message) || body.message.slice(0, 100),
         })
-        if (sessions.size > 50) {
-          const oldest = Array.from(sessions.entries())
-            .sort((a, b) => a[1].lastUsed - b[1].lastUsed)
-          for (let i = 0; i < sessions.size - 50; i++) {
-            sessions.delete(oldest[i][0])
-          }
-        }
-        persistSessions()
       }
     } catch (err) {
       // writeSSE失敗（クライアント切断等）→ SDK処理は継続、HTTP接続だけ終了
@@ -527,7 +540,9 @@ chatRoutes.get('/sessions', (c) => {
     return c.json({ error: 'Access denied: path outside allowed projects' }, 403)
   }
 
-  const all = getMergedSessions(project)
+  // フロントデスクの場合はcwdをプロセスルートに変換
+  const resolvedProject = project === FRONT_DESK_SENTINEL ? process.cwd() : project
+  const all = getMergedSessions(resolvedProject)
   const page = all.slice(offset, offset + limit).map(s => ({
     ...s,
     messagePreview: cleanPreview(s.messagePreview) || 'Untitled',
@@ -554,7 +569,9 @@ chatRoutes.get('/history/:sessionId', async (c) => {
     return c.json({ error: 'Invalid sessionId format' }, 400)
   }
 
-  const claudeDir = join(homedir(), '.claude', 'projects', cwdToProjectDir(project))
+  // フロントデスクの場合はcwdをプロセスルートに変換
+  const resolvedProject = project === FRONT_DESK_SENTINEL ? process.cwd() : project
+  const claudeDir = join(homedir(), '.claude', 'projects', cwdToProjectDir(resolvedProject))
   const filePath = join(claudeDir, `${sessionId}.jsonl`)
 
   if (!existsSync(filePath)) {
@@ -697,28 +714,30 @@ interface SummaryEntry {
   messageCount: number
 }
 
-const SUMMARIES_FILE = join(projectRoot, 'data', 'session-summaries.json')
-const summaryCache = new Map<string, SummaryEntry>()
-
-function loadSummaryCache(): void {
-  try {
-    const raw = readFileSync(SUMMARIES_FILE, 'utf-8')
-    const entries: Array<[string, SummaryEntry]> = JSON.parse(raw)
-    for (const [key, val] of entries) summaryCache.set(key, val)
-    log.info(`Loaded ${summaryCache.size} session summaries from disk`)
-  } catch { /* file doesn't exist yet */ }
-}
-
-function persistSummaryCache(): void {
-  try {
-    mkdirSync(dirname(SUMMARIES_FILE), { recursive: true })
-    writeFileSync(SUMMARIES_FILE, JSON.stringify(Array.from(summaryCache.entries()), null, 2))
-  } catch (e) {
-    log.warn(`Failed to persist summaries: ${e}`)
+function getSummaryCache(sessionId: string): SummaryEntry | null {
+  const db = getDb()
+  const row = db.prepare(`
+    SELECT summary, generated_at, message_count FROM session_summaries WHERE session_id = ?
+  `).get(sessionId) as Record<string, unknown> | undefined
+  if (!row) return null
+  return {
+    summary: row.summary as string,
+    generatedAt: row.generated_at as number,
+    messageCount: row.message_count as number,
   }
 }
 
-loadSummaryCache()
+function setSummaryCache(sessionId: string, entry: SummaryEntry): void {
+  const db = getDb()
+  db.prepare(`
+    INSERT INTO session_summaries (session_id, summary, generated_at, message_count)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(session_id) DO UPDATE SET
+      summary = excluded.summary,
+      generated_at = excluded.generated_at,
+      message_count = excluded.message_count
+  `).run(sessionId, entry.summary, entry.generatedAt, entry.messageCount)
+}
 
 /** JONLからユーザー/アシスタントのテキストのみ抽出し、要約用トランスクリプトを返す */
 async function extractSummaryTranscript(filePath: string): Promise<{ transcript: string; messageCount: number }> {
@@ -781,7 +800,8 @@ chatRoutes.get('/summary/:sessionId', async (c) => {
     return c.json({ error: 'Access denied' }, 403)
   }
 
-  const claudeDir = join(homedir(), '.claude', 'projects', cwdToProjectDir(project))
+  const resolvedPrj = project === FRONT_DESK_SENTINEL ? process.cwd() : project
+  const claudeDir = join(homedir(), '.claude', 'projects', cwdToProjectDir(resolvedPrj))
   const filePath = join(claudeDir, `${sessionId}.jsonl`)
 
   if (!existsSync(filePath)) {
@@ -798,7 +818,7 @@ chatRoutes.get('/summary/:sessionId', async (c) => {
     }
 
     // キャッシュ確認
-    const cached = summaryCache.get(sessionId)
+    const cached = getSummaryCache(sessionId)
     if (cached && messageCount - cached.messageCount < 3) {
       return c.json({ summary: cached.summary })
     }
@@ -823,8 +843,7 @@ chatRoutes.get('/summary/:sessionId', async (c) => {
     const summary = result.content.trim()
 
     // キャッシュ保存
-    summaryCache.set(sessionId, { summary, generatedAt: Date.now(), messageCount })
-    persistSummaryCache()
+    setSummaryCache(sessionId, { summary, generatedAt: Date.now(), messageCount })
 
     return c.json({ summary })
   } catch (e) {
@@ -848,7 +867,8 @@ chatRoutes.get('/suggest-name/:sessionId', async (c) => {
     return c.json({ error: 'Access denied' }, 403)
   }
 
-  const claudeDir = join(homedir(), '.claude', 'projects', cwdToProjectDir(project))
+  const resolvedPrj = project === FRONT_DESK_SENTINEL ? process.cwd() : project
+  const claudeDir = join(homedir(), '.claude', 'projects', cwdToProjectDir(resolvedPrj))
   const filePath = join(claudeDir, `${sessionId}.jsonl`)
 
   if (!existsSync(filePath)) {

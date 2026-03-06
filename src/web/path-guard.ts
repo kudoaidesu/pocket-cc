@@ -75,7 +75,12 @@ export function getAllowedProjectRoots(): string[] {
   return [...new Set(roots)]
 }
 
+/** フロントデスクのセンチネル値 */
+export const FRONT_DESK_SENTINEL = '__front-desk__'
+
 /** プロジェクトルート一覧に対するパスチェック（全API共有） */
 export function isProjectPathAllowed(targetPath: string): boolean {
+  // フロントデスクのセンチネル値は常に許可
+  if (targetPath === FRONT_DESK_SENTINEL) return true
   return isPathAllowed(targetPath, getAllowedProjectRoots())
 }

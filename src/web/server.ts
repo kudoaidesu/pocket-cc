@@ -152,9 +152,17 @@ app.use('/static/*', serveStatic({ root: resolve(process.cwd(), 'src/web/public'
 // チャット（SSEストリーミング）
 app.route('/api/chat', chatRoutes)
 
-// プロジェクト一覧（手動 + 自動スキャン）
+// プロジェクト一覧（手動 + 自動スキャン + フロントデスク）
 app.get('/api/projects', (c) => {
-  return c.json(getProjects())
+  const projects = getProjects()
+  // フロントデスクエントリを先頭に追加
+  const frontDesk: ProjectEntry = {
+    slug: 'front-desk',
+    repo: '',
+    localPath: '__front-desk__',
+    source: 'manual',
+  }
+  return c.json([frontDesk, ...projects])
 })
 
 // プロジェクト追加（projects.json に永続化）

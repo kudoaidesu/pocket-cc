@@ -27,6 +27,9 @@ export interface ChatParams {
   planMode?: boolean
   permissionMode?: string
   images?: ImageParam[]
+  agents?: Record<string, unknown>
+  additionalDirectories?: string[]
+  appendSystemPrompt?: string
 }
 
 export interface ToolDetail {
@@ -152,6 +155,17 @@ export function buildQueryOptions(
 
   if (params.sessionId) {
     options.resume = params.sessionId
+  }
+
+  // マルチエージェント対応: フロントデスクモード時に注入
+  if (params.agents) {
+    options.agents = params.agents
+  }
+  if (params.additionalDirectories) {
+    options.additionalDirectories = params.additionalDirectories
+  }
+  if (params.appendSystemPrompt) {
+    options.appendSystemPrompt = params.appendSystemPrompt
   }
 
   return options
