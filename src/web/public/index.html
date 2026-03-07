@@ -291,6 +291,39 @@ pre:hover .code-copy-btn{opacity:1}
 .settings-toggle:hover{border-color:var(--border-light);background:var(--accent-dim);color:var(--accent)}
 [data-theme="light"] .settings-panel{box-shadow:0 12px 40px rgba(0,0,0,.15)}
 
+/* ── ダッシュボード ── */
+.dash-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:15;display:none;backdrop-filter:blur(2px)}
+.dash-overlay.open{display:flex;align-items:center;justify-content:center}
+.dash-panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:min(520px,94vw);max-height:85vh;box-shadow:0 12px 40px rgba(0,0,0,.4);animation:tapSlideDown .15s;display:flex;flex-direction:column}
+.dash-header{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border)}
+.dash-title{font-size:15px;font-weight:700;color:var(--text-bright);flex:1}
+.dash-body{padding:16px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.dash-project{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px}
+.dash-project-header{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.dash-project-name{font-size:14px;font-weight:700;color:var(--text-bright);flex:1}
+.dash-badge{font-size:11px;padding:2px 8px;border-radius:6px;font-weight:600;font-family:var(--font-mono)}
+.dash-badge-issue{background:rgba(46,160,67,.15);color:#3fb950}
+.dash-badge-pr{background:rgba(130,80,223,.15);color:#a371f7}
+.dash-badge-dirty{background:rgba(210,153,34,.15);color:#d29922}
+.dash-git{font-size:12px;color:var(--muted);font-family:var(--font-mono);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.dash-git-branch{color:var(--accent)}
+.dash-list{margin:0;padding:0;list-style:none}
+.dash-list li{font-size:12px;color:var(--text);padding:4px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px}
+.dash-list li:last-child{border-bottom:none}
+.dash-list .dash-num{color:var(--muted);font-family:var(--font-mono);font-size:11px;min-width:28px}
+.dash-list .dash-draft{font-size:10px;color:var(--warning);background:rgba(210,153,34,.15);padding:1px 5px;border-radius:4px}
+.dash-section{margin-top:8px}
+.dash-section-title{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.dash-health{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px}
+.dash-health-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0;font-size:12px}
+.dash-health-label{color:var(--text)}
+.dash-health-val{font-family:var(--font-mono);color:var(--text-bright);font-weight:600}
+.dash-status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.dash-status-ok{background:#3fb950}
+.dash-status-warn{background:#d29922}
+.dash-status-err{background:#f85149}
+[data-theme="light"] .dash-panel{box-shadow:0 12px 40px rgba(0,0,0,.15)}
+
 /* ── 機能メニュー ── */
 .features-menu{position:absolute;top:100%;right:0;margin-top:4px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,.3);z-index:12;animation:tapSlideDown .12s;display:none}
 .features-menu.open{display:block}
@@ -455,6 +488,10 @@ pre:hover .code-copy-btn{opacity:1}
         <svg class="ic" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
         <span class="fm-label">Observer</span>
       </button>
+      <button class="features-menu-item" onclick="closeFeaturesMenu();openDashboard()">
+        <svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        <span class="fm-label" data-i18n="dash.title">Dashboard</span>
+      </button>
     </div>
   </div>
   <button class="header-btn" id="settingsBtn" onclick="openSettingsPanel()" title="Settings"></button>
@@ -568,6 +605,19 @@ pre:hover .code-copy-btn{opacity:1}
         </div>
       </div>
       <div id="linksList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- プロジェクトダッシュボード -->
+<div class="dash-overlay" id="dashOverlay" onclick="closeDashboard()">
+  <div class="dash-panel" onclick="event.stopPropagation()">
+    <div class="dash-header">
+      <span class="dash-title" data-i18n="dash.title">Dashboard</span>
+      <button class="tap-dismiss" onclick="closeDashboard()"></button>
+    </div>
+    <div class="dash-body" id="dashBody">
+      <div class="cost-loading" data-i18n="loading">Loading...</div>
     </div>
   </div>
 </div>
@@ -1888,6 +1938,92 @@ function openSettingsPanel() {
 }
 function closeSettingsPanel() {
   document.getElementById('settingsOverlay').classList.remove('open')
+}
+
+// ── ダッシュボード ──
+function openDashboard() {
+  document.getElementById('dashOverlay').classList.add('open')
+  loadDashboard()
+}
+function closeDashboard() {
+  document.getElementById('dashOverlay').classList.remove('open')
+}
+async function loadDashboard() {
+  const body = document.getElementById('dashBody')
+  body.innerHTML = `<div class="cost-loading">${t('loading')}</div>`
+  try {
+    const res = await fetch('/api/dashboard')
+    if (!res.ok) throw new Error(res.statusText)
+    const data = await res.json()
+    renderDashboard(body, data)
+  } catch (e) {
+    body.innerHTML = `<div class="cost-loading" style="color:var(--danger)">${e.message}</div>`
+  }
+}
+function renderDashboard(el, data) {
+  let html = ''
+  // ヘルスステータス
+  html += `<div class="dash-health">
+    <div class="dash-section-title">${t('dash.health')}</div>
+    <div class="dash-health-row">
+      <span class="dash-health-label"><span class="dash-status-dot dash-status-ok"></span>${t('dash.server')}</span>
+      <span class="dash-health-val">OK</span>
+    </div>`
+  if (data.health) {
+    const h = data.health
+    if (h.queue) {
+      html += `<div class="dash-health-row">
+        <span class="dash-health-label">${t('dash.queue')}</span>
+        <span class="dash-health-val">${h.queue.pending || 0} pending / ${h.queue.processing || 0} proc</span>
+      </div>`
+    }
+    if (h.uptime) {
+      html += `<div class="dash-health-row">
+        <span class="dash-health-label">${t('dash.uptime')}</span>
+        <span class="dash-health-val">${Math.round(h.uptime / 3600)}h</span>
+      </div>`
+    }
+  }
+  html += `</div>`
+  // プロジェクト
+  if (!data.projects || data.projects.length === 0) {
+    html += `<div class="cost-loading">${t('dash.noProjects')}</div>`
+  }
+  for (const p of (data.projects || [])) {
+    html += `<div class="dash-project">
+      <div class="dash-project-header">
+        <span class="dash-project-name">${esc(p.slug)}</span>`
+    if (p.openIssues > 0) html += `<span class="dash-badge dash-badge-issue">${p.openIssues} issues</span>`
+    if (p.openPRs > 0) html += `<span class="dash-badge dash-badge-pr">${p.openPRs} PRs</span>`
+    if (p.dirtyFiles > 0) html += `<span class="dash-badge dash-badge-dirty">${p.dirtyFiles} dirty</span>`
+    html += `</div>`
+    // git info
+    if (p.branch) {
+      html += `<div class="dash-git">
+        <span class="dash-git-branch">${esc(p.branch)}</span>
+        <span>${esc(p.lastCommit || '')}</span>
+      </div>`
+    }
+    // open issues list
+    if (p.issues && p.issues.length > 0) {
+      html += `<div class="dash-section"><div class="dash-section-title">${t('dash.openIssues')}</div><ul class="dash-list">`
+      for (const i of p.issues) {
+        const labels = (i.labels || []).map(l => `<span style="font-size:10px;color:var(--accent);background:var(--accent-dim);padding:1px 5px;border-radius:4px">${esc(l)}</span>`).join(' ')
+        html += `<li><span class="dash-num">#${i.number}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(i.title)}</span>${labels}</li>`
+      }
+      html += `</ul></div>`
+    }
+    // open PRs list
+    if (p.prs && p.prs.length > 0) {
+      html += `<div class="dash-section"><div class="dash-section-title">${t('dash.openPRs')}</div><ul class="dash-list">`
+      for (const pr of p.prs) {
+        html += `<li><span class="dash-num">#${pr.number}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(pr.title)}</span>${pr.isDraft ? '<span class="dash-draft">Draft</span>' : ''}</li>`
+      }
+      html += `</ul></div>`
+    }
+    html += `</div>`
+  }
+  el.innerHTML = html
 }
 function updateSettingsThemeBtn() {
   const btn = document.getElementById('settingsThemeBtn')

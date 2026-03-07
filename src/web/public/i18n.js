@@ -55,6 +55,16 @@
       'toast.compactDone': 'コンパクト完了。切り替えてキュー済みメッセージを送信します。',
       'toast.compactError': 'コンパクトエラー',
 
+      // ── ダッシュボード ──
+      'dash.title': 'ダッシュボード',
+      'dash.health': 'ヘルス',
+      'dash.server': 'サーバー',
+      'dash.queue': 'キュー',
+      'dash.uptime': '稼働時間',
+      'dash.openIssues': 'オープンIssue',
+      'dash.openPRs': 'オープンPR',
+      'dash.noProjects': 'プロジェクトが登録されていません',
+
       // ── 設定パネル ──
       'settings.title': '設定',
       'settings.theme': 'テーマ',
@@ -117,6 +127,16 @@
       'chat.newChat': 'New Chat',
       'chat.send': 'Send (Enter)',
       'chat.stop': 'Stop',
+
+      // ── Dashboard ──
+      'dash.title': 'Dashboard',
+      'dash.health': 'Health',
+      'dash.server': 'Server',
+      'dash.queue': 'Queue',
+      'dash.uptime': 'Uptime',
+      'dash.openIssues': 'Open Issues',
+      'dash.openPRs': 'Open PRs',
+      'dash.noProjects': 'No projects registered',
 
       // ── Settings Panel ──
       'settings.title': 'Settings',
