@@ -651,6 +651,8 @@ interface CompactJob {
 
 const compactJobs = new Map<string, CompactJob>()
 
+const COMPACT_TIMEOUT_MS = 4 * 60 * 1000 // 4分（クライアントの5分タイムアウトより短く）
+
 async function runCompact(sessionId: string, cwd: string, model: string): Promise<{ preTokens?: number }> {
   let preTokens: number | undefined
   const streamId = await startStream({
@@ -660,11 +662,19 @@ async function runCompact(sessionId: string, cwd: string, model: string): Promis
     sessionId,
     permissionMode: 'plan',
   })
-  for await (const { event } of readStream(streamId)) {
-    if (event.type === 'compact' && event.preTokens) {
-      preTokens = event.preTokens
+
+  // タイムアウト付きでストリーム消費
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('Compact timed out (4min)')), COMPACT_TIMEOUT_MS)
+  )
+  const consume = async () => {
+    for await (const { event } of readStream(streamId)) {
+      if (event.type === 'compact' && event.preTokens) {
+        preTokens = event.preTokens
+      }
     }
   }
+  await Promise.race([consume(), timeout])
   return { preTokens }
 }
 
@@ -691,7 +701,7 @@ chatRoutes.post('/compact', async (c) => {
     return c.json({ started: false, reason: 'already running' })
   }
 
-  const cwd = project || process.cwd()
+  const cwd = !project || project === FRONT_DESK_SENTINEL ? process.cwd() : project
   const job: CompactJob = { status: 'running', startedAt: Date.now() }
   compactJobs.set(sessionId, job)
   log.info(`Manual compact started for session ${sessionId.slice(0, 12)}`)

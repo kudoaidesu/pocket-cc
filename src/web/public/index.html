@@ -250,7 +250,8 @@ pre:hover .code-copy-btn{opacity:1}
 .typing-dots span:nth-child(3){animation-delay:.4s}
 .global-typing{display:none;align-items:center;gap:6px;padding:8px 16px 10px;color:var(--muted);font-size:12px}
 .global-typing.active{display:flex}
-.global-typing .gt-label{font-size:11px;color:var(--warning);display:flex;align-items:center;gap:4px}
+.global-typing .gt-label{font-size:14px;font-weight:600;color:var(--warning);display:flex;align-items:center;gap:6px}
+.global-typing.compacting{padding:6px 16px 8px;background:color-mix(in srgb,var(--warning) 8%,transparent);border-top:1px solid color-mix(in srgb,var(--warning) 25%,transparent)}
 .gt-dots{display:inline-flex;gap:1px;width:14px}
 .gt-dots span{animation:gtDot 1.4s infinite;opacity:.2}
 .gt-dots span:nth-child(1){animation-delay:0s}
@@ -1226,9 +1227,9 @@ function showCompacting(show, tabId) {
     if (tid === activeTabId) {
       const gt = document.getElementById('globalTyping')
       gt.querySelector('.typing-dots').style.display = 'none'
-      gtLabel.innerHTML = `${ic('zap', 12)} Compacting<span class="gt-dots"><span>.</span><span>.</span><span>.</span></span>`
+      gtLabel.innerHTML = `${ic('zap', 16)} Compacting<span class="gt-dots"><span>.</span><span>.</span><span>.</span></span>`
       gtLabel.style.display = ''
-      gt.classList.add('active')
+      gt.classList.add('active', 'compacting')
     }
   } else {
     if (tid === activeTabId && pill) pill.style.display = 'flex'
@@ -1237,8 +1238,10 @@ function showCompacting(show, tabId) {
     gtLabel.innerHTML = ''
     const gt = document.getElementById('globalTyping')
     gt.querySelector('.typing-dots').style.display = ''
+    gt.classList.remove('compacting')
     // streaming中でなければグローバルインジケーターも非表示
-    if (tid === activeTabId && !tab.sending) gt.classList.remove('active')
+    // 別タブのcompact完了時もactiveを除去（そのタブがstreamingしていない場合）
+    if (!tab.sending) gt.classList.remove('active')
   }
 }
 function showCompactDone(trigger, preTokens, tabId) {
@@ -1369,6 +1372,11 @@ function pollCompactStatus(sessionId, tabId) {
         if (job.status === 'done') {
           clearInterval(compactPollTimer)
           compactPollTimer = null
+          const tab = tabs.get(capturedTabId)
+          if (tab) {
+            tab.compacting = false
+            showCompacting(false, capturedTabId)
+          }
           if (capturedTabId === activeTabId) {
             const pill = document.getElementById('tokenPill')
             pill.classList.remove('compact-running')
@@ -1378,10 +1386,15 @@ function pollCompactStatus(sessionId, tabId) {
           }
           showCompactDone('manual', job.preTokens, capturedTabId)
           flushPendingAfterCompact(capturedTabId)
-        } else if (job.status === 'error') {
+        } else if (job.status === 'error' || job.status === 'none') {
+          // 'none' = サーバー再起動でジョブが消失した場合
           clearInterval(compactPollTimer)
           compactPollTimer = null
-          showToast(`<p>Compact error: ${job.error || 'unknown'}</p>`, 4000)
+          if (job.status === 'error') {
+            showToast(`<p>Compact error: ${job.error || 'unknown'}</p>`, 4000)
+          } else {
+            showToast(`<p>Compact job lost (server may have restarted)</p>`, 4000)
+          }
           const tab = tabs.get(capturedTabId)
           if (tab) {
             tab.compacting = false

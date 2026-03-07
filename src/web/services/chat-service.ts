@@ -509,10 +509,13 @@ export async function startStream(params: ChatParams): Promise<string> {
       buffer.push({ type: 'error', message })
       detached.status = 'error'
     }
-    // ストリーム終了（abortStream() で既に処理済みの場合はスキップ）
+    // ストリーム終了
     clearInterval(heartbeatTimer)
     if (detached.status === 'active') {
       detached.status = 'done'
+    }
+    // abortStream() で既に null push 済みでなければ終端を送る
+    if (!detached.doneAt) {
       detached.doneAt = Date.now()
       buffer.push(null)
       cleanupStreamRequests(streamId)
