@@ -672,7 +672,7 @@ pre:hover .code-copy-btn{opacity:1}
   <div class="cost-panel" onclick="event.stopPropagation()">
     <div class="cost-header">
       <span class="cost-title" data-i18n="cost.title">Cost</span>
-      <button class="tap-dismiss" onclick="closeCostDashboard()"></button>
+      <button class="tap-dismiss" id="costCloseBtn" onclick="closeCostDashboard()"></button>
     </div>
     <div class="cost-body" id="costBody">
       <div class="cost-loading" data-i18n="loading">Loading...</div>
@@ -685,7 +685,7 @@ pre:hover .code-copy-btn{opacity:1}
   <div class="dash-panel" onclick="event.stopPropagation()">
     <div class="dash-header">
       <span class="dash-title" data-i18n="dash.title">Dashboard</span>
-      <button class="tap-dismiss" onclick="closeDashboard()"></button>
+      <button class="tap-dismiss" id="dashCloseBtn" onclick="closeDashboard()"></button>
     </div>
     <div class="dash-body" id="dashBody">
       <div class="cost-loading" data-i18n="loading">Loading...</div>
@@ -806,6 +806,8 @@ document.getElementById('send').innerHTML = ic('send', 14)
 document.getElementById('fileSearchIcon').innerHTML = ic('search', 14)
 document.getElementById('sourceCloseBtn').innerHTML = ic('x', 16)
 document.getElementById('settingsCloseBtn').innerHTML = ic('x', 14)
+document.getElementById('costCloseBtn').innerHTML = ic('x', 14)
+document.getElementById('dashCloseBtn').innerHTML = ic('x', 14)
 document.getElementById('sourceCopyBtn').innerHTML = ic('copy', 12) + ' Copy'
 
 // --- State ---
