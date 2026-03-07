@@ -6,7 +6,7 @@
  */
 import { Hono } from 'hono'
 import { streamSSE } from 'hono/streaming'
-import { readdirSync, statSync, openSync, readSync, closeSync, createReadStream, existsSync } from 'node:fs'
+import { readdirSync, statSync, openSync, readSync, closeSync, createReadStream, existsSync, unlinkSync } from 'node:fs'
 import { createInterface } from 'node:readline'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
@@ -114,6 +114,19 @@ async function writeEventSSE(
           cost: event.cost, turns: event.turns, durationMs: event.durationMs, isError: event.isError,
         }),
       })
+      // コスト情報をDBに累積記録
+      if (event.sessionId && (event.cost || event.turns || event.durationMs)) {
+        try {
+          const db = getDb()
+          db.prepare(`
+            UPDATE sessions SET
+              total_cost = total_cost + COALESCE(?, 0),
+              total_turns = total_turns + COALESCE(?, 0),
+              total_duration_ms = total_duration_ms + COALESCE(?, 0)
+            WHERE session_id = ?
+          `).run(event.cost || 0, event.turns || 0, event.durationMs || 0, event.sessionId)
+        } catch { /* ignore if session not in DB yet */ }
+      }
       return { sessionId: event.sessionId }
     case 'error':
       await stream.writeSSE({ id, event: 'error', data: JSON.stringify({ message: event.message }) })
@@ -144,11 +157,12 @@ async function writeEventSSE(
   return {}
 }
 
-export function getSessions(): SessionEntry[] {
+export function getSessions(includeArchived = false): SessionEntry[] {
   const db = getDb()
+  const whereClause = includeArchived ? '' : 'WHERE archived = 0'
   const rows = db.prepare(`
-    SELECT key, session_id, project, model, last_used, message_preview
-    FROM sessions ORDER BY last_used DESC
+    SELECT key, session_id, project, model, last_used, message_preview, archived
+    FROM sessions ${whereClause} ORDER BY last_used DESC
   `).all() as Array<Record<string, unknown>>
 
   return rows.map(row => ({
@@ -158,7 +172,8 @@ export function getSessions(): SessionEntry[] {
     lastUsed: row.last_used as number,
     messagePreview: row.message_preview as string,
     id: row.key as string,
-  } as SessionEntry & { id: string }))
+    archived: row.archived as number,
+  } as SessionEntry & { id: string; archived: number }))
 }
 
 /**
@@ -290,6 +305,11 @@ function getMergedSessions(cwd?: string): SessionEntry[] {
   // インメモリセッションをプロジェクトでフィルタ
   const filtered = memSessions.filter(s => s.project === cwd)
 
+  // アーカイブ済みセッションIDセット（SDKスキャンからも除外するため）
+  const archivedIds = new Set(
+    getSessions(true).filter(s => (s as SessionEntry & { archived: number }).archived === 1).map(s => s.sessionId)
+  )
+
   const sdkSessions = scanSdkSessions(cwd)
   const sdkMap = new Map(sdkSessions.map(s => [s.sessionId, s]))
   const existingIds = new Set(filtered.map(s => s.sessionId))
@@ -304,9 +324,9 @@ function getMergedSessions(cwd?: string): SessionEntry[] {
     }
   }
 
-  // SDKにしかないセッションを追加
+  // SDKにしかないセッションを追加（アーカイブ済みは除外）
   for (const sdk of sdkSessions) {
-    if (!existingIds.has(sdk.sessionId)) {
+    if (!existingIds.has(sdk.sessionId) && !archivedIds.has(sdk.sessionId)) {
       filtered.push({ ...sdk, id: sdk.sessionId.slice(0, 12) } as SessionEntry & { id: string })
     }
   }
@@ -548,6 +568,40 @@ chatRoutes.get('/sessions', (c) => {
     messagePreview: cleanPreview(s.messagePreview) || 'Untitled',
   }))
   return c.json({ items: page, total: all.length, offset, limit })
+})
+
+// DELETE /api/chat/sessions/:sessionId — セッション削除
+chatRoutes.delete('/sessions/:sessionId', (c) => {
+  const sessionId = c.req.param('sessionId')
+  const db = getDb()
+  db.prepare('DELETE FROM sessions WHERE session_id = ?').run(sessionId)
+  db.prepare('DELETE FROM session_summaries WHERE session_id = ?').run(sessionId)
+  // SDKの.jsonlファイルも削除（プロジェクトパスが必要）
+  const project = c.req.query('project')
+  if (project) {
+    const claudeDir = join(homedir(), '.claude', 'projects', cwdToProjectDir(project))
+    const jsonlPath = join(claudeDir, `${sessionId}.jsonl`)
+    try { unlinkSync(jsonlPath) } catch { /* file may not exist */ }
+  }
+  return c.json({ ok: true })
+})
+
+// POST /api/chat/sessions/:sessionId/archive — セッションをアーカイブ/復元
+chatRoutes.post('/sessions/:sessionId/archive', async (c) => {
+  const sessionId = c.req.param('sessionId')
+  const { archived } = await c.req.json<{ archived: boolean }>()
+  const db = getDb()
+  db.prepare('UPDATE sessions SET archived = ? WHERE session_id = ?').run(archived ? 1 : 0, sessionId)
+  return c.json({ ok: true })
+})
+
+// POST /api/chat/sessions/archive-old — 古いセッションを一括アーカイブ
+chatRoutes.post('/sessions/archive-old', async (c) => {
+  const { days } = await c.req.json<{ days?: number }>()
+  const cutoff = Date.now() - (days || 30) * 24 * 60 * 60 * 1000
+  const db = getDb()
+  const result = db.prepare('UPDATE sessions SET archived = 1 WHERE last_used < ? AND archived = 0').run(cutoff)
+  return c.json({ ok: true, archived: result.changes })
 })
 
 // GET /api/chat/history/:sessionId — セッション会話履歴を返す

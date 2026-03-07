@@ -19,6 +19,7 @@ import { chatRoutes } from './routes/chat.js'
 import { observerRoutes } from './routes/observer.js'
 import { createLogger } from '../utils/logger.js'
 import { getStrategyStats, getRecentEvaluations } from '../utils/cost-tracker.js'
+import { getDb } from '../db/index.js'
 import { listIssues, createIssue } from '../github/issues.js'
 
 const log = createLogger('web:server')
@@ -275,6 +276,55 @@ app.get('/api/evaluations', (c) => {
     stats: getStrategyStats(),
     recent: getRecentEvaluations(20),
   })
+})
+
+// --- コスト集計 API ---
+app.get('/api/cost-summary', (c) => {
+  try {
+    const db = getDb()
+    // 全体サマリー
+    const overall = db.prepare(`
+      SELECT
+        SUM(total_cost) as totalCost,
+        SUM(total_turns) as totalTurns,
+        SUM(total_duration_ms) as totalDuration,
+        COUNT(*) as sessionCount
+      FROM sessions WHERE archived = 0
+    `).get() as Record<string, number> | undefined
+
+    // モデル別集計
+    const byModel = db.prepare(`
+      SELECT
+        model,
+        SUM(total_cost) as totalCost,
+        SUM(total_turns) as totalTurns,
+        COUNT(*) as sessionCount
+      FROM sessions WHERE archived = 0 AND model != '' GROUP BY model ORDER BY totalCost DESC
+    `).all() as Array<Record<string, unknown>>
+
+    // 日別集計（直近7日）
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+    const daily = db.prepare(`
+      SELECT
+        date(last_used / 1000, 'unixepoch', 'localtime') as day,
+        SUM(total_cost) as totalCost,
+        SUM(total_turns) as totalTurns,
+        COUNT(*) as sessionCount
+      FROM sessions WHERE last_used > ? AND archived = 0
+      GROUP BY day ORDER BY day DESC
+    `).all(sevenDaysAgo) as Array<Record<string, unknown>>
+
+    // コスト上位セッション
+    const topSessions = db.prepare(`
+      SELECT session_id, message_preview, model, total_cost, total_turns, total_duration_ms, last_used
+      FROM sessions WHERE total_cost > 0 AND archived = 0
+      ORDER BY total_cost DESC LIMIT 10
+    `).all() as Array<Record<string, unknown>>
+
+    return c.json({ overall, byModel, daily, topSessions })
+  } catch (e) {
+    return c.json({ error: String(e) }, 500)
+  }
 })
 
 // --- ファイルツリー・ソース閲覧 API ---

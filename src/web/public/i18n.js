@@ -25,6 +25,9 @@
       'noMatchingCommands': 'コマンドが見つかりません',
       'compacting': 'コンパクト中...',
       'compacted': 'コンパクト済み',
+      'compact.confirm': 'コンパクションを実行しますか？',
+      'compact.current': '現在:',
+      'compact.queued': 'メッセージをキューしました。完了後に自動送信します。',
       'requestInterrupted': 'リクエストが中断されました',
       'loadingHistory': '履歴を読み込み中...',
       'failedToLoad': '読み込み失敗',
@@ -54,6 +57,25 @@
       'toast.waitForResponse': '現在の返答が完了するまでお待ちください',
       'toast.compactDone': 'コンパクト完了。切り替えてキュー済みメッセージを送信します。',
       'toast.compactError': 'コンパクトエラー',
+
+      // ── セッション管理 ──
+      'session.deleteConfirm': 'このセッションを削除しますか？',
+      'session.deleted': 'セッションを削除しました',
+      'session.archiveOld': '30日以上前のセッションをアーカイブ',
+      'session.archiveConfirm': '30日以上アクセスのないセッションをアーカイブしますか？',
+      'session.archived': '件のセッションをアーカイブしました',
+
+      // ── コストダッシュボード ──
+      'cost.title': 'コスト',
+      'cost.overall': '全体',
+      'cost.turns': 'ターン',
+      'cost.duration': '合計時間',
+      'cost.sessions': 'セッション',
+      'cost.avgPerSession': '平均/セッション',
+      'cost.byModel': 'モデル別',
+      'cost.daily': '日別（7日間）',
+      'cost.topSessions': 'コスト上位セッション',
+      'cost.noData': 'コストデータがありません',
 
       // ── 設定パネル ──
       'settings.title': '設定',
@@ -118,6 +140,18 @@
       'chat.send': 'Send (Enter)',
       'chat.stop': 'Stop',
 
+      // ── Cost Dashboard ──
+      'cost.title': 'Cost',
+      'cost.overall': 'Overall',
+      'cost.turns': 'Turns',
+      'cost.duration': 'Duration',
+      'cost.sessions': 'Sessions',
+      'cost.avgPerSession': 'Avg / Session',
+      'cost.byModel': 'By Model',
+      'cost.daily': 'Daily (7 days)',
+      'cost.topSessions': 'Top Sessions by Cost',
+      'cost.noData': 'No cost data available',
+
       // ── Settings Panel ──
       'settings.title': 'Settings',
       'settings.theme': 'Theme',
@@ -133,6 +167,9 @@
       'noMatchingCommands': 'No matching commands',
       'compacting': 'Compacting...',
       'compacted': 'compacted',
+      'compact.confirm': 'Run compaction?',
+      'compact.current': 'Current:',
+      'compact.queued': 'Message queued. Will auto-send after compaction.',
       'requestInterrupted': 'Request interrupted',
       'loadingHistory': 'Loading history...',
       'failedToLoad': 'Failed to load',
@@ -162,6 +199,13 @@
       'toast.waitForResponse': 'Wait for current response to finish',
       'toast.compactDone': 'Compact done. Switch back to send queued message.',
       'toast.compactError': 'Compact error',
+
+      // ── Session Management ──
+      'session.deleteConfirm': 'Delete this session?',
+      'session.deleted': 'Session deleted',
+      'session.archiveOld': 'Archive sessions older than 30 days',
+      'session.archiveConfirm': 'Archive sessions not accessed for 30+ days?',
+      'session.archived': 'sessions archived',
 
       // ── Chat UI: File Attachments ──
       'fileAttachments': '(File attachments)',

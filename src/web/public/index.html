@@ -301,6 +301,30 @@ pre:hover .code-copy-btn{opacity:1}
 .settings-toggle:hover{border-color:var(--border-light);background:var(--accent-dim);color:var(--accent)}
 [data-theme="light"] .settings-panel{box-shadow:0 12px 40px rgba(0,0,0,.15)}
 
+/* ── コストダッシュボード ── */
+.cost-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:15;display:none;backdrop-filter:blur(2px)}
+.cost-overlay.open{display:flex;align-items:center;justify-content:center}
+.cost-panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:min(480px,92vw);max-height:80vh;box-shadow:0 12px 40px rgba(0,0,0,.4);animation:tapSlideDown .15s;display:flex;flex-direction:column}
+.cost-header{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border)}
+.cost-title{font-size:15px;font-weight:700;color:var(--text-bright);flex:1}
+.cost-body{padding:16px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.cost-loading{text-align:center;padding:32px;color:var(--muted);font-size:13px}
+.cost-card{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px}
+.cost-card-title{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.cost-big{font-size:28px;font-weight:700;color:var(--text-bright);font-family:var(--font-mono)}
+.cost-sub{font-size:12px;color:var(--muted);margin-top:4px}
+.cost-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cost-grid-item{text-align:center;padding:8px;background:var(--surface-hover);border-radius:8px}
+.cost-grid-val{font-size:18px;font-weight:700;color:var(--text-bright);font-family:var(--font-mono)}
+.cost-grid-label{font-size:11px;color:var(--muted);margin-top:2px}
+.cost-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)}
+.cost-row:last-child{border-bottom:none}
+.cost-row-label{font-size:13px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cost-row-val{font-size:13px;font-weight:600;color:var(--text-bright);font-family:var(--font-mono);margin-left:8px}
+.cost-bar{height:4px;background:var(--border);border-radius:2px;margin-top:6px;overflow:hidden}
+.cost-bar-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
+[data-theme="light"] .cost-panel{box-shadow:0 12px 40px rgba(0,0,0,.15)}
+
 /* ── 機能メニュー ── */
 .features-menu{position:absolute;top:100%;right:0;margin-top:4px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,.3);z-index:12;animation:tapSlideDown .12s;display:none}
 .features-menu.open{display:block}
@@ -368,6 +392,11 @@ pre:hover .code-copy-btn{opacity:1}
 .compact-banner{display:none;align-items:center;gap:8px;padding:6px 12px;background:var(--warning-bg);border-top:1px solid rgba(249,226,175,.15);font-size:12px;color:var(--warning);flex-shrink:0}
 .compact-banner.active{display:flex}
 .compact-banner svg.ic{font-size:13px;flex-shrink:0}
+.compact-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);z-index:5;gap:16px}
+.compact-overlay .compact-spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--warning);border-radius:50%;animation:compact-spin 1s linear infinite}
+.compact-overlay .compact-label{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.compact-overlay .compact-queued{font-size:12px;color:var(--warning);margin-top:4px}
+@keyframes compact-spin{to{transform:rotate(360deg)}}
 
 /* ── コマンドメニュー ── */
 .cmd-menu{display:none;position:absolute;bottom:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px 10px 0 0;padding:6px 0;max-height:220px;overflow-y:auto;z-index:5;box-shadow:0 -4px 16px rgba(0,0,0,.3)}
@@ -464,6 +493,10 @@ pre:hover .code-copy-btn{opacity:1}
       <button class="features-menu-item" onclick="closeFeaturesMenu();window.location='/observer'">
         <svg class="ic" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
         <span class="fm-label">Observer</span>
+      </button>
+      <button class="features-menu-item" onclick="closeFeaturesMenu();openCostDashboard()">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        <span class="fm-label" data-i18n="cost.title">Cost</span>
       </button>
     </div>
   </div>
@@ -595,6 +628,19 @@ pre:hover .code-copy-btn{opacity:1}
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button onclick="closeIssueModal()" style="background:none;border:1px solid var(--border);color:var(--muted);font-size:13px;padding:7px 18px;border-radius:8px;cursor:pointer">Cancel</button>
       <button id="issueSubmitBtn" onclick="submitIssue()" style="background:var(--accent);border:none;color:#fff;font-size:13px;padding:7px 18px;border-radius:8px;cursor:pointer;font-weight:600">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- コストダッシュボード -->
+<div class="cost-overlay" id="costOverlay" onclick="closeCostDashboard()">
+  <div class="cost-panel" onclick="event.stopPropagation()">
+    <div class="cost-header">
+      <span class="cost-title" data-i18n="cost.title">Cost</span>
+      <button class="tap-dismiss" onclick="closeCostDashboard()"></button>
+    </div>
+    <div class="cost-body" id="costBody">
+      <div class="cost-loading" data-i18n="loading">Loading...</div>
     </div>
   </div>
 </div>
@@ -1017,38 +1063,41 @@ function setPermissionMode(mode, silent) {
 
 // --- Compacting 表示 ---
 let _compactDotTimer = null
-function showCompacting(show) {
+function showCompacting(show, tabId) {
+  const tid = tabId || activeTabId
+  const tab = tabs.get(tid)
+  if (!tab) return
   const banner = document.getElementById('compactBanner')
   const pill = document.getElementById('tokenPill')
-  banner.classList.toggle('active', show)
+  // グローバルバナーは非表示にする（オーバーレイに移行）
+  banner.classList.remove('active')
   if (_compactDotTimer) { clearInterval(_compactDotTimer); _compactDotTimer = null }
+  // 既存オーバーレイを削除
+  const existing = tab.messagesEl.querySelector('.compact-overlay')
+  if (existing) existing.remove()
   if (show) {
-    // tokenPill を非表示にして重複を避ける
     if (pill) pill.style.display = 'none'
-    let dots = 1
-    const span = document.createElement('span')
-    span.id = 'compactDotsText'
-    banner.innerHTML = ''
-    banner.appendChild(document.createRange().createContextualFragment(ic('zap', 13)))
-    banner.appendChild(document.createTextNode(' '))
-    span.textContent = 'Compacting.'
-    banner.appendChild(span)
-    _compactDotTimer = setInterval(() => {
-      dots = (dots % 3) + 1
-      span.textContent = 'Compacting' + '.'.repeat(dots)
-    }, 500)
+    // メッセージ領域にオーバーレイを表示
+    tab.messagesEl.style.position = 'relative'
+    const overlay = document.createElement('div')
+    overlay.className = 'compact-overlay'
+    overlay.innerHTML = `<div class="compact-spinner"></div><div class="compact-label">${ic('zap', 16)} Compacting...</div>`
+    tab.messagesEl.appendChild(overlay)
   } else {
-    banner.innerHTML = ''
     // tokenPill を復元
-    if (pill) pill.style.display = 'flex'
+    if (tid === activeTabId && pill) pill.style.display = 'flex'
   }
 }
-function showCompactDone(trigger, preTokens) {
-  const banner = document.getElementById('compactBanner')
-  banner.classList.add('active')
+function showCompactDone(trigger, preTokens, tabId) {
+  const tid = tabId || activeTabId
+  const tab = tabs.get(tid)
+  if (!tab) return
+  // オーバーレイを削除
+  const overlay = tab.messagesEl.querySelector('.compact-overlay')
+  if (overlay) overlay.remove()
+  // system-notice で完了を通知
   const info = preTokens ? ` (${Math.round(preTokens/1000)}k tokens compacted)` : ''
-  banner.innerHTML = `${ic('zap', 13)} <span>Context compacted${info}</span>`
-  setTimeout(() => { banner.classList.remove('active') }, 4000)
+  addSystemNotice(tid, `Context compacted${info}`)
 }
 
 // --- トークン使用量表示 + 手動コンパクト ---
@@ -1088,15 +1137,18 @@ function triggerCompact() {
     showToast(`<p>${t('toast.waitForResponse')}</p>`, 2000)
     return
   }
+  if (tab.compacting) {
+    showToast(`<p>Compacting in progress</p>`, 2000)
+    return
+  }
   // 誤タップ防止: 確認ダイアログ
   const pill = document.getElementById('tokenPill')
   const currentUsage = pill?.textContent?.trim() || ''
-  if (!confirm(`コンパクションを実行しますか？\n${currentUsage ? '現在: ' + currentUsage : ''}`)) return
+  if (!confirm(`${t('compact.confirm')}\n${currentUsage ? t('compact.current') + ' ' + currentUsage : ''}`)) return
 
   tab.compacting = true
-  showCompacting(true)
+  showCompacting(true, activeTabId)
   pill.classList.add('compact-running')
-  pill.innerHTML = `${ic('zap', 12)} ${t('compacting')}`
 
   const cwd = currentProject || ''
   const model = tab.model || 'claude-sonnet-4-6'
@@ -1107,16 +1159,16 @@ function triggerCompact() {
     body: JSON.stringify({ sessionId: tab.sessionId, project: cwd, model }),
   }).then(r => r.json()).then(res => {
     if (res.started) {
-      pollCompactStatus(tab.sessionId)
+      pollCompactStatus(tab.sessionId, activeTabId)
     } else {
       tab.compacting = false
-      showCompacting(false)
+      showCompacting(false, activeTabId)
       pill.classList.remove('compact-running')
       showToast(`<p>Compact: ${res.reason || 'could not start'}</p>`, 3000)
     }
   }).catch(() => {
     tab.compacting = false
-    showCompacting(false)
+    showCompacting(false, activeTabId)
     pill.classList.remove('compact-running')
   })
 }
@@ -1127,33 +1179,35 @@ function flushPendingAfterCompact(tabId) {
   const tab = tabs.get(tid)
   if (!tab) return
   tab.compacting = false
-  showCompacting(false)
+  showCompacting(false, tid)
   if (tab.pendingMessage && tid === activeTabId) {
     inputEl.value = tab.pendingMessage
     tab.pendingMessage = null
     setTimeout(() => sendMessage(), 100)
   } else if (tab.pendingMessage) {
-    // 別タブにいる場合は入力欄に戻してトースト通知
+    // 別タブにいる場合はトースト通知
     showToast('Compact done. Switch back to send queued message.', 3000)
   }
 }
 
-function pollCompactStatus(sessionId) {
+function pollCompactStatus(sessionId, tabId) {
   if (compactPollTimer) clearInterval(compactPollTimer)
   const compactStartTime = Date.now()
   const COMPACT_TIMEOUT_MS = 5 * 60 * 1000 // 5分
-  const capturedTabId = activeTabId // タブ切替に備えてキャプチャ
+  const capturedTabId = tabId || activeTabId // 明示的にタブIDをキャプチャ
   compactPollTimer = setInterval(() => {
     // タイムアウト: 5分経過で強制終了
     if (Date.now() - compactStartTime > COMPACT_TIMEOUT_MS) {
       clearInterval(compactPollTimer)
       compactPollTimer = null
       const tab = tabs.get(capturedTabId)
-      if (tab) { tab.compacting = false; showCompacting(false) }
-      const pill = document.getElementById('tokenPill')
-      pill.classList.remove('compact-running')
+      if (tab) { tab.compacting = false; showCompacting(false, capturedTabId) }
+      if (capturedTabId === activeTabId) {
+        const pill = document.getElementById('tokenPill')
+        pill.classList.remove('compact-running')
+        updateTokenUsage(lastInputTokens, lastContextWindow)
+      }
       showToast('<p>Compact timed out (5min)</p>', 4000)
-      updateTokenUsage(lastInputTokens, lastContextWindow)
       return
     }
     fetch(`/api/chat/compact-status/${encodeURIComponent(sessionId)}`)
@@ -1162,27 +1216,31 @@ function pollCompactStatus(sessionId) {
         if (job.status === 'done') {
           clearInterval(compactPollTimer)
           compactPollTimer = null
-          const pill = document.getElementById('tokenPill')
-          pill.classList.remove('compact-running')
-          showCompactDone('manual', job.preTokens)
-          lastInputTokens = 0
-          pill.innerHTML = `${ic('cpu', 12)} ${t('compacted')}`
-          setTimeout(() => { if (!lastInputTokens) pill.style.display = 'none' }, 5000)
+          if (capturedTabId === activeTabId) {
+            const pill = document.getElementById('tokenPill')
+            pill.classList.remove('compact-running')
+            lastInputTokens = 0
+            pill.innerHTML = `${ic('cpu', 12)} ${t('compacted')}`
+            setTimeout(() => { if (!lastInputTokens) pill.style.display = 'none' }, 5000)
+          }
+          showCompactDone('manual', job.preTokens, capturedTabId)
           flushPendingAfterCompact(capturedTabId)
         } else if (job.status === 'error') {
           clearInterval(compactPollTimer)
           compactPollTimer = null
-          const pill = document.getElementById('tokenPill')
-          pill.classList.remove('compact-running')
           showToast(`<p>Compact error: ${job.error || 'unknown'}</p>`, 4000)
-          updateTokenUsage(lastInputTokens, lastContextWindow)
           const tab = tabs.get(capturedTabId)
           if (tab) {
             tab.compacting = false
-            showCompacting(false)
-            if (tab.pendingMessage) {
-              inputEl.value = tab.pendingMessage
-              tab.pendingMessage = null
+            showCompacting(false, capturedTabId)
+            if (capturedTabId === activeTabId) {
+              const pill = document.getElementById('tokenPill')
+              pill.classList.remove('compact-running')
+              updateTokenUsage(lastInputTokens, lastContextWindow)
+              if (tab.pendingMessage) {
+                inputEl.value = tab.pendingMessage
+                tab.pendingMessage = null
+              }
             }
           }
         }
@@ -1198,20 +1256,32 @@ function checkCompactJobOnTabSwitch(tab) {
   const pill = document.getElementById('tokenPill')
   pill.style.display = 'none'
   pill.classList.remove('compact-running', 'warn', 'danger')
+  // グローバルバナーをクリア
+  const banner = document.getElementById('compactBanner')
+  banner.classList.remove('active')
   if (compactPollTimer) { clearInterval(compactPollTimer); compactPollTimer = null }
 
   if (!tab?.sessionId) return
+
+  // ローカルのcompactingフラグがある場合はオーバーレイを再表示
+  if (tab.compacting) {
+    showCompacting(true, activeTabId)
+    pill.style.display = 'flex'
+    pill.classList.add('compact-running')
+    pollCompactStatus(tab.sessionId, activeTabId)
+    return
+  }
+
   // サーバー側にコンパクトジョブが残っているか確認
   fetch(`/api/chat/compact-status/${encodeURIComponent(tab.sessionId)}`)
     .then(r => r.json())
     .then(job => {
       if (job.status === 'running') {
         tab.compacting = true
-        showCompacting(true)
+        showCompacting(true, activeTabId)
         pill.style.display = 'flex'
         pill.classList.add('compact-running')
-        pill.innerHTML = `${ic('zap', 12)} ${t('compacting')}`
-        pollCompactStatus(tab.sessionId)
+        pollCompactStatus(tab.sessionId, activeTabId)
       }
     })
     .catch(() => {})
@@ -2168,6 +2238,91 @@ function openSettingsPanel() {
 function closeSettingsPanel() {
   document.getElementById('settingsOverlay').classList.remove('open')
 }
+
+// ── コストダッシュボード ──
+function openCostDashboard() {
+  document.getElementById('costOverlay').classList.add('open')
+  loadCostData()
+}
+function closeCostDashboard() {
+  document.getElementById('costOverlay').classList.remove('open')
+}
+async function loadCostData() {
+  const body = document.getElementById('costBody')
+  body.innerHTML = `<div class="cost-loading">${t('loading')}</div>`
+  try {
+    const res = await fetch('/api/cost-summary')
+    if (!res.ok) throw new Error(res.statusText)
+    const data = await res.json()
+    renderCostDashboard(body, data)
+  } catch (e) {
+    body.innerHTML = `<div class="cost-loading" style="color:var(--danger)">${e.message}</div>`
+  }
+}
+function renderCostDashboard(el, data) {
+  const o = data.overall || {}
+  const totalCost = o.totalCost || 0
+  const totalTurns = o.totalTurns || 0
+  const totalDur = o.totalDuration || 0
+  const sessCount = o.sessionCount || 0
+  const durMin = Math.round(totalDur / 60000)
+  let html = ''
+  // 全体サマリーカード
+  html += `<div class="cost-card">
+    <div class="cost-card-title">${t('cost.overall')}</div>
+    <div class="cost-big">$${totalCost.toFixed(4)}</div>
+    <div class="cost-grid" style="margin-top:12px">
+      <div class="cost-grid-item"><div class="cost-grid-val">${totalTurns}</div><div class="cost-grid-label">${t('cost.turns')}</div></div>
+      <div class="cost-grid-item"><div class="cost-grid-val">${durMin}m</div><div class="cost-grid-label">${t('cost.duration')}</div></div>
+      <div class="cost-grid-item"><div class="cost-grid-val">${sessCount}</div><div class="cost-grid-label">${t('cost.sessions')}</div></div>
+      <div class="cost-grid-item"><div class="cost-grid-val">$${sessCount > 0 ? (totalCost / sessCount).toFixed(4) : '0'}</div><div class="cost-grid-label">${t('cost.avgPerSession')}</div></div>
+    </div>
+  </div>`
+  // モデル別
+  if (data.byModel && data.byModel.length > 0) {
+    html += `<div class="cost-card"><div class="cost-card-title">${t('cost.byModel')}</div>`
+    const maxCost = Math.max(...data.byModel.map(m => m.totalCost || 0), 0.0001)
+    for (const m of data.byModel) {
+      const mc = m.totalCost || 0
+      const pct = (mc / maxCost * 100).toFixed(0)
+      html += `<div class="cost-row">
+        <span class="cost-row-label">${m.model || 'unknown'}</span>
+        <span class="cost-row-val">$${mc.toFixed(4)}</span>
+      </div>
+      <div class="cost-bar"><div class="cost-bar-fill" style="width:${pct}%"></div></div>`
+    }
+    html += `</div>`
+  }
+  // 日別（直近7日）
+  if (data.daily && data.daily.length > 0) {
+    html += `<div class="cost-card"><div class="cost-card-title">${t('cost.daily')}</div>`
+    for (const d of data.daily) {
+      html += `<div class="cost-row">
+        <span class="cost-row-label">${d.day}</span>
+        <span class="cost-row-val">$${(d.totalCost || 0).toFixed(4)} <span style="color:var(--muted);font-weight:400;font-size:11px">(${d.totalTurns || 0} turns)</span></span>
+      </div>`
+    }
+    html += `</div>`
+  }
+  // コスト上位セッション
+  if (data.topSessions && data.topSessions.length > 0) {
+    html += `<div class="cost-card"><div class="cost-card-title">${t('cost.topSessions')}</div>`
+    for (const s of data.topSessions) {
+      const preview = (s.message_preview || '').slice(0, 40) || s.session_id?.slice(0, 8)
+      const durS = s.total_duration_ms ? Math.round(s.total_duration_ms / 1000) + 's' : '-'
+      html += `<div class="cost-row">
+        <span class="cost-row-label" title="${s.session_id}">${preview}</span>
+        <span class="cost-row-val">$${(s.total_cost || 0).toFixed(4)} <span style="color:var(--muted);font-weight:400;font-size:11px">${s.total_turns || 0}t ${durS}</span></span>
+      </div>`
+    }
+    html += `</div>`
+  }
+  // データなし
+  if (!totalCost && (!data.byModel || !data.byModel.length)) {
+    html += `<div class="cost-loading">${t('cost.noData')}</div>`
+  }
+  el.innerHTML = html
+}
 function updateSettingsThemeBtn() {
   const btn = document.getElementById('settingsThemeBtn')
   if (!btn) return
@@ -2257,6 +2412,15 @@ function timeAgo(ts) {
   const day = Math.floor(hr / 24)
   return `${day}d ago`
 }
+function sessionTimeDetail(ts) {
+  const d = new Date(ts)
+  const now = new Date()
+  const hm = d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false })
+  if (d.toDateString() === now.toDateString()) return hm
+  const yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1)
+  if (d.toDateString() === yesterday.toDateString()) return `昨日 ${hm}`
+  return `${d.getMonth()+1}/${d.getDate()} ${hm}`
+}
 
 function renderSessionList(list, total, append) {
   const container = document.getElementById('sessionList')
@@ -2277,16 +2441,29 @@ function renderSessionList(list, total, append) {
     const openTabId = findTabBySessionId(s.sessionId)
     el.className = 'session-item' + (openTabId ? ' active' : '')
     el.setAttribute('data-testid', 'session-item')
-    const timeStr = timeAgo(s.lastUsed)
+    const timeStr = sessionTimeDetail(s.lastUsed)
     const statusLabel = openTabId ? '<span style="color:var(--accent);font-size:10px">OPEN</span>' : ''
+    const shortId = s.sessionId.slice(0, 8)
+    const modelChip = s.model ? `<span style="font-size:10px;color:var(--muted);background:var(--surface);padding:1px 4px;border-radius:3px">${esc(s.model.replace('claude-','').replace(/-\d+$/,''))}</span>` : ''
     el.innerHTML = `
       <div style="display:flex;align-items:center;gap:4px">
         <span class="preview" style="flex:1">${esc(cleanLabel(s.messagePreview) || 'Untitled')} ${statusLabel}</span>
+        <button class="session-del-btn" title="Delete" style="background:none;border:none;color:var(--muted);font-size:14px;padding:2px 4px;cursor:pointer;opacity:.4;flex-shrink:0">&times;</button>
       </div>
-      <div class="session-meta">
+      <div class="session-meta" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
         <span>${timeStr}</span>
+        ${modelChip}
+        <span style="font-size:10px;color:var(--muted);opacity:.6;font-family:monospace">${shortId}</span>
       </div>
     `
+    el.querySelector('.session-del-btn').addEventListener('click', async (e) => {
+      e.stopPropagation()
+      if (!confirm(t('session.deleteConfirm'))) return
+      const params = currentProject ? `?project=${encodeURIComponent(currentProject)}` : ''
+      await fetch(`/api/chat/sessions/${encodeURIComponent(s.sessionId)}${params}`, { method: 'DELETE' })
+      el.remove()
+      showToast(`<p>${t('session.deleted')}</p>`, 2000)
+    })
     el.addEventListener('click', () => { resumeSession(s); closeDrawer() })
     container.appendChild(el)
   })
@@ -2299,6 +2476,25 @@ function renderSessionList(list, total, append) {
     btn.textContent = `Load more (${sessionOffset}/${total})`
     btn.onclick = (e) => { e.stopPropagation(); loadSessions(true) }
     container.appendChild(btn)
+  }
+  // 一括アーカイブボタン（セッションが多い場合のみ表示）
+  if (!append && total > 20) {
+    const archiveBtn = document.createElement('button')
+    archiveBtn.className = 'load-more-btn'
+    archiveBtn.style.cssText = 'color:var(--warning);border-color:var(--warning)'
+    archiveBtn.textContent = t('session.archiveOld')
+    archiveBtn.onclick = async (e) => {
+      e.stopPropagation()
+      if (!confirm(t('session.archiveConfirm'))) return
+      const res = await fetch('/api/chat/sessions/archive-old', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ days: 30 }),
+      })
+      const data = await res.json()
+      showToast(`<p>${data.archived} ${t('session.archived')}</p>`, 3000)
+      loadSessions()
+    }
+    container.appendChild(archiveBtn)
   }
 }
 
@@ -2326,6 +2522,8 @@ async function loadSessionHistory(tabId) {
   const tab = tabs.get(tabId)
   if (!tab?.sessionId || !currentProject) return
   if (tab._historyLoaded) return
+  // コンパクション中はメッセージクリアしない（オーバーレイが表示中）
+  if (tab.compacting) return
 
   tab.messagesEl.innerHTML = ''
   const loading = document.createElement('div')
@@ -2440,9 +2638,14 @@ async function sendMessage() {
     tab.pendingMessage = text
     inputEl.value = ''
     autoResize()
-    const banner = document.getElementById('compactBanner')
-    banner.classList.add('active')
-    banner.innerHTML = `${ic('zap', 13)} <span>${t('compacting')} message queued, will send after</span>`
+    // オーバーレイにキュー済みメッセージ表示を追加
+    const overlay = tab.messagesEl.querySelector('.compact-overlay')
+    if (overlay && !overlay.querySelector('.compact-queued')) {
+      const queued = document.createElement('div')
+      queued.className = 'compact-queued'
+      queued.textContent = t('compact.queued')
+      overlay.appendChild(queued)
+    }
     return
   }
 
@@ -2890,7 +3093,7 @@ function handleSSE(tabId, event, data, content, msgEl) {
     try {
       const s = JSON.parse(data)
       if (s.status === 'compacting') {
-        showCompacting(true)
+        showCompacting(true, tabId)
         if (tab) tab.compacting = true
       }
       if (s.permissionMode && tab) {
@@ -2916,7 +3119,7 @@ function handleSSE(tabId, event, data, content, msgEl) {
   if (event === 'compact') {
     try {
       const c = JSON.parse(data)
-      showCompactDone(c.trigger, c.preTokens)
+      showCompactDone(c.trigger, c.preTokens, tabId)
       // 自動コンパクト完了 → キューされたメッセージを自動送信
       flushPendingAfterCompact(tabId)
     } catch {}

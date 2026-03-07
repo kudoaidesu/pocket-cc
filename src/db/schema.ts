@@ -13,7 +13,7 @@ const log = createLogger('db:schema')
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 /** 現在のスキーマバージョン。マイグレーション追加時にインクリメントする */
-const CURRENT_VERSION = 2
+const CURRENT_VERSION = 4
 
 export function initSchema(db: Database.Database): void {
   const version = db.pragma('user_version', { simple: true }) as number
@@ -25,6 +25,8 @@ export function initSchema(db: Database.Database): void {
   db.transaction(() => {
     if (version < 1) migrateV1(db)
     if (version < 2) migrateV2(db)
+    if (version < 3) migrateV3(db)
+    if (version < 4) migrateV4(db)
     db.pragma(`user_version = ${CURRENT_VERSION}`)
   })()
 
@@ -122,6 +124,22 @@ function migrateV2(db: Database.Database): void {
   `)
   db.exec('CREATE INDEX IF NOT EXISTS idx_eval_strategy ON strategy_evaluations(strategy)')
   db.exec('CREATE INDEX IF NOT EXISTS idx_eval_created ON strategy_evaluations(created_at DESC)')
+}
+
+// ── v3: セッションにアーカイブフラグ追加 ────────────────────
+
+function migrateV3(db: Database.Database): void {
+  // archived カラムを追加（デフォルト0=非アーカイブ）
+  db.exec(`ALTER TABLE sessions ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`)
+  db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_archived ON sessions(archived)')
+}
+
+// ── v4: セッションにコスト追跡カラム追加 ─────────────────────
+
+function migrateV4(db: Database.Database): void {
+  db.exec(`ALTER TABLE sessions ADD COLUMN total_cost REAL NOT NULL DEFAULT 0`)
+  db.exec(`ALTER TABLE sessions ADD COLUMN total_turns INTEGER NOT NULL DEFAULT 0`)
+  db.exec(`ALTER TABLE sessions ADD COLUMN total_duration_ms INTEGER NOT NULL DEFAULT 0`)
 }
 
 // ── JSON → SQLite データ移行 ──────────────────────────────
