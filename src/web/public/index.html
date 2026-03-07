@@ -356,6 +356,25 @@ pre:hover .code-copy-btn{opacity:1}
 .dash-status-ok{background:#3fb950}
 [data-theme="light"] .dash-panel{box-shadow:0 12px 40px rgba(0,0,0,.15)}
 
+/* ── スクリーンショットギャラリー ── */
+.ss-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:15;display:none;backdrop-filter:blur(2px)}
+.ss-overlay.open{display:flex;align-items:center;justify-content:center}
+.ss-panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:min(560px,94vw);max-height:85vh;box-shadow:0 12px 40px rgba(0,0,0,.4);animation:tapSlideDown .15s;display:flex;flex-direction:column}
+.ss-header{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border)}
+.ss-title{font-size:15px;font-weight:700;color:var(--text-bright);flex:1}
+.ss-body{padding:12px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.ss-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.ss-thumb{position:relative;border-radius:8px;overflow:hidden;border:1px solid var(--border);cursor:pointer;aspect-ratio:16/10;background:var(--bg)}
+.ss-thumb img{width:100%;height:100%;object-fit:cover;transition:transform .15s}
+.ss-thumb:hover img{transform:scale(1.05)}
+.ss-thumb-name{position:absolute;bottom:0;left:0;right:0;padding:4px 6px;font-size:10px;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.7));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ss-full{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:20;display:none;align-items:center;justify-content:center;cursor:pointer}
+.ss-full.open{display:flex}
+.ss-full img{max-width:95vw;max-height:90vh;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+.ss-full-name{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);color:#fff;font-size:13px;font-family:var(--font-mono);background:rgba(0,0,0,.6);padding:4px 12px;border-radius:6px}
+.ss-empty{text-align:center;padding:32px;color:var(--muted);font-size:13px}
+[data-theme="light"] .ss-panel{box-shadow:0 12px 40px rgba(0,0,0,.15)}
+
 /* ── 機能メニュー ── */
 .features-menu{position:absolute;top:100%;right:0;margin-top:4px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,.3);z-index:12;animation:tapSlideDown .12s;display:none}
 .features-menu.open{display:block}
@@ -533,6 +552,10 @@ pre:hover .code-copy-btn{opacity:1}
         <svg class="ic" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
         <span class="fm-label" data-i18n="cost.title">Cost</span>
       </button>
+      <button class="features-menu-item" onclick="closeFeaturesMenu();openScreenshots()">
+        <svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+        <span class="fm-label" data-i18n="ss.title">Screenshots</span>
+      </button>
     </div>
   </div>
   <button class="header-btn" id="settingsBtn" onclick="openSettingsPanel()" title="Settings"></button>
@@ -680,6 +703,23 @@ pre:hover .code-copy-btn{opacity:1}
   </div>
 </div>
 
+<!-- スクリーンショットギャラリー -->
+<div class="ss-overlay" id="ssOverlay" onclick="closeScreenshots()">
+  <div class="ss-panel" onclick="event.stopPropagation()">
+    <div class="ss-header">
+      <span class="ss-title" data-i18n="ss.title">Screenshots</span>
+      <button class="tap-dismiss" id="ssCloseBtn" onclick="closeScreenshots()"></button>
+    </div>
+    <div class="ss-body" id="ssBody">
+      <div class="cost-loading" data-i18n="loading">Loading...</div>
+    </div>
+  </div>
+</div>
+<div class="ss-full" id="ssFull" onclick="closeSsFull()">
+  <img id="ssFullImg" src="" alt="">
+  <div class="ss-full-name" id="ssFullName"></div>
+</div>
+
 <!-- プロジェクトダッシュボード -->
 <div class="dash-overlay" id="dashOverlay" onclick="closeDashboard()">
   <div class="dash-panel" onclick="event.stopPropagation()">
@@ -808,6 +848,7 @@ document.getElementById('sourceCloseBtn').innerHTML = ic('x', 16)
 document.getElementById('settingsCloseBtn').innerHTML = ic('x', 14)
 document.getElementById('costCloseBtn').innerHTML = ic('x', 14)
 document.getElementById('dashCloseBtn').innerHTML = ic('x', 14)
+document.getElementById('ssCloseBtn').innerHTML = ic('x', 14)
 document.getElementById('sourceCopyBtn').innerHTML = ic('copy', 12) + ' Copy'
 
 // --- State ---
@@ -2332,15 +2373,16 @@ async function loadDashboard() {
   const body = document.getElementById('dashBody')
   body.innerHTML = `<div class="cost-loading">${t('loading')}</div>`
   try {
-    const res = await fetch('/api/dashboard')
-    if (!res.ok) throw new Error(res.statusText)
-    const data = await res.json()
-    renderDashboard(body, data)
+    const [dashRes, procRes] = await Promise.all([fetch('/api/dashboard'), fetch('/api/processes')])
+    if (!dashRes.ok) throw new Error(dashRes.statusText)
+    const data = await dashRes.json()
+    const procs = procRes.ok ? await procRes.json() : { items: [] }
+    renderDashboard(body, data, procs.items || [])
   } catch (e) {
     body.innerHTML = `<div class="cost-loading" style="color:var(--danger)">${e.message}</div>`
   }
 }
-function renderDashboard(el, data) {
+function renderDashboard(el, data, processes) {
   let html = ''
   // ヘルスステータス
   html += `<div class="dash-health">
@@ -2357,6 +2399,19 @@ function renderDashboard(el, data) {
         <span class="dash-health-val">${h.queue.pending || 0} pending / ${h.queue.processing || 0} proc</span>
       </div>`
     }
+  }
+  // 稼働サービス
+  const accessibleServices = (processes || []).filter(s => s.accessible)
+  if (accessibleServices.length > 0) {
+    html += `<div style="margin-top:8px"><div class="dash-section-title">${t('dash.services')}</div>`
+    for (const s of accessibleServices) {
+      const url = `http://${location.hostname}:${s.port}`
+      html += `<div class="dash-health-row">
+        <span class="dash-health-label">${esc(s.command)} :${s.port}</span>
+        <a href="${url}" target="_blank" rel="noopener" style="font-size:12px;color:var(--accent);text-decoration:none;font-weight:600">Open</a>
+      </div>`
+    }
+    html += `</div>`
   }
   html += `</div>`
   // プロジェクト
@@ -2390,6 +2445,47 @@ function renderDashboard(el, data) {
     html += `</div>`
   }
   el.innerHTML = html
+}
+
+// ── スクリーンショットギャラリー ──
+function openScreenshots() {
+  document.getElementById('ssOverlay').classList.add('open')
+  loadScreenshots()
+}
+function closeScreenshots() {
+  document.getElementById('ssOverlay').classList.remove('open')
+}
+async function loadScreenshots() {
+  const body = document.getElementById('ssBody')
+  body.innerHTML = `<div class="cost-loading">${t('loading')}</div>`
+  try {
+    const res = await fetch('/api/screenshots')
+    if (!res.ok) throw new Error(res.statusText)
+    const files = await res.json()
+    if (!files.length) { body.innerHTML = `<div class="ss-empty">${t('ss.empty')}</div>`; return }
+    let html = '<div class="ss-grid">'
+    for (const f of files) {
+      const date = new Date(f.mtime)
+      const label = `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2,'0')}`
+      html += `<div class="ss-thumb" onclick="openSsFull('${esc(f.name)}')">
+        <img src="/screenshots/${encodeURIComponent(f.name)}" loading="lazy" alt="${esc(f.name)}">
+        <div class="ss-thumb-name">${esc(f.name.replace(/\.(png|jpe?g|webp|gif)$/i, ''))} ${label}</div>
+      </div>`
+    }
+    html += '</div>'
+    body.innerHTML = html
+  } catch (e) {
+    body.innerHTML = `<div class="cost-loading" style="color:var(--danger)">${e.message}</div>`
+  }
+}
+function openSsFull(name) {
+  const el = document.getElementById('ssFull')
+  document.getElementById('ssFullImg').src = '/screenshots/' + encodeURIComponent(name)
+  document.getElementById('ssFullName').textContent = name
+  el.classList.add('open')
+}
+function closeSsFull() {
+  document.getElementById('ssFull').classList.remove('open')
 }
 
 // ── コストダッシュボード ──

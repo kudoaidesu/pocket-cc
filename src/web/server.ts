@@ -321,6 +321,36 @@ app.get('/api/evaluations', (c) => {
   })
 })
 
+// --- スクリーンショット API ---
+const SCREENSHOTS_DIR = resolve(process.cwd(), 'data', 'screenshots')
+
+app.get('/api/screenshots', (c) => {
+  try {
+    if (!existsSync(SCREENSHOTS_DIR)) return c.json([])
+    const files = readdirSync(SCREENSHOTS_DIR)
+      .filter(f => /\.(png|jpe?g|webp|gif)$/i.test(f))
+      .map(f => {
+        const st = statSync(join(SCREENSHOTS_DIR, f))
+        return { name: f, size: st.size, mtime: st.mtimeMs }
+      })
+      .sort((a, b) => b.mtime - a.mtime)
+    return c.json(files)
+  } catch (e) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+app.get('/screenshots/:name', (c) => {
+  const name = c.req.param('name')
+  if (!name || /[/\\]/.test(name)) return c.json({ error: 'invalid' }, 400)
+  const filePath = join(SCREENSHOTS_DIR, name)
+  if (!existsSync(filePath)) return c.json({ error: 'not found' }, 404)
+  const data = readFileSync(filePath)
+  const ext = name.split('.').pop()?.toLowerCase()
+  const mime = ext === 'png' ? 'image/png' : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'webp' ? 'image/webp' : 'image/png'
+  return new Response(data, { headers: { 'Content-Type': mime, 'Cache-Control': 'public, max-age=3600' } })
+})
+
 // --- コスト集計 API ---
 app.get('/api/cost-summary', (c) => {
   try {

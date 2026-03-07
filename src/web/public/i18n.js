@@ -85,6 +85,11 @@
       'dash.openIssues': 'オープンIssue',
       'dash.openPRs': 'オープンPR',
       'dash.noProjects': 'プロジェクトが登録されていません',
+      'dash.services': '稼働サービス',
+
+      // ── スクリーンショット ──
+      'ss.title': 'スクリーンショット',
+      'ss.empty': 'スクリーンショットがありません',
 
       // ── 設定パネル ──
       'settings.title': '設定',
@@ -177,6 +182,11 @@
       'dash.openIssues': 'Open Issues',
       'dash.openPRs': 'Open PRs',
       'dash.noProjects': 'No projects registered',
+      'dash.services': 'Running Services',
+
+      // ── Screenshots ──
+      'ss.title': 'Screenshots',
+      'ss.empty': 'No screenshots available',
 
       // ── Settings Panel ──
       'settings.title': 'Settings',
