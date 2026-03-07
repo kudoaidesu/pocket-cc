@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Test Matrix - pocket-cc</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#1e1e2e;--surface:#252536;--surface-hover:#2a2a3d;
+  --border:#333346;--border-light:#3e3e56;
+  --text:#cdd6f4;--text-bright:#fff;--muted:#6c7086;
+  --accent:#c084fc;--accent-dim:rgba(192,132,252,.12);--accent-border:rgba(192,132,252,.25);
+  --warning:#f9e2af;--warning-bg:rgba(249,226,175,.08);
+  --danger:#f38ba8;--danger-bg:rgba(243,139,168,.08);
+  --success:#a6e3a1;--success-bg:rgba(166,227,161,.08);
+  --blue:#89b4fa;--blue-bg:rgba(137,180,250,.12);
+  --mauve:#cba6f7;--mauve-bg:rgba(203,166,247,.12);
+  --font-sans:-apple-system,system-ui,'Segoe UI','Helvetica Neue',sans-serif;
+  --font-mono:'SF Mono',Menlo,'Cascadia Code','JetBrains Mono',Consolas,monospace;
+  /* status colors */
+  --st-pass:var(--success);--st-pass-bg:var(--success-bg);
+  --st-fail:var(--danger);--st-fail-bg:var(--danger-bg);
+  --st-skip:var(--warning);--st-skip-bg:var(--warning-bg);
+  --st-not-tested:var(--muted);--st-not-tested-bg:rgba(108,112,134,.08);
+  --st-flaky:var(--mauve);--st-flaky-bg:var(--mauve-bg);
+}
+html[data-theme="light"]{
+  --bg:#eff1f5;--surface:#ffffff;--surface-hover:#e6e9ef;
+  --border:#ccd0da;--border-light:#dce0e8;
+  --text:#4c4f69;--text-bright:#1e1e2e;--muted:#8c8fa1;
+  --accent:#8839ef;--accent-dim:rgba(136,57,239,.08);--accent-border:rgba(136,57,239,.2);
+  --warning:#df8e1d;--warning-bg:rgba(223,142,29,.08);
+  --danger:#d20f39;--danger-bg:rgba(210,15,57,.08);
+  --success:#40a02b;--success-bg:rgba(64,160,43,.08);
+  --blue:#1e66f5;--blue-bg:rgba(30,102,245,.08);
+  --mauve:#8839ef;--mauve-bg:rgba(136,57,239,.08);
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font-sans);font-size:14px;line-height:1.6}
+body{display:flex;flex-direction:column;height:100dvh}
+svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none;vertical-align:-.125em;flex-shrink:0}
+
+/* ── Header ── */
+.header{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.header-back{background:none;border:none;color:var(--muted);cursor:pointer;padding:8px;display:flex;align-items:center;border-radius:6px;transition:all .15s}
+.header-back:hover{color:var(--text);background:var(--surface-hover)}
+.header-back svg.ic{font-size:18px}
+.header-title{font-weight:700;font-size:14px;color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.header-spacer{flex:1}
+.project-select{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;cursor:pointer;max-width:160px;min-height:36px}
+.project-select:focus{outline:none;border-color:var(--accent)}
+.header-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:8px;display:flex;align-items:center;border-radius:6px;transition:all .15s}
+.header-btn:hover{color:var(--text);background:var(--surface-hover)}
+.header-btn svg.ic{font-size:16px}
+.header-btn.spinning svg.ic{animation:spin .6s linear infinite}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+/* ── Controls Bar ── */
+.controls{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface);flex-wrap:wrap;flex-shrink:0}
+.control-group{display:flex;align-items:center;gap:6px}
+.control-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.control-select{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:12px;cursor:pointer}
+.control-select:focus{outline:none;border-color:var(--accent)}
+.control-toggle{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted);cursor:pointer;user-select:none}
+.control-toggle input{accent-color:var(--accent)}
+.btn-dim{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-border);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-dim:hover{background:var(--accent-border)}
+
+/* ── Summary Strip ── */
+.summary{display:flex;align-items:center;gap:16px;padding:8px 16px;border-bottom:1px solid var(--border);font-size:12px;font-family:var(--font-mono);flex-wrap:wrap;flex-shrink:0}
+.summary-item{display:flex;align-items:center;gap:4px}
+.summary-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.summary-count{font-weight:700;color:var(--text-bright)}
+.summary-pct{color:var(--muted)}
+
+/* ── Main area ── */
+.main{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;position:relative}
+
+/* ── Matrix Grid ── */
+.matrix-container{padding:16px;min-width:fit-content}
+.matrix{border-collapse:separate;border-spacing:0;width:auto}
+.matrix th,.matrix td{padding:0;text-align:center}
+.matrix thead th{position:sticky;top:0;z-index:2;background:var(--bg);padding:6px 8px;font-size:11px;font-weight:600;color:var(--muted);border-bottom:2px solid var(--border);white-space:nowrap}
+.matrix thead th:first-child{position:sticky;left:0;z-index:3;text-align:left}
+.matrix tbody th{position:sticky;left:0;z-index:1;background:var(--bg);padding:6px 12px 6px 8px;font-size:12px;font-weight:600;color:var(--text);text-align:left;border-right:2px solid var(--border);white-space:nowrap}
+.matrix tbody tr:hover th{color:var(--accent)}
+
+/* ── Cell ── */
+.cell{width:72px;height:56px;padding:4px;cursor:pointer;transition:all .12s}
+.cell-inner{width:100%;height:100%;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:1.5px solid transparent;transition:all .12s;position:relative}
+.cell-inner:hover{border-color:var(--accent-border);transform:scale(1.05)}
+.cell-inner.selected{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-dim)}
+.cell-glyph{font-size:16px;line-height:1}
+.cell-count{font-size:9px;font-family:var(--font-mono);color:var(--muted)}
+.cell-conf{position:absolute;bottom:2px;left:4px;right:4px;height:2px;border-radius:1px;background:var(--border)}
+.cell-conf-bar{height:100%;border-radius:1px;background:var(--accent);transition:width .3s}
+
+/* status variants */
+.cell-inner.pass{background:var(--st-pass-bg);color:var(--st-pass)}
+.cell-inner.fail{background:var(--st-fail-bg);color:var(--st-fail)}
+.cell-inner.skip{background:var(--st-skip-bg);color:var(--st-skip)}
+.cell-inner.not_tested{background:var(--st-not-tested-bg);color:var(--st-not-tested)}
+.cell-inner.flaky{background:var(--st-flaky-bg);color:var(--st-flaky);border-style:dashed}
+
+/* ── Empty state ── */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;gap:16px;text-align:center;padding:32px}
+.empty-icon{font-size:48px;color:var(--muted);opacity:.4}
+.empty-title{font-size:16px;font-weight:700;color:var(--text)}
+.empty-desc{font-size:13px;color:var(--muted);max-width:360px;line-height:1.6}
+
+/* ── Drawer (right panel) ── */
+.drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:10;opacity:0;pointer-events:none;transition:opacity .2s}
+.drawer-overlay.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:380px;max-width:100vw;background:var(--surface);border-left:1px solid var(--border);z-index:11;transform:translateX(100%);transition:transform .25s ease;overflow-y:auto;display:flex;flex-direction:column}
+.drawer.open{transform:translateX(0)}
+.drawer-header{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.drawer-title{flex:1;font-size:14px;font-weight:700;color:var(--text-bright)}
+.drawer-close{background:none;border:none;color:var(--muted);cursor:pointer;padding:6px;border-radius:6px;display:flex;align-items:center;transition:all .15s}
+.drawer-close:hover{color:var(--text);background:var(--surface-hover)}
+.drawer-body{flex:1;padding:16px;display:flex;flex-direction:column;gap:16px}
+.drawer-section{display:flex;flex-direction:column;gap:8px}
+.drawer-section-title{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.drawer-field{display:flex;flex-direction:column;gap:4px}
+.drawer-field label{font-size:11px;color:var(--muted)}
+.drawer-field select,.drawer-field input,.drawer-field textarea{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px;font-size:13px;font-family:var(--font-sans)}
+.drawer-field textarea{min-height:60px;resize:vertical}
+.drawer-field select:focus,.drawer-field input:focus,.drawer-field textarea:focus{outline:none;border-color:var(--accent)}
+.drawer-actions{display:flex;gap:8px;margin-top:8px}
+.btn-primary{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s}
+.btn-primary:hover{opacity:.85}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:8px 16px;font-size:13px;cursor:pointer;transition:all .15s}
+.btn-ghost:hover{color:var(--text);border-color:var(--accent-border)}
+.btn-danger{background:var(--danger-bg);color:var(--danger);border:1px solid transparent;border-radius:6px;padding:8px 16px;font-size:13px;cursor:pointer;transition:all .15s}
+.btn-danger:hover{border-color:var(--danger)}
+
+/* ── Status badge ── */
+.status-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700}
+.status-badge.pass{background:var(--st-pass-bg);color:var(--st-pass)}
+.status-badge.fail{background:var(--st-fail-bg);color:var(--st-fail)}
+.status-badge.skip{background:var(--st-skip-bg);color:var(--st-skip)}
+.status-badge.not_tested{background:var(--st-not-tested-bg);color:var(--st-not-tested)}
+.status-badge.flaky{background:var(--st-flaky-bg);color:var(--st-flaky)}
+
+/* ── Dimension modal ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:20;display:none;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;width:420px;max-width:calc(100vw - 32px);max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-header{display:flex;align-items:center;padding:16px;border-bottom:1px solid var(--border)}
+.modal-header h3{flex:1;font-size:15px;font-weight:700;color:var(--text-bright)}
+.modal-body{padding:16px;display:flex;flex-direction:column;gap:12px}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--border)}
+.dim-values-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.dim-value-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--accent-dim);color:var(--accent);border-radius:12px;font-size:11px;font-weight:600}
+.dim-value-chip button{background:none;border:none;color:var(--accent);cursor:pointer;padding:0;font-size:14px;line-height:1;display:flex}
+
+/* ── Tooltip ── */
+.tooltip{position:fixed;z-index:30;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:11px;box-shadow:0 4px 12px rgba(0,0,0,.2);pointer-events:none;max-width:240px;opacity:0;transition:opacity .15s}
+.tooltip.show{opacity:1}
+.tooltip-row{display:flex;justify-content:space-between;gap:12px}
+.tooltip-label{color:var(--muted)}
+.tooltip-value{color:var(--text-bright);font-weight:600;font-family:var(--font-mono)}
+
+/* ── Evidence list ── */
+.evidence-item{display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg);border-radius:6px;font-size:12px}
+.evidence-type{font-size:10px;font-weight:600;color:var(--accent);text-transform:uppercase;flex-shrink:0}
+.evidence-path{flex:1;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--font-mono)}
+.evidence-delete{background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;font-size:14px}
+.evidence-delete:hover{color:var(--danger)}
+
+/* ── Mobile ── */
+@media(max-width:767px){
+  .matrix-container{display:none}
+  .cards-container{display:block!important}
+  .drawer{width:100vw}
+  .controls{gap:6px;padding:8px 12px}
+  .summary{gap:8px;padding:6px 12px}
+}
+@media(min-width:768px){
+  .cards-container{display:none!important}
+}
+
+/* ── Cards (mobile fallback) ── */
+.cards-container{display:none;padding:12px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:all .15s}
+.card:hover{border-color:var(--accent-border);background:var(--surface-hover)}
+.card-header{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.card-coord{flex:1;font-size:12px;font-weight:600;color:var(--text-bright)}
+.card-meta{display:flex;gap:8px;font-size:11px;color:var(--muted);font-family:var(--font-mono)}
+
+/* ── Dimension list (in modal) ── */
+.dim-list-item{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg);border-radius:8px}
+.dim-list-name{flex:1;font-weight:600;font-size:13px;color:var(--text)}
+.dim-list-count{font-size:11px;color:var(--muted);font-family:var(--font-mono)}
+.dim-list-actions{display:flex;gap:4px}
+.dim-list-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;border-radius:4px;font-size:12px;display:flex;align-items:center}
+.dim-list-btn:hover{color:var(--text);background:var(--surface-hover)}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <a href="/" class="header-back" title="Home">
+    <svg class="ic" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+  </a>
+  <span class="header-title" data-i18n="tm.title">Test Matrix</span>
+  <span class="header-spacer"></span>
+  <select class="project-select" id="projectSelect" onchange="onProjectChange()"></select>
+  <button class="header-btn" onclick="openDimModal()" title="Manage dimensions">
+    <svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+  </button>
+  <button class="header-btn" id="refreshBtn" onclick="refresh()" title="Refresh">
+    <svg class="ic" viewBox="0 0 24 24"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+  </button>
+  <button class="header-btn" id="themeBtn" onclick="toggleTheme()">
+    <svg class="ic" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+
+<!-- Controls -->
+<div class="controls">
+  <div class="control-group">
+    <span class="control-label" data-i18n="tm.row">Row</span>
+    <select class="control-select" id="rowDim" onchange="renderMatrix()"></select>
+  </div>
+  <div class="control-group">
+    <span class="control-label" data-i18n="tm.col">Col</span>
+    <select class="control-select" id="colDim" onchange="renderMatrix()"></select>
+  </div>
+  <div class="control-group">
+    <span class="control-label" data-i18n="tm.filter">Filter</span>
+    <select class="control-select" id="statusFilter" onchange="renderMatrix()">
+      <option value="">All</option>
+      <option value="pass">Pass</option>
+      <option value="fail">Fail</option>
+      <option value="skip">Skip</option>
+      <option value="not_tested">Not tested</option>
+      <option value="flaky">Flaky</option>
+    </select>
+  </div>
+  <label class="control-toggle">
+    <input type="checkbox" id="showEmpty" onchange="renderMatrix()" checked> <span data-i18n="tm.showEmpty">Empty</span>
+  </label>
+  <label class="control-toggle">
+    <input type="checkbox" id="showPct" onchange="renderMatrix()"> <span>%</span>
+  </label>
+</div>
+
+<!-- Summary -->
+<div class="summary" id="summaryStrip"></div>
+
+<!-- Main -->
+<div class="main">
+  <div class="matrix-container" id="matrixContainer"></div>
+  <div class="cards-container" id="cardsContainer"></div>
+</div>
+
+<!-- Drawer overlay -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <span class="drawer-title" id="drawerTitle"></span>
+    <button class="drawer-close" onclick="closeDrawer()">
+      <svg class="ic" viewBox="0 0 24 24" style="font-size:18px"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<!-- Dimension modal -->
+<div class="modal-overlay" id="dimModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 data-i18n="tm.manageDimensions">Manage Dimensions</h3>
+      <button class="drawer-close" onclick="closeDimModal()">
+        <svg class="ic" viewBox="0 0 24 24" style="font-size:18px"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="dimModalBody"></div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeDimModal()" data-i18n="tm.close">Close</button>
+      <button class="btn-primary" onclick="showAddDimForm()" data-i18n="tm.addDimension">+ Dimension</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tooltip -->
+<div class="tooltip" id="tooltip"></div>
+
+<script src="/static/theme.js"></script>
+<script src="/static/i18n.js"></script>
+<script>
+// ── State ──
+let currentProject = ''
+let dimensions = []
+let records = []
+let summary = {}
+let selectedCell = null
+
+// ── Glyphs ──
+const GLYPHS = { pass: '\u2713', fail: '\u2717', skip: '\u2013', not_tested: '\u25CB', flaky: '\u223C' }
+const STATUS_LABELS = { pass: 'Pass', fail: 'Fail', skip: 'Skip', not_tested: 'Not tested', flaky: 'Flaky' }
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadProjects()
+  await refresh()
+})
+
+// ── Projects ──
+async function loadProjects() {
+  try {
+    const res = await fetch('/api/projects')
+    const projects = await res.json()
+    const sel = document.getElementById('projectSelect')
+    sel.innerHTML = ''
+    const valid = projects.filter(p => p.localPath !== '__front-desk__')
+    for (const p of valid) {
+      const opt = document.createElement('option')
+      opt.value = p.slug
+      opt.textContent = p.slug
+      sel.appendChild(opt)
+    }
+    const saved = localStorage.getItem('testMatrix_project')
+    if (saved && valid.some(p => p.slug === saved)) {
+      sel.value = saved
+    }
+    currentProject = sel.value
+  } catch (e) {
+    console.error('Failed to load projects', e)
+  }
+}
+
+function onProjectChange() {
+  const sel = document.getElementById('projectSelect')
+  currentProject = sel.value
+  localStorage.setItem('testMatrix_project', currentProject)
+  selectedCell = null
+  closeDrawer()
+  refresh()
+}
+
+// ── Data loading ──
+async function refresh() {
+  if (!currentProject) return
+  const btn = document.getElementById('refreshBtn')
+  btn.classList.add('spinning')
+  try {
+    const [dimRes, recRes, sumRes] = await Promise.all([
+      fetch(`/api/test-matrix/dimensions?project=${encodeURIComponent(currentProject)}`),
+      fetch(`/api/test-matrix/records?project=${encodeURIComponent(currentProject)}`),
+      fetch(`/api/test-matrix/summary?project=${encodeURIComponent(currentProject)}`),
+    ])
+    dimensions = await dimRes.json()
+    records = await recRes.json()
+    summary = await sumRes.json()
+  } catch (e) {
+    console.error('Failed to load data', e)
+  }
+  btn.classList.remove('spinning')
+  populateDimSelectors()
+  renderSummary()
+  renderMatrix()
+  renderCards()
+}
+
+function populateDimSelectors() {
+  const rowSel = document.getElementById('rowDim')
+  const colSel = document.getElementById('colDim')
+  const prevRow = rowSel.value
+  const prevCol = colSel.value
+  rowSel.innerHTML = ''
+  colSel.innerHTML = ''
+  for (const d of dimensions) {
+    const r = document.createElement('option')
+    r.value = d.name
+    r.textContent = d.display_name
+    rowSel.appendChild(r)
+    const c = document.createElement('option')
+    c.value = d.name
+    c.textContent = d.display_name
+    colSel.appendChild(c)
+  }
+  if (prevRow && dimensions.some(d => d.name === prevRow)) rowSel.value = prevRow
+  if (prevCol && dimensions.some(d => d.name === prevCol)) {
+    colSel.value = prevCol
+  } else if (dimensions.length > 1) {
+    colSel.value = dimensions[1].name
+  }
+}
+
+// ── Summary ──
+function renderSummary() {
+  const strip = document.getElementById('summaryStrip')
+  const c = summary.counts || { total: 0, pass: 0, fail: 0, skip: 0, not_tested: 0, flaky: 0 }
+  const items = [
+    { label: 'Total', count: c.total, color: 'var(--text)' },
+    { label: 'Pass', count: c.pass, color: 'var(--st-pass)', pct: c.total ? Math.round(c.pass / c.total * 100) : 0 },
+    { label: 'Fail', count: c.fail, color: 'var(--st-fail)', pct: c.total ? Math.round(c.fail / c.total * 100) : 0 },
+    { label: 'Skip', count: c.skip, color: 'var(--st-skip)' },
+    { label: 'Flaky', count: c.flaky, color: 'var(--st-flaky)' },
+    { label: 'N/T', count: c.not_tested, color: 'var(--st-not-tested)' },
+  ]
+  strip.innerHTML = items.map(i => `
+    <div class="summary-item">
+      <span class="summary-dot" style="background:${i.color}"></span>
+      ${i.label}: <span class="summary-count">${i.count}</span>
+      ${i.pct !== undefined ? `<span class="summary-pct">(${i.pct}%)</span>` : ''}
+    </div>
+  `).join('')
+}
+
+// ── Matrix rendering ──
+function renderMatrix() {
+  const container = document.getElementById('matrixContainer')
+  if (dimensions.length < 2) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">\u25A6</div>
+        <div class="empty-title" data-i18n="tm.noDimensions">Set up dimensions first</div>
+        <div class="empty-desc" data-i18n="tm.setupGuide">Add at least 2 dimensions (e.g. Permission, Screen) to display the test matrix.</div>
+        <button class="btn-primary" onclick="openDimModal()" data-i18n="tm.addDimension">+ Add Dimension</button>
+      </div>`
+    return
+  }
+
+  const rowDimName = document.getElementById('rowDim').value
+  const colDimName = document.getElementById('colDim').value
+  if (rowDimName === colDimName) return
+
+  const rowDim = dimensions.find(d => d.name === rowDimName)
+  const colDim = dimensions.find(d => d.name === colDimName)
+  if (!rowDim || !colDim) return
+
+  const rowVals = JSON.parse(rowDim.values_json)
+  const colVals = JSON.parse(colDim.values_json)
+  const statusFilter = document.getElementById('statusFilter').value
+  const showEmpty = document.getElementById('showEmpty').checked
+  const showPct = document.getElementById('showPct').checked
+
+  // Build lookup: "rowVal|colVal" -> record
+  const lookup = new Map()
+  for (const r of records) {
+    const coord = JSON.parse(r.coordinates_json)
+    const rv = coord[rowDimName]
+    const cv = coord[colDimName]
+    if (rv && cv) {
+      lookup.set(`${rv}|${cv}`, r)
+    }
+  }
+
+  let html = '<table class="matrix"><thead><tr><th></th>'
+  for (const cv of colVals) {
+    html += `<th>${esc(cv)}</th>`
+  }
+  html += '</tr></thead><tbody>'
+
+  for (const rv of rowVals) {
+    html += `<tr><th>${esc(rv)}</th>`
+    for (const cv of colVals) {
+      const rec = lookup.get(`${rv}|${cv}`)
+      const status = rec ? rec.status : 'not_tested'
+      if (statusFilter && status !== statusFilter) {
+        if (!showEmpty) { html += '<td></td>'; continue }
+      }
+      const glyph = GLYPHS[status] || '\u25CB'
+      const runs = rec ? `${rec.pass_count}/${rec.total_runs}` : ''
+      const conf = rec ? rec.confidence : 0
+      const isSelected = selectedCell && selectedCell.row === rv && selectedCell.col === cv
+      html += `<td class="cell" onclick="onCellClick('${esc(rv)}','${esc(cv)}')" onmouseenter="showTooltip(event,'${esc(rv)}','${esc(cv)}')" onmouseleave="hideTooltip()">
+        <div class="cell-inner ${status}${isSelected ? ' selected' : ''}">
+          <span class="cell-glyph">${glyph}</span>
+          <span class="cell-count">${showPct && rec && rec.total_runs ? Math.round(rec.pass_count / rec.total_runs * 100) + '%' : runs}</span>
+          ${conf > 0 ? `<div class="cell-conf"><div class="cell-conf-bar" style="width:${conf}%"></div></div>` : ''}
+        </div>
+      </td>`
+    }
+    html += '</tr>'
+  }
+  html += '</tbody></table>'
+  container.innerHTML = html
+}
+
+// ── Cards rendering (mobile) ──
+function renderCards() {
+  const container = document.getElementById('cardsContainer')
+  if (records.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-title" data-i18n="tm.noRecords">No test records yet</div></div>'
+    return
+  }
+  let html = ''
+  for (const r of records) {
+    const coord = JSON.parse(r.coordinates_json)
+    const coordStr = Object.entries(coord).map(([k, v]) => `${k}: ${v}`).join(' / ')
+    html += `<div class="card" onclick="onCardClick(${r.id})">
+      <div class="card-header">
+        <span class="card-coord">${esc(coordStr)}</span>
+        <span class="status-badge ${r.status}">${GLYPHS[r.status]} ${STATUS_LABELS[r.status]}</span>
+      </div>
+      <div class="card-meta">
+        <span>${r.pass_count}/${r.total_runs} runs</span>
+        <span>conf: ${r.confidence}%</span>
+        ${r.last_run_at ? `<span>${new Date(r.last_run_at).toLocaleDateString()}</span>` : ''}
+      </div>
+    </div>`
+  }
+  container.innerHTML = html
+}
+
+// ── Cell interaction ──
+function onCellClick(row, col) {
+  selectedCell = { row, col }
+  renderMatrix()
+  openDrawerForCell(row, col)
+}
+
+function onCardClick(id) {
+  const rec = records.find(r => r.id === id)
+  if (rec) {
+    const coord = JSON.parse(rec.coordinates_json)
+    const keys = Object.keys(coord)
+    if (keys.length >= 2) {
+      selectedCell = { row: coord[keys[0]], col: coord[keys[1]] }
+    }
+    openDrawerForRecord(rec)
+  }
+}
+
+// ── Tooltip ──
+function showTooltip(e, row, col) {
+  const rowDimName = document.getElementById('rowDim').value
+  const colDimName = document.getElementById('colDim').value
+  const rec = records.find(r => {
+    const c = JSON.parse(r.coordinates_json)
+    return c[rowDimName] === row && c[colDimName] === col
+  })
+  const tip = document.getElementById('tooltip')
+  const status = rec ? rec.status : 'not_tested'
+  const runs = rec ? `${rec.pass_count}P / ${rec.fail_count}F / ${rec.skip_count}S` : 'N/A'
+  const lastRun = rec && rec.last_run_at ? new Date(rec.last_run_at).toLocaleString() : 'Never'
+  tip.innerHTML = `
+    <div class="tooltip-row"><span class="tooltip-label">Status</span><span class="tooltip-value">${STATUS_LABELS[status]}</span></div>
+    <div class="tooltip-row"><span class="tooltip-label">Runs</span><span class="tooltip-value">${runs}</span></div>
+    <div class="tooltip-row"><span class="tooltip-label">Last run</span><span class="tooltip-value">${lastRun}</span></div>
+    ${rec ? `<div class="tooltip-row"><span class="tooltip-label">Confidence</span><span class="tooltip-value">${rec.confidence}%</span></div>` : ''}
+  `
+  tip.style.left = Math.min(e.clientX + 12, window.innerWidth - 260) + 'px'
+  tip.style.top = (e.clientY + 12) + 'px'
+  tip.classList.add('show')
+}
+
+function hideTooltip() {
+  document.getElementById('tooltip').classList.remove('show')
+}
+
+// ── Drawer ──
+function openDrawerForCell(row, col) {
+  const rowDimName = document.getElementById('rowDim').value
+  const colDimName = document.getElementById('colDim').value
+  const rec = records.find(r => {
+    const c = JSON.parse(r.coordinates_json)
+    return c[rowDimName] === row && c[colDimName] === col
+  })
+  if (rec) {
+    openDrawerForRecord(rec)
+  } else {
+    // No record yet — show create form
+    const coord = {}
+    coord[rowDimName] = row
+    coord[colDimName] = col
+    openDrawerCreate(coord)
+  }
+}
+
+function openDrawerForRecord(rec) {
+  const coord = JSON.parse(rec.coordinates_json)
+  const coordStr = Object.entries(coord).map(([k, v]) => `<span style="color:var(--muted)">${k}:</span> ${v}`).join(' &rarr; ')
+  document.getElementById('drawerTitle').innerHTML = coordStr
+
+  let html = `
+    <div class="drawer-section">
+      <div class="drawer-section-title">Status</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span class="status-badge ${rec.status}">${GLYPHS[rec.status]} ${STATUS_LABELS[rec.status]}</span>
+        <span style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
+          ${rec.pass_count}P / ${rec.fail_count}F / ${rec.skip_count}S (${rec.total_runs} runs)
+        </span>
+      </div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-title">Update Result</div>
+      <div class="drawer-field">
+        <label>Status</label>
+        <select id="drawerStatus">
+          ${['pass','fail','skip','not_tested','flaky'].map(s => `<option value="${s}" ${s === rec.status ? 'selected' : ''}>${STATUS_LABELS[s]}</option>`).join('')}
+        </select>
+      </div>
+      <div class="drawer-field">
+        <label>Confidence (0-100)</label>
+        <input type="number" id="drawerConf" min="0" max="100" value="${rec.confidence}">
+      </div>
+      <div class="drawer-field">
+        <label>Notes</label>
+        <textarea id="drawerNotes">${esc(rec.notes || '')}</textarea>
+      </div>
+      <div class="drawer-actions">
+        <button class="btn-primary" onclick="updateRecord(${rec.id})">Update</button>
+        <button class="btn-danger" onclick="deleteRecord(${rec.id})">Delete</button>
+      </div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-title">Evidence</div>
+      <div id="evidenceList">Loading...</div>
+      <div class="drawer-field" style="margin-top:8px">
+        <label>Add evidence</label>
+        <select id="evidenceType">
+          ${['screenshot_before','screenshot_after','video','log','trace','report'].map(t => `<option value="${t}">${t}</option>`).join('')}
+        </select>
+        <input type="text" id="evidencePath" placeholder="Path or URL">
+        <button class="btn-dim" onclick="addEvidence(${rec.id})" style="margin-top:4px">Add</button>
+      </div>
+    </div>`
+
+  document.getElementById('drawerBody').innerHTML = html
+  document.getElementById('drawerOverlay').classList.add('open')
+  document.getElementById('drawer').classList.add('open')
+  loadEvidence(rec.id)
+}
+
+function openDrawerCreate(coord) {
+  const coordStr = Object.entries(coord).map(([k, v]) => `<span style="color:var(--muted)">${k}:</span> ${v}`).join(' &rarr; ')
+  document.getElementById('drawerTitle').innerHTML = coordStr + ' <span style="color:var(--accent)">(New)</span>'
+
+  document.getElementById('drawerBody').innerHTML = `
+    <div class="drawer-section">
+      <div class="drawer-section-title">Create Test Record</div>
+      <div class="drawer-field">
+        <label>Status</label>
+        <select id="drawerStatus">
+          ${['pass','fail','skip','not_tested','flaky'].map(s => `<option value="${s}">${STATUS_LABELS[s]}</option>`).join('')}
+        </select>
+      </div>
+      <div class="drawer-field">
+        <label>Confidence (0-100)</label>
+        <input type="number" id="drawerConf" min="0" max="100" value="0">
+      </div>
+      <div class="drawer-field">
+        <label>Notes</label>
+        <textarea id="drawerNotes"></textarea>
+      </div>
+      <div class="drawer-actions">
+        <button class="btn-primary" onclick="createRecord(${JSON.stringify(coord).replace(/"/g, '&quot;')})">Create</button>
+      </div>
+    </div>`
+
+  document.getElementById('drawerOverlay').classList.add('open')
+  document.getElementById('drawer').classList.add('open')
+}
+
+function closeDrawer() {
+  document.getElementById('drawerOverlay').classList.remove('open')
+  document.getElementById('drawer').classList.remove('open')
+}
+
+// ── CRUD operations ──
+async function createRecord(coord) {
+  const status = document.getElementById('drawerStatus').value
+  const confidence = parseInt(document.getElementById('drawerConf').value) || 0
+  const notes = document.getElementById('drawerNotes').value
+  await fetch('/api/test-matrix/records', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ project: currentProject, coordinates: coord, status, confidence, notes }),
+  })
+  closeDrawer()
+  await refresh()
+}
+
+async function updateRecord(id) {
+  const status = document.getElementById('drawerStatus').value
+  const confidence = parseInt(document.getElementById('drawerConf').value) || 0
+  const notes = document.getElementById('drawerNotes').value
+  await fetch(`/api/test-matrix/records/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status, confidence, notes }),
+  })
+  closeDrawer()
+  await refresh()
+}
+
+async function deleteRecord(id) {
+  if (!confirm('Delete this test record?')) return
+  await fetch(`/api/test-matrix/records/${id}`, { method: 'DELETE' })
+  closeDrawer()
+  await refresh()
+}
+
+// ── Evidence ──
+async function loadEvidence(recordId) {
+  const res = await fetch(`/api/test-matrix/records/${recordId}/evidence`)
+  const items = await res.json()
+  const el = document.getElementById('evidenceList')
+  if (items.length === 0) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--muted)">No evidence yet</div>'
+    return
+  }
+  el.innerHTML = items.map(e => `
+    <div class="evidence-item">
+      <span class="evidence-type">${e.type.replace('screenshot_', 'SS ')}</span>
+      <span class="evidence-path">${esc(e.path)}</span>
+      <button class="evidence-delete" onclick="deleteEvidence(${e.id}, ${recordId})" title="Delete">&times;</button>
+    </div>
+  `).join('')
+}
+
+async function addEvidence(recordId) {
+  const type = document.getElementById('evidenceType').value
+  const path = document.getElementById('evidencePath').value.trim()
+  if (!path) return
+  await fetch(`/api/test-matrix/records/${recordId}/evidence`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type, path }),
+  })
+  document.getElementById('evidencePath').value = ''
+  await loadEvidence(recordId)
+}
+
+async function deleteEvidence(id, recordId) {
+  await fetch(`/api/test-matrix/evidence/${id}`, { method: 'DELETE' })
+  await loadEvidence(recordId)
+}
+
+// ── Dimension modal ──
+function openDimModal() {
+  document.getElementById('dimModal').classList.add('open')
+  renderDimList()
+}
+
+function closeDimModal() {
+  document.getElementById('dimModal').classList.remove('open')
+}
+
+function renderDimList() {
+  const body = document.getElementById('dimModalBody')
+  if (dimensions.length === 0) {
+    body.innerHTML = '<div style="text-align:center;color:var(--muted);padding:16px">No dimensions yet. Add one to get started.</div>'
+    return
+  }
+  body.innerHTML = dimensions.map(d => {
+    const vals = JSON.parse(d.values_json)
+    return `
+      <div class="dim-list-item">
+        <div style="flex:1">
+          <div class="dim-list-name">${esc(d.display_name)} <span style="color:var(--muted);font-weight:400;font-size:11px">(${d.name})</span></div>
+          <div class="dim-values-list">${vals.map(v => `<span class="dim-value-chip">${esc(v)}</span>`).join('')}</div>
+        </div>
+        <div class="dim-list-actions">
+          <button class="dim-list-btn" onclick="editDim(${d.id}, '${esc(d.name)}', '${esc(d.display_name)}', ${JSON.stringify(JSON.stringify(vals))})" title="Edit">Edit</button>
+          <button class="dim-list-btn" onclick="deleteDim(${d.id})" title="Delete" style="color:var(--danger)">Del</button>
+        </div>
+      </div>`
+  }).join('')
+}
+
+function showAddDimForm() {
+  const body = document.getElementById('dimModalBody')
+  body.innerHTML = `
+    <div class="drawer-field"><label>Name (key)</label><input type="text" id="dimName" placeholder="e.g. permission"></div>
+    <div class="drawer-field"><label>Display Name</label><input type="text" id="dimDisplayName" placeholder="e.g. Permission"></div>
+    <div class="drawer-field"><label>Values (comma separated)</label><input type="text" id="dimValues" placeholder="admin, user, guest"></div>
+    <div class="drawer-actions">
+      <button class="btn-primary" onclick="saveDim()">Save</button>
+      <button class="btn-ghost" onclick="renderDimList()">Cancel</button>
+    </div>`
+}
+
+function editDim(id, name, displayName, valuesJson) {
+  const vals = JSON.parse(valuesJson)
+  const body = document.getElementById('dimModalBody')
+  body.innerHTML = `
+    <div class="drawer-field"><label>Name (key)</label><input type="text" id="dimName" value="${esc(name)}" readonly style="opacity:.6"></div>
+    <div class="drawer-field"><label>Display Name</label><input type="text" id="dimDisplayName" value="${esc(displayName)}"></div>
+    <div class="drawer-field"><label>Values (comma separated)</label><input type="text" id="dimValues" value="${esc(vals.join(', '))}"></div>
+    <div class="drawer-actions">
+      <button class="btn-primary" onclick="saveDim()">Update</button>
+      <button class="btn-ghost" onclick="renderDimList()">Cancel</button>
+    </div>`
+}
+
+async function saveDim() {
+  const name = document.getElementById('dimName').value.trim()
+  const displayName = document.getElementById('dimDisplayName').value.trim()
+  const valuesRaw = document.getElementById('dimValues').value.trim()
+  if (!name || !displayName || !valuesRaw) return alert('All fields are required')
+  const values = valuesRaw.split(',').map(v => v.trim()).filter(Boolean)
+  if (values.length === 0) return alert('At least one value is required')
+
+  await fetch('/api/test-matrix/dimensions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ project: currentProject, name, displayName, values }),
+  })
+  await refresh()
+  renderDimList()
+}
+
+async function deleteDim(id) {
+  if (!confirm('Delete this dimension? This cannot be undone.')) return
+  await fetch(`/api/test-matrix/dimensions/${id}`, { method: 'DELETE' })
+  await refresh()
+  renderDimList()
+}
+
+// ── Theme ──
+function toggleTheme() {
+  const html = document.documentElement
+  const current = html.getAttribute('data-theme')
+  const next = current === 'light' ? 'dark' : 'light'
+  html.setAttribute('data-theme', next)
+  localStorage.setItem('theme', next)
+}
+// Init theme
+(function() {
+  const saved = localStorage.getItem('theme')
+  if (saved) document.documentElement.setAttribute('data-theme', saved)
+})()
+
+// ── Util ──
+function esc(s) {
+  if (typeof s !== 'string') return ''
+  const d = document.createElement('div')
+  d.textContent = s
+  return d.innerHTML
+}
+</script>
+</body>
+</html>

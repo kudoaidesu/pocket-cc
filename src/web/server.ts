@@ -17,6 +17,8 @@ import { execFileSync } from 'node:child_process'
 import { isTailscaleIp, isProjectPathAllowed } from './path-guard.js'
 import { chatRoutes } from './routes/chat.js'
 import { observerRoutes } from './routes/observer.js'
+import { testMatrixRoutes } from './routes/test-matrix.js'
+import { changesRoutes } from './routes/changes.js'
 import { createLogger } from '../utils/logger.js'
 import { getStrategyStats, getRecentEvaluations } from '../utils/cost-tracker.js'
 import { getDb } from '../db/index.js'
@@ -149,6 +151,7 @@ app.use('*', cors({
 
 // 静的ファイル配信
 app.use('/static/*', serveStatic({ root: resolve(process.cwd(), 'src/web/public'), rewriteRequestPath: (path) => path.replace('/static', '') }))
+app.use('/changes/screenshots/*', serveStatic({ root: resolve(process.cwd(), 'docs/changes'), rewriteRequestPath: (path) => path.replace('/changes', '') }))
 
 // --- API ルート ---
 
@@ -714,6 +717,41 @@ app.get('/api/skills', (c) => {
     } catch { /* dir not found */ }
   }
   return c.json({ items: items.sort((a, b) => a.name.localeCompare(b.name)) })
+})
+
+// --- Test Matrix ---
+app.route('/api/test-matrix', testMatrixRoutes)
+app.get('/test-matrix', (c) => {
+  try {
+    const html = readFileSync(resolve(process.cwd(), 'src/web/public/test-matrix.html'), 'utf-8')
+    c.header('Cache-Control', 'no-cache, no-store, must-revalidate')
+    return c.html(html)
+  } catch {
+    return c.text('test-matrix.html not found', 404)
+  }
+})
+
+// --- Changes (一覧 + API) ---
+app.route('/api/changes', changesRoutes)
+app.get('/changes', (c) => {
+  try {
+    const html = readFileSync(resolve(process.cwd(), 'src/web/public/changes.html'), 'utf-8')
+    c.header('Cache-Control', 'no-cache, no-store, must-revalidate')
+    return c.html(html)
+  } catch {
+    return c.text('changes.html not found', 404)
+  }
+})
+
+// --- Change Report ---
+app.get('/change-report', (c) => {
+  try {
+    const html = readFileSync(resolve(process.cwd(), 'src/web/public/change-report.html'), 'utf-8')
+    c.header('Cache-Control', 'no-cache, no-store, must-revalidate')
+    return c.html(html)
+  } catch {
+    return c.text('change-report.html not found', 404)
+  }
 })
 
 // --- Observer UI ---

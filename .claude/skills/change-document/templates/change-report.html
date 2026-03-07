@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Change Report - pocket-cc</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#1e1e2e;--surface:#252536;--surface-hover:#2a2a3d;
+  --border:#333346;--border-light:#3e3e56;
+  --text:#cdd6f4;--text-bright:#fff;--muted:#6c7086;
+  --accent:#c084fc;--accent-dim:rgba(192,132,252,.12);--accent-border:rgba(192,132,252,.25);
+  --success:#a6e3a1;--success-bg:rgba(166,227,161,.08);
+  --danger:#f38ba8;--danger-bg:rgba(243,139,168,.08);
+  --warning:#f9e2af;--warning-bg:rgba(249,226,175,.08);
+  --blue:#89b4fa;--blue-bg:rgba(137,180,250,.12);
+  --font-sans:-apple-system,system-ui,'Segoe UI','Helvetica Neue',sans-serif;
+  --font-mono:'SF Mono',Menlo,'Cascadia Code','JetBrains Mono',Consolas,monospace;
+}
+[data-theme="light"]{
+  --bg:#eff1f5;--surface:#ffffff;--surface-hover:#e6e9ef;
+  --border:#ccd0da;--border-light:#bcc0cc;
+  --text:#4c4f69;--text-bright:#1e1e2e;--muted:#9ca0b0;
+  --accent:#8839ef;--accent-dim:rgba(136,57,239,.08);--accent-border:rgba(136,57,239,.2);
+  --success:#40a02b;--success-bg:rgba(64,160,43,.08);
+  --danger:#d20f39;--danger-bg:rgba(210,15,57,.06);
+  --warning:#df8e1d;--warning-bg:rgba(223,142,29,.08);
+  --blue:#1e66f5;--blue-bg:rgba(30,102,245,.06);
+}
+html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:var(--font-sans);font-size:14px;line-height:1.7}
+.page-header{display:flex;align-items:center;gap:12px;padding:14px 24px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:10}
+.page-header a{color:var(--accent);text-decoration:none;font-weight:600;font-size:13px}
+.page-header a:hover{text-decoration:underline}
+.page-header .sep{color:var(--muted);font-size:12px}
+.page-header h1{font-size:15px;font-weight:700;color:var(--text-bright);flex:1}
+.theme-toggle{background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px}
+.theme-toggle:hover{color:var(--text);border-color:var(--border-light)}
+.layout{display:flex;max-width:1200px;margin:0 auto}
+.toc{width:220px;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto;padding:20px 16px;border-right:1px solid var(--border);flex-shrink:0}
+.toc a{display:block;padding:4px 8px;color:var(--muted);text-decoration:none;font-size:12px;border-radius:4px;margin-bottom:2px;line-height:1.4}
+.toc a:hover{color:var(--text);background:var(--surface-hover)}
+.toc a.active{color:var(--accent);background:var(--accent-dim)}
+.toc .toc-h2{font-weight:600;color:var(--text);margin-top:8px}
+.content{flex:1;padding:32px 40px;max-width:900px;min-width:0}
+@media(max-width:768px){.toc{display:none}.content{padding:20px 16px}}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px}
+.meta-tag{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600}
+.meta-tag.date{background:var(--blue-bg);color:var(--blue)}
+.meta-tag.branch{background:var(--accent-dim);color:var(--accent)}
+.meta-tag.status{background:var(--success-bg);color:var(--success)}
+h1.title{font-size:22px;font-weight:800;color:var(--text-bright);margin-bottom:8px;line-height:1.3}
+h2{font-size:17px;font-weight:700;color:var(--text-bright);margin:32px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--border);scroll-margin-top:70px}
+h3{font-size:14px;font-weight:700;color:var(--text-bright);margin:20px 0 8px}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+th{text-align:left;padding:8px 12px;background:var(--surface);border:1px solid var(--border);color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px}
+td{padding:8px 12px;border:1px solid var(--border);vertical-align:top}
+tr:hover td{background:var(--surface-hover)}
+.tldr-table th{width:120px;background:var(--accent-dim);color:var(--accent)}
+.tldr-table td{color:var(--text)}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.badge.done{background:var(--success-bg);color:var(--success)}
+.badge.pass{background:var(--success-bg);color:var(--success)}
+.badge.fail{background:var(--danger-bg);color:var(--danger)}
+.badge.ok{background:var(--success-bg);color:var(--success)}
+.badge.new{background:var(--blue-bg);color:var(--blue)}
+.badge.mod{background:var(--warning-bg);color:var(--warning)}
+.badge.low{background:var(--success-bg);color:var(--success)}
+.badge.medium{background:var(--warning-bg);color:var(--warning)}
+.badge.high{background:var(--danger-bg);color:var(--danger)}
+.screenshots{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0}
+@media(max-width:600px){.screenshots{grid-template-columns:1fr}}
+.screenshot-card{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface)}
+.screenshot-card img{width:100%;height:auto;display:block;cursor:pointer;transition:transform .2s}
+.screenshot-card img:hover{transform:scale(1.02)}
+.screenshot-card .label{padding:8px 12px;font-size:12px;font-weight:600;text-align:center;border-top:1px solid var(--border)}
+.screenshot-card .label.before{color:var(--danger)}
+.screenshot-card .label.after{color:var(--success)}
+code{background:var(--surface);padding:1px 5px;border-radius:3px;font-family:var(--font-mono);font-size:12px;color:var(--accent)}
+.evidence{margin:12px 0;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:8px}
+.evidence p{margin:4px 0}
+.evidence strong{color:var(--text-bright)}
+.checklist{list-style:none;margin:12px 0}
+.checklist li{padding:4px 0;display:flex;align-items:center;gap:8px;font-size:13px}
+.checklist .check{width:16px;height:16px;border-radius:4px;background:var(--success-bg);color:var(--success);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.checklist .uncheck{width:16px;height:16px;border-radius:4px;background:var(--surface);border:1px solid var(--border);flex-shrink:0}
+.impact{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:6px;background:var(--success-bg);border:1px solid rgba(166,227,161,.15);color:var(--success);font-weight:600;font-size:12px;margin-top:8px}
+.impact.warn{background:var(--warning-bg);border-color:rgba(249,226,175,.15);color:var(--warning)}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;cursor:pointer;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.overlay img{max-width:95%;max-height:95%;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+.summary-bar{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:8px}
+.summary-item{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:80px}
+.summary-item .num{font-size:22px;font-weight:800;color:var(--text-bright)}
+.summary-item .lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+</style>
+</head>
+<body>
+<div class="page-header">
+  <a href="/">pocket-cc</a>
+  <span class="sep">/</span>
+  <h1>Change Report</h1>
+  <button class="theme-toggle" onclick="toggleTheme()">Theme</button>
+</div>
+
+<div class="layout">
+<!-- %%TOC%% -->
+<main class="content">
+<!-- %%CONTENT%% -->
+</main>
+</div>
+
+<div class="overlay" id="overlay" onclick="this.classList.remove('open')">
+  <img id="overlayImg" src="" alt="">
+</div>
+
+<script>
+function showFull(img) {
+  document.getElementById('overlayImg').src = img.src
+  document.getElementById('overlay').classList.add('open')
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('overlay').classList.remove('open')
+})
+function toggleTheme() {
+  const html = document.documentElement
+  const next = html.getAttribute('data-theme') === 'light' ? '' : 'light'
+  if (next) html.setAttribute('data-theme', 'light')
+  else html.removeAttribute('data-theme')
+  localStorage.setItem('theme', next || 'dark')
+}
+const saved = localStorage.getItem('theme')
+if (saved === 'light') document.documentElement.setAttribute('data-theme', 'light')
+function initTocTracking() {
+  const tocLinks = document.querySelectorAll('.toc a')
+  const sections = []
+  tocLinks.forEach(a => {
+    const id = a.getAttribute('href')?.slice(1)
+    const el = id && document.getElementById(id)
+    if (el) sections.push({ el, a })
+  })
+  function update() {
+    let current = sections[0]
+    for (const s of sections) {
+      if (s.el.getBoundingClientRect().top <= 80) current = s
+    }
+    tocLinks.forEach(a => a.classList.remove('active'))
+    if (current) current.a.classList.add('active')
+  }
+  window.addEventListener('scroll', update, { passive: true })
+  update()
+}
+initTocTracking()
+
+// Dynamic loading: ?project=&file= query parameters
+;(function(){
+  var params = new URLSearchParams(location.search)
+  var proj = params.get('project'), file = params.get('file')
+  if (!proj || !file) return
+
+  function e(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
+
+  var hdr = document.querySelector('.page-header')
+  hdr.innerHTML = '<a href="/changes">\u2190 Changes</a><span class="sep">/</span>'
+    +'<span style="font-size:12px;color:var(--muted)">'+e(proj)+'</span><span class="sep">/</span>'
+    +'<h1>'+e(file.replace('.md',''))+'</h1>'
+    +'<button class="theme-toggle" onclick="toggleTheme()">Theme</button>'
+
+  var contentEl = document.querySelector('.content')
+  var tocEl = document.getElementById('toc')
+  contentEl.innerHTML = '<p style="color:var(--muted)">Loading...</p>'
+  if(tocEl) tocEl.innerHTML = ''
+
+  fetch('/api/changes/'+encodeURIComponent(proj)+'/'+encodeURIComponent(file))
+    .then(function(r){return r.json()})
+    .then(function(d){
+      if(d.error) throw new Error(d.error)
+      renderMd(d.content, proj, contentEl, tocEl)
+    })
+    .catch(function(err){
+      contentEl.innerHTML='<p style="color:var(--danger)">Failed to load: '+e(String(err.message||err))+'</p>'
+    })
+
+  function slugify(s){return s.toLowerCase().replace(/[^\w\u3000-\u9fff]+/g,'-').replace(/^-|-$/g,'')}
+
+  function inline(s){
+    s = s.replace(/!\[([^\]]*)\]\(screenshots\/([^)]+)\)/g, function(_,alt,path){
+      return '<img src="/api/changes/'+encodeURIComponent(proj)+'/screenshots/'+encodeURIComponent(path)+'" alt="'+e(alt)+'" onclick="showFull(this)" style="max-width:100%;cursor:pointer;border-radius:6px">'
+    })
+    s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g,'<img src="$2" alt="$1" style="max-width:100%">')
+    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" style="color:var(--accent)">$1</a>')
+    s = s.replace(/\*\*([^*]+)\*\*/g,'<strong style="color:var(--text-bright)">$1</strong>')
+    s = s.replace(/`([^`]+)`/g,'<code>$1</code>')
+    return s
+  }
+
+  function renderMd(md, proj, cEl, tEl){
+    var lines=md.split('\n'), html='', tocH='', meta='', title=''
+    var inTbl=false, inCode=false, inList=false, ltag='', gotTitle=false, inMeta=false, firstH2=true
+
+    function cl(){if(inList){html+='</'+ltag+'>';inList=false}}
+    function ct(){if(inTbl){html+='</tbody></table>';inTbl=false}}
+
+    for(var i=0;i<lines.length;i++){
+      var L=lines[i]
+      if(L.startsWith('```')){
+        if(inCode){html+='</code></pre>';inCode=false}
+        else{cl();ct();inCode=true;html+='<pre style="background:var(--surface);padding:12px;border-radius:6px;overflow-x:auto;margin:8px 0;font-size:12px"><code style="background:none;padding:0">'}
+        continue
+      }
+      if(inCode){html+=e(L)+'\n';continue}
+      if(L.startsWith('# ')&&!gotTitle){title='<h1 class="title">'+inline(L.slice(2).trim())+'</h1>';gotTitle=true;inMeta=true;continue}
+      if(inMeta){
+        var mm=L.match(/^- \*\*(.+?)\*\*[：:]\s*(.+)$/)
+        if(mm){
+          var k=mm[1],v=mm[2]
+          if(k==='日付'||k==='Date')meta+='<span class="meta-tag date">'+e(v)+'</span>'
+          else if(k==='ブランチ'||k==='Branch')meta+='<span class="meta-tag branch">'+e(v)+'</span>'
+          else meta+='<span class="meta-tag status">'+e(v)+'</span>'
+          continue
+        }
+        if(L.trim()==='')continue
+        if(!L.startsWith('- **'))inMeta=false
+      }
+      if(L.startsWith('## ')){cl();ct();var t2=L.slice(3).trim(),id=slugify(t2)
+        if(firstH2&&(t2==='TL;DR'||t2==='概要')){id='tldr'}
+        html+='<h2 id="'+id+'">'+inline(t2)+'</h2>';tocH+='<a href="#'+id+'" class="toc-h2">'+e(t2)+'</a>';firstH2=false;continue}
+      if(L.startsWith('### ')){cl();ct();var t3=L.slice(4).trim(),id3=slugify(t3)
+        html+='<h3 id="'+id3+'">'+inline(t3)+'</h3>';tocH+='<a href="#'+id3+'">'+e(t3)+'</a>';continue}
+      if(L.startsWith('|')){cl()
+        var cells=L.split('|').slice(1,-1).map(function(c){return c.trim()})
+        if(cells.every(function(c){return /^[-:]+$/.test(c)}))continue
+        if(!inTbl){
+          var isTldr=cells.length===2&&(cells[0]==='項目'||cells[0]==='Item')
+          html+='<table'+(isTldr?' class="tldr-table"':'')+'><thead><tr>'
+          for(var j=0;j<cells.length;j++)html+='<th>'+inline(cells[j])+'</th>'
+          html+='</tr></thead><tbody>';inTbl=true
+        }else{html+='<tr>';for(var j=0;j<cells.length;j++)html+='<td>'+inline(cells[j])+'</td>';html+='</tr>'}
+        continue
+      }
+      if(inTbl&&!L.startsWith('|'))ct()
+      var clm=L.match(/^- \[([ xX])\] (.+)/)
+      if(clm){if(!inList||ltag!=='ul'){cl();html+='<ul class="checklist">';inList=true;ltag='ul'}
+        var chk=clm[1]!==' ';html+='<li><span class="'+(chk?'check':'uncheck')+'">'+(chk?'&#10003;':'')+'</span>'+inline(clm[2])+'</li>';continue}
+      if(L.startsWith('- ')){if(!inList){html+='<ul>';inList=true;ltag='ul'};html+='<li>'+inline(L.slice(2))+'</li>';continue}
+      var olm=L.match(/^\d+\. (.+)/)
+      if(olm){if(!inList||ltag!=='ol'){cl();html+='<ol>';inList=true;ltag='ol'};html+='<li>'+inline(olm[1])+'</li>';continue}
+      if(/^---+$/.test(L.trim())){html+='<hr style="border:none;border-top:1px solid var(--border);margin:16px 0">';continue}
+      if(L.trim()===''){cl();continue}
+      html+='<p>'+inline(L)+'</p>'
+    }
+    cl();ct();if(inCode)html+='</code></pre>'
+    cEl.innerHTML=title+(meta?'<div class="meta">'+meta+'</div>':'')+html
+    if(tEl&&tocH)tEl.innerHTML=tocH
+    initTocTracking()
+  }
+})()
+</script>
+</body>
+</html>
