@@ -10,7 +10,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { serve } from '@hono/node-server'
-import { readFileSync, writeFileSync, readdirSync, existsSync, statSync } from 'node:fs'
+import { readFileSync, writeFileSync, readdirSync, existsSync, statSync, mkdirSync } from 'node:fs'
 import { resolve, join, basename } from 'node:path'
 import { homedir, networkInterfaces } from 'node:os'
 import { execFileSync } from 'node:child_process'
@@ -323,18 +323,45 @@ app.get('/api/evaluations', (c) => {
 
 // --- スクリーンショット API ---
 const SCREENSHOTS_DIR = resolve(process.cwd(), 'data', 'screenshots')
+const SCREENSHOTS_META = join(SCREENSHOTS_DIR, 'meta.json')
+
+function loadScreenshotMeta(): Record<string, { description?: string; sessionId?: string }> {
+  try {
+    if (existsSync(SCREENSHOTS_META)) return JSON.parse(readFileSync(SCREENSHOTS_META, 'utf-8'))
+  } catch {}
+  return {}
+}
+function saveScreenshotMeta(meta: Record<string, { description?: string; sessionId?: string }>) {
+  if (!existsSync(SCREENSHOTS_DIR)) mkdirSync(SCREENSHOTS_DIR, { recursive: true })
+  writeFileSync(SCREENSHOTS_META, JSON.stringify(meta, null, 2))
+}
 
 app.get('/api/screenshots', (c) => {
   try {
     if (!existsSync(SCREENSHOTS_DIR)) return c.json([])
+    const meta = loadScreenshotMeta()
     const files = readdirSync(SCREENSHOTS_DIR)
       .filter(f => /\.(png|jpe?g|webp|gif)$/i.test(f))
       .map(f => {
         const st = statSync(join(SCREENSHOTS_DIR, f))
-        return { name: f, size: st.size, mtime: st.mtimeMs }
+        const m = meta[f] || {}
+        return { name: f, size: st.size, mtime: st.mtimeMs, description: m.description || '', sessionId: m.sessionId || '' }
       })
       .sort((a, b) => b.mtime - a.mtime)
     return c.json(files)
+  } catch (e) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+app.post('/api/screenshots/meta', async (c) => {
+  try {
+    const { name, description, sessionId } = await c.req.json<{ name: string; description?: string; sessionId?: string }>()
+    if (!name || /[/\\]/.test(name)) return c.json({ error: 'invalid name' }, 400)
+    const meta = loadScreenshotMeta()
+    meta[name] = { ...meta[name], description: description ?? meta[name]?.description, sessionId: sessionId ?? meta[name]?.sessionId }
+    saveScreenshotMeta(meta)
+    return c.json({ ok: true })
   } catch (e) {
     return c.json({ error: String(e) }, 500)
   }

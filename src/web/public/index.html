@@ -9,7 +9,7 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --bg:#1e1e2e;--surface:#252536;--surface-hover:#2a2a3d;
+  --bg:#1e1e2e;--bg-rgb:30,30,46;--surface:#252536;--surface-hover:#2a2a3d;
   --border:#333346;--border-light:#3e3e56;
   --text:#cdd6f4;--text-bright:#fff;--muted:#6c7086;
   --accent:#c084fc;--accent-dim:rgba(192,132,252,.12);--accent-border:rgba(192,132,252,.25);
@@ -87,6 +87,7 @@ svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:ro
 .tab .tab-dot{width:6px;height:6px;border-radius:50%;background:var(--tab-mode-color, var(--accent));flex-shrink:0;transition:background .2s}
 .tab .tab-dot.streaming{animation:pulse 1.2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.tab .tab-ss{color:var(--muted);font-size:10px;flex-shrink:0;display:flex;align-items:center;opacity:.6}
 .tab .tab-close{color:var(--muted);cursor:pointer;padding:0 2px;border-radius:3px;transition:all .1s;flex-shrink:0;display:flex;align-items:center}
 .tab .tab-close:hover{color:var(--danger);background:var(--danger-bg)}
 .tab .tab-close svg.ic{font-size:11px}
@@ -367,7 +368,9 @@ pre:hover .code-copy-btn{opacity:1}
 .ss-thumb{position:relative;border-radius:8px;overflow:hidden;border:1px solid var(--border);cursor:pointer;aspect-ratio:16/10;background:var(--bg)}
 .ss-thumb img{width:100%;height:100%;object-fit:cover;transition:transform .15s}
 .ss-thumb:hover img{transform:scale(1.05)}
-.ss-thumb-name{position:absolute;bottom:0;left:0;right:0;padding:4px 6px;font-size:10px;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.7));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ss-thumb-name{position:absolute;bottom:0;left:0;right:0;padding:4px 6px;font-size:10px;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.7));overflow:hidden;text-overflow:ellipsis}
+.ss-thumb-desc{font-size:9px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ss-full-desc{text-align:center;font-size:13px;color:var(--muted);margin-top:4px;max-width:90vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ss-full{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:20;display:none;align-items:center;justify-content:center;cursor:pointer}
 .ss-full.open{display:flex}
 .ss-full img{max-width:95vw;max-height:90vh;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.5)}
@@ -442,7 +445,7 @@ pre:hover .code-copy-btn{opacity:1}
 .compact-banner{display:none;align-items:center;gap:8px;padding:6px 12px;background:var(--warning-bg);border-top:1px solid rgba(249,226,175,.15);font-size:12px;color:var(--warning);flex-shrink:0}
 .compact-banner.active{display:flex}
 .compact-banner svg.ic{font-size:13px;flex-shrink:0}
-.compact-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);z-index:5;gap:16px}
+.compact-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(var(--bg-rgb),.85);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:5;gap:16px}
 .compact-overlay .compact-spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--warning);border-radius:50%;animation:compact-spin 1s linear infinite}
 .compact-overlay .compact-label{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:6px}
 .compact-overlay .compact-queued{font-size:12px;color:var(--warning);margin-top:4px}
@@ -512,7 +515,7 @@ pre:hover .code-copy-btn{opacity:1}
 
 /* ── ライトテーマ (Catppuccin Latte) ── */
 [data-theme="light"]{
-  --bg:#eff1f5;--surface:#ffffff;--surface-hover:#f2f4f8;
+  --bg:#eff1f5;--bg-rgb:239,241,245;--surface:#ffffff;--surface-hover:#f2f4f8;
   --border:#dce0e8;--border-light:#ccd0da;
   --text:#4c4f69;--text-bright:#1e1e2e;--muted:#8c8fa1;
   --accent:#8839ef;--accent-dim:rgba(136,57,239,.08);--accent-border:rgba(136,57,239,.2);
@@ -718,6 +721,7 @@ pre:hover .code-copy-btn{opacity:1}
 <div class="ss-full" id="ssFull" onclick="closeSsFull()">
   <img id="ssFullImg" src="" alt="">
   <div class="ss-full-name" id="ssFullName"></div>
+  <div class="ss-full-desc" id="ssFullDesc"></div>
 </div>
 
 <!-- プロジェクトダッシュボード -->
@@ -821,6 +825,7 @@ const ICONS = {
   'sun':            '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
   'moon':           '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
   'grid':           '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/>',
+  'camera':         '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3"/>',
 }
 
 function ic(name, size) {
@@ -935,6 +940,7 @@ function restoreProjectTabs(projectPath) {
         label: cleanLabel(saved.label) || t('chat.newChat'),
         permissionMode: migratePermissionMode(saved.permissionMode || store.permissionMode || 'plan'),
         model: saved.model || localStorage.getItem(MODEL_STORAGE_KEY) || 'claude-sonnet-4-6',
+        ssCount: 0,
       })
 
       if (saved.sessionId) {
@@ -1696,6 +1702,7 @@ function createNewTab(label) {
     label: label || t('chat.newChat'),
     permissionMode: 'ask',
     model: localStorage.getItem(MODEL_STORAGE_KEY) || 'claude-sonnet-4-6',
+    ssCount: 0,
   })
 
   renderTabs()
@@ -1982,6 +1989,7 @@ function renderTabs() {
     let inner = ''
     if (tab.sending) inner += `<span class="tab-dot streaming" style="--tab-mode-color:${modeColor}"></span>`
     inner += `<span class="tab-label">${esc(tab.label)}</span>`
+    if (tab.ssCount > 0) inner += `<span class="tab-ss" title="${tab.ssCount} screenshots">${ic('camera', 10)}</span>`
     if (tabId === activeTabId) inner += `<span class="tab-chevron">${ic('chevron-down', 10)}</span>`
     el.innerHTML = inner
 
@@ -2072,6 +2080,7 @@ async function init() {
   if (!restored && tabs.size === 0) createNewTab()
   if (currentProject) loadGitStatus()
   updateInputBoxModeColor()
+  refreshTabScreenshotCounts()
 
   // ブラウザ再接続: アクティブなストリームがあれば自動復帰
   tabs.forEach((tab, tabId) => {
@@ -2455,6 +2464,7 @@ function openScreenshots() {
 function closeScreenshots() {
   document.getElementById('ssOverlay').classList.remove('open')
 }
+var _ssFiles = []
 async function loadScreenshots() {
   const body = document.getElementById('ssBody')
   body.innerHTML = `<div class="cost-loading">${t('loading')}</div>`
@@ -2462,14 +2472,16 @@ async function loadScreenshots() {
     const res = await fetch('/api/screenshots')
     if (!res.ok) throw new Error(res.statusText)
     const files = await res.json()
+    _ssFiles = files
     if (!files.length) { body.innerHTML = `<div class="ss-empty">${t('ss.empty')}</div>`; return }
     let html = '<div class="ss-grid">'
     for (const f of files) {
       const date = new Date(f.mtime)
       const label = `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2,'0')}`
+      const desc = f.description ? `<div class="ss-thumb-desc">${esc(f.description)}</div>` : ''
       html += `<div class="ss-thumb" onclick="openSsFull('${esc(f.name)}')">
         <img src="/screenshots/${encodeURIComponent(f.name)}" loading="lazy" alt="${esc(f.name)}">
-        <div class="ss-thumb-name">${esc(f.name.replace(/\.(png|jpe?g|webp|gif)$/i, ''))} ${label}</div>
+        <div class="ss-thumb-name">${esc(f.name.replace(/\.(png|jpe?g|webp|gif)$/i, ''))} ${label}${desc}</div>
       </div>`
     }
     html += '</div>'
@@ -2482,10 +2494,34 @@ function openSsFull(name) {
   const el = document.getElementById('ssFull')
   document.getElementById('ssFullImg').src = '/screenshots/' + encodeURIComponent(name)
   document.getElementById('ssFullName').textContent = name
+  const f = _ssFiles.find(x => x.name === name)
+  document.getElementById('ssFullDesc').textContent = f?.description || ''
   el.classList.add('open')
 }
 function closeSsFull() {
   document.getElementById('ssFull').classList.remove('open')
+}
+
+// スクショカウントをタブに反映
+async function refreshTabScreenshotCounts() {
+  try {
+    const res = await fetch('/api/screenshots')
+    if (!res.ok) return
+    const files = await res.json()
+    // sessionId でカウント集計
+    const counts = {}
+    for (const f of files) {
+      if (f.sessionId) {
+        counts[f.sessionId] = (counts[f.sessionId] || 0) + 1
+      }
+    }
+    let changed = false
+    tabs.forEach((tab) => {
+      const c = tab.sessionId ? (counts[tab.sessionId] || 0) : 0
+      if (tab.ssCount !== c) { tab.ssCount = c; changed = true }
+    })
+    if (changed) renderTabs()
+  } catch {}
 }
 
 // ── コストダッシュボード ──

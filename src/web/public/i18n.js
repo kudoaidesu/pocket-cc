@@ -90,6 +90,7 @@
       // ── スクリーンショット ──
       'ss.title': 'スクリーンショット',
       'ss.empty': 'スクリーンショットがありません',
+      'ss.noDesc': '説明なし',
 
       // ── 設定パネル ──
       'settings.title': '設定',
@@ -187,6 +188,7 @@
       // ── Screenshots ──
       'ss.title': 'Screenshots',
       'ss.empty': 'No screenshots available',
+      'ss.noDesc': 'No description',
 
       // ── Settings Panel ──
       'settings.title': 'Settings',
