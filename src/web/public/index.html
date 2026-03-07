@@ -368,6 +368,11 @@ pre:hover .code-copy-btn{opacity:1}
 .compact-banner{display:none;align-items:center;gap:8px;padding:6px 12px;background:var(--warning-bg);border-top:1px solid rgba(249,226,175,.15);font-size:12px;color:var(--warning);flex-shrink:0}
 .compact-banner.active{display:flex}
 .compact-banner svg.ic{font-size:13px;flex-shrink:0}
+.compact-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);z-index:5;gap:16px}
+.compact-overlay .compact-spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--warning);border-radius:50%;animation:compact-spin 1s linear infinite}
+.compact-overlay .compact-label{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.compact-overlay .compact-queued{font-size:12px;color:var(--warning);margin-top:4px}
+@keyframes compact-spin{to{transform:rotate(360deg)}}
 
 /* ── コマンドメニュー ── */
 .cmd-menu{display:none;position:absolute;bottom:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px 10px 0 0;padding:6px 0;max-height:220px;overflow-y:auto;z-index:5;box-shadow:0 -4px 16px rgba(0,0,0,.3)}
@@ -1017,38 +1022,41 @@ function setPermissionMode(mode, silent) {
 
 // --- Compacting 表示 ---
 let _compactDotTimer = null
-function showCompacting(show) {
+function showCompacting(show, tabId) {
+  const tid = tabId || activeTabId
+  const tab = tabs.get(tid)
+  if (!tab) return
   const banner = document.getElementById('compactBanner')
   const pill = document.getElementById('tokenPill')
-  banner.classList.toggle('active', show)
+  // グローバルバナーは非表示にする（オーバーレイに移行）
+  banner.classList.remove('active')
   if (_compactDotTimer) { clearInterval(_compactDotTimer); _compactDotTimer = null }
+  // 既存オーバーレイを削除
+  const existing = tab.messagesEl.querySelector('.compact-overlay')
+  if (existing) existing.remove()
   if (show) {
-    // tokenPill を非表示にして重複を避ける
     if (pill) pill.style.display = 'none'
-    let dots = 1
-    const span = document.createElement('span')
-    span.id = 'compactDotsText'
-    banner.innerHTML = ''
-    banner.appendChild(document.createRange().createContextualFragment(ic('zap', 13)))
-    banner.appendChild(document.createTextNode(' '))
-    span.textContent = 'Compacting.'
-    banner.appendChild(span)
-    _compactDotTimer = setInterval(() => {
-      dots = (dots % 3) + 1
-      span.textContent = 'Compacting' + '.'.repeat(dots)
-    }, 500)
+    // メッセージ領域にオーバーレイを表示
+    tab.messagesEl.style.position = 'relative'
+    const overlay = document.createElement('div')
+    overlay.className = 'compact-overlay'
+    overlay.innerHTML = `<div class="compact-spinner"></div><div class="compact-label">${ic('zap', 16)} Compacting...</div>`
+    tab.messagesEl.appendChild(overlay)
   } else {
-    banner.innerHTML = ''
     // tokenPill を復元
-    if (pill) pill.style.display = 'flex'
+    if (tid === activeTabId && pill) pill.style.display = 'flex'
   }
 }
-function showCompactDone(trigger, preTokens) {
-  const banner = document.getElementById('compactBanner')
-  banner.classList.add('active')
+function showCompactDone(trigger, preTokens, tabId) {
+  const tid = tabId || activeTabId
+  const tab = tabs.get(tid)
+  if (!tab) return
+  // オーバーレイを削除
+  const overlay = tab.messagesEl.querySelector('.compact-overlay')
+  if (overlay) overlay.remove()
+  // system-notice で完了を通知
   const info = preTokens ? ` (${Math.round(preTokens/1000)}k tokens compacted)` : ''
-  banner.innerHTML = `${ic('zap', 13)} <span>Context compacted${info}</span>`
-  setTimeout(() => { banner.classList.remove('active') }, 4000)
+  addSystemNotice(tid, `Context compacted${info}`)
 }
 
 // --- トークン使用量表示 + 手動コンパクト ---
@@ -1088,15 +1096,18 @@ function triggerCompact() {
     showToast(`<p>${t('toast.waitForResponse')}</p>`, 2000)
     return
   }
+  if (tab.compacting) {
+    showToast(`<p>Compacting in progress</p>`, 2000)
+    return
+  }
   // 誤タップ防止: 確認ダイアログ
   const pill = document.getElementById('tokenPill')
   const currentUsage = pill?.textContent?.trim() || ''
-  if (!confirm(`コンパクションを実行しますか？\n${currentUsage ? '現在: ' + currentUsage : ''}`)) return
+  if (!confirm(`${t('compact.confirm')}\n${currentUsage ? t('compact.current') + ' ' + currentUsage : ''}`)) return
 
   tab.compacting = true
-  showCompacting(true)
+  showCompacting(true, activeTabId)
   pill.classList.add('compact-running')
-  pill.innerHTML = `${ic('zap', 12)} ${t('compacting')}`
 
   const cwd = currentProject || ''
   const model = tab.model || 'claude-sonnet-4-6'
@@ -1107,16 +1118,16 @@ function triggerCompact() {
     body: JSON.stringify({ sessionId: tab.sessionId, project: cwd, model }),
   }).then(r => r.json()).then(res => {
     if (res.started) {
-      pollCompactStatus(tab.sessionId)
+      pollCompactStatus(tab.sessionId, activeTabId)
     } else {
       tab.compacting = false
-      showCompacting(false)
+      showCompacting(false, activeTabId)
       pill.classList.remove('compact-running')
       showToast(`<p>Compact: ${res.reason || 'could not start'}</p>`, 3000)
     }
   }).catch(() => {
     tab.compacting = false
-    showCompacting(false)
+    showCompacting(false, activeTabId)
     pill.classList.remove('compact-running')
   })
 }
@@ -1127,33 +1138,35 @@ function flushPendingAfterCompact(tabId) {
   const tab = tabs.get(tid)
   if (!tab) return
   tab.compacting = false
-  showCompacting(false)
+  showCompacting(false, tid)
   if (tab.pendingMessage && tid === activeTabId) {
     inputEl.value = tab.pendingMessage
     tab.pendingMessage = null
     setTimeout(() => sendMessage(), 100)
   } else if (tab.pendingMessage) {
-    // 別タブにいる場合は入力欄に戻してトースト通知
+    // 別タブにいる場合はトースト通知
     showToast('Compact done. Switch back to send queued message.', 3000)
   }
 }
 
-function pollCompactStatus(sessionId) {
+function pollCompactStatus(sessionId, tabId) {
   if (compactPollTimer) clearInterval(compactPollTimer)
   const compactStartTime = Date.now()
   const COMPACT_TIMEOUT_MS = 5 * 60 * 1000 // 5分
-  const capturedTabId = activeTabId // タブ切替に備えてキャプチャ
+  const capturedTabId = tabId || activeTabId // 明示的にタブIDをキャプチャ
   compactPollTimer = setInterval(() => {
     // タイムアウト: 5分経過で強制終了
     if (Date.now() - compactStartTime > COMPACT_TIMEOUT_MS) {
       clearInterval(compactPollTimer)
       compactPollTimer = null
       const tab = tabs.get(capturedTabId)
-      if (tab) { tab.compacting = false; showCompacting(false) }
-      const pill = document.getElementById('tokenPill')
-      pill.classList.remove('compact-running')
+      if (tab) { tab.compacting = false; showCompacting(false, capturedTabId) }
+      if (capturedTabId === activeTabId) {
+        const pill = document.getElementById('tokenPill')
+        pill.classList.remove('compact-running')
+        updateTokenUsage(lastInputTokens, lastContextWindow)
+      }
       showToast('<p>Compact timed out (5min)</p>', 4000)
-      updateTokenUsage(lastInputTokens, lastContextWindow)
       return
     }
     fetch(`/api/chat/compact-status/${encodeURIComponent(sessionId)}`)
@@ -1162,27 +1175,31 @@ function pollCompactStatus(sessionId) {
         if (job.status === 'done') {
           clearInterval(compactPollTimer)
           compactPollTimer = null
-          const pill = document.getElementById('tokenPill')
-          pill.classList.remove('compact-running')
-          showCompactDone('manual', job.preTokens)
-          lastInputTokens = 0
-          pill.innerHTML = `${ic('cpu', 12)} ${t('compacted')}`
-          setTimeout(() => { if (!lastInputTokens) pill.style.display = 'none' }, 5000)
+          if (capturedTabId === activeTabId) {
+            const pill = document.getElementById('tokenPill')
+            pill.classList.remove('compact-running')
+            lastInputTokens = 0
+            pill.innerHTML = `${ic('cpu', 12)} ${t('compacted')}`
+            setTimeout(() => { if (!lastInputTokens) pill.style.display = 'none' }, 5000)
+          }
+          showCompactDone('manual', job.preTokens, capturedTabId)
           flushPendingAfterCompact(capturedTabId)
         } else if (job.status === 'error') {
           clearInterval(compactPollTimer)
           compactPollTimer = null
-          const pill = document.getElementById('tokenPill')
-          pill.classList.remove('compact-running')
           showToast(`<p>Compact error: ${job.error || 'unknown'}</p>`, 4000)
-          updateTokenUsage(lastInputTokens, lastContextWindow)
           const tab = tabs.get(capturedTabId)
           if (tab) {
             tab.compacting = false
-            showCompacting(false)
-            if (tab.pendingMessage) {
-              inputEl.value = tab.pendingMessage
-              tab.pendingMessage = null
+            showCompacting(false, capturedTabId)
+            if (capturedTabId === activeTabId) {
+              const pill = document.getElementById('tokenPill')
+              pill.classList.remove('compact-running')
+              updateTokenUsage(lastInputTokens, lastContextWindow)
+              if (tab.pendingMessage) {
+                inputEl.value = tab.pendingMessage
+                tab.pendingMessage = null
+              }
             }
           }
         }
@@ -1198,20 +1215,32 @@ function checkCompactJobOnTabSwitch(tab) {
   const pill = document.getElementById('tokenPill')
   pill.style.display = 'none'
   pill.classList.remove('compact-running', 'warn', 'danger')
+  // グローバルバナーをクリア
+  const banner = document.getElementById('compactBanner')
+  banner.classList.remove('active')
   if (compactPollTimer) { clearInterval(compactPollTimer); compactPollTimer = null }
 
   if (!tab?.sessionId) return
+
+  // ローカルのcompactingフラグがある場合はオーバーレイを再表示
+  if (tab.compacting) {
+    showCompacting(true, activeTabId)
+    pill.style.display = 'flex'
+    pill.classList.add('compact-running')
+    pollCompactStatus(tab.sessionId, activeTabId)
+    return
+  }
+
   // サーバー側にコンパクトジョブが残っているか確認
   fetch(`/api/chat/compact-status/${encodeURIComponent(tab.sessionId)}`)
     .then(r => r.json())
     .then(job => {
       if (job.status === 'running') {
         tab.compacting = true
-        showCompacting(true)
+        showCompacting(true, activeTabId)
         pill.style.display = 'flex'
         pill.classList.add('compact-running')
-        pill.innerHTML = `${ic('zap', 12)} ${t('compacting')}`
-        pollCompactStatus(tab.sessionId)
+        pollCompactStatus(tab.sessionId, activeTabId)
       }
     })
     .catch(() => {})
@@ -2326,6 +2355,8 @@ async function loadSessionHistory(tabId) {
   const tab = tabs.get(tabId)
   if (!tab?.sessionId || !currentProject) return
   if (tab._historyLoaded) return
+  // コンパクション中はメッセージクリアしない（オーバーレイが表示中）
+  if (tab.compacting) return
 
   tab.messagesEl.innerHTML = ''
   const loading = document.createElement('div')
@@ -2440,9 +2471,14 @@ async function sendMessage() {
     tab.pendingMessage = text
     inputEl.value = ''
     autoResize()
-    const banner = document.getElementById('compactBanner')
-    banner.classList.add('active')
-    banner.innerHTML = `${ic('zap', 13)} <span>${t('compacting')} message queued, will send after</span>`
+    // オーバーレイにキュー済みメッセージ表示を追加
+    const overlay = tab.messagesEl.querySelector('.compact-overlay')
+    if (overlay && !overlay.querySelector('.compact-queued')) {
+      const queued = document.createElement('div')
+      queued.className = 'compact-queued'
+      queued.textContent = t('compact.queued')
+      overlay.appendChild(queued)
+    }
     return
   }
 
@@ -2890,7 +2926,7 @@ function handleSSE(tabId, event, data, content, msgEl) {
     try {
       const s = JSON.parse(data)
       if (s.status === 'compacting') {
-        showCompacting(true)
+        showCompacting(true, tabId)
         if (tab) tab.compacting = true
       }
       if (s.permissionMode && tab) {
@@ -2916,7 +2952,7 @@ function handleSSE(tabId, event, data, content, msgEl) {
   if (event === 'compact') {
     try {
       const c = JSON.parse(data)
-      showCompactDone(c.trigger, c.preTokens)
+      showCompactDone(c.trigger, c.preTokens, tabId)
       // 自動コンパクト完了 → キューされたメッセージを自動送信
       flushPendingAfterCompact(tabId)
     } catch {}
