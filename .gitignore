@@ -25,6 +25,9 @@ coverage/
 # Data (runtime queue state)
 data/
 
+# VAPID keys (Web Push)
+data/vapid-keys.json
+
 # Logs
 logs/
 

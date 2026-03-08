@@ -13,7 +13,7 @@ const log = createLogger('db:schema')
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 /** 現在のスキーマバージョン。マイグレーション追加時にインクリメントする */
-const CURRENT_VERSION = 5
+const CURRENT_VERSION = 7
 
 export function initSchema(db: Database.Database): void {
   const version = db.pragma('user_version', { simple: true }) as number
@@ -28,6 +28,8 @@ export function initSchema(db: Database.Database): void {
     if (version < 3) migrateV3(db)
     if (version < 4) migrateV4(db)
     if (version < 5) migrateV5(db)
+    if (version < 6) migrateV6(db)
+    if (version < 7) migrateV7(db)
     db.pragma(`user_version = ${CURRENT_VERSION}`)
   })()
 
@@ -197,6 +199,109 @@ function migrateV5(db: Database.Database): void {
     )
   `)
   db.exec('CREATE INDEX IF NOT EXISTS idx_test_evidence_record ON test_evidence(record_id)')
+}
+
+// ── v6: ワーカー永続化テーブル ────────────────────────────────
+
+function migrateV6(db: Database.Database): void {
+  // ワーカー定義（プロジェクト × 役割）
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS workers (
+      id TEXT PRIMARY KEY,
+      project_slug TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'implementer',
+      display_name TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      last_active_at TEXT,
+      UNIQUE(project_slug, role)
+    )
+  `)
+  db.exec('CREATE INDEX IF NOT EXISTS idx_workers_project ON workers(project_slug)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_workers_status ON workers(status)')
+
+  // ワーカーのタスク
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS worker_tasks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      worker_id TEXT NOT NULL REFERENCES workers(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      description TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      priority TEXT NOT NULL DEFAULT 'medium',
+      issue_ref TEXT,
+      pr_ref TEXT,
+      result TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      started_at TEXT,
+      completed_at TEXT
+    )
+  `)
+  db.exec('CREATE INDEX IF NOT EXISTS idx_worker_tasks_worker ON worker_tasks(worker_id)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_worker_tasks_status ON worker_tasks(status)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_worker_tasks_priority ON worker_tasks(priority, status)')
+
+  // worker_tasks に新カラムを追加（既存DBの場合は ALTER TABLE で追加）
+  const newColumns: Array<{ name: string; definition: string }> = [
+    { name: 'checkpoint', definition: 'TEXT' },
+    { name: 'retry_count', definition: 'INTEGER NOT NULL DEFAULT 0' },
+    { name: 'next_retry_at', definition: 'TEXT' },
+    { name: 'last_error', definition: 'TEXT' },
+    { name: 'execution_mode', definition: "TEXT NOT NULL DEFAULT 'safe'" },
+  ]
+  for (const col of newColumns) {
+    try {
+      db.exec(`ALTER TABLE worker_tasks ADD COLUMN ${col.name} ${col.definition}`)
+    } catch (e) {
+      // "column already exists" は無視（IF NOT EXISTS がない場合の安全策）
+      if (!(e instanceof Error && e.message.includes('duplicate column name'))) {
+        throw e
+      }
+    }
+  }
+
+  // タスクイベント
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS task_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      task_id INTEGER NOT NULL REFERENCES worker_tasks(id) ON DELETE CASCADE,
+      event_type TEXT NOT NULL,
+      payload TEXT,
+      created_at TEXT NOT NULL
+    )
+  `)
+  db.exec('CREATE INDEX IF NOT EXISTS idx_task_events_task ON task_events(task_id)')
+
+  // 通知
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      body TEXT,
+      metadata TEXT,
+      read INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    )
+  `)
+  db.exec('CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read, created_at)')
+}
+
+// ── v7: Push購読テーブル ──────────────────────────────────────
+
+function migrateV7(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      endpoint TEXT NOT NULL UNIQUE,
+      keys_p256dh TEXT NOT NULL,
+      keys_auth TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )
+  `)
+  db.exec('CREATE INDEX IF NOT EXISTS idx_push_subscriptions_endpoint ON push_subscriptions(endpoint)')
 }
 
 // ── JSON → SQLite データ移行 ──────────────────────────────

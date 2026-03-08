@@ -26,6 +26,8 @@ export function getDb(): Database.Database {
   db.pragma('foreign_keys = ON')
   // パフォーマンス: 通常同期レベルで十分（WAL + シングルライター）
   db.pragma('synchronous = NORMAL')
+  // WALモードでの書き込み競合対策（5秒待機）
+  db.pragma('busy_timeout = 5000')
 
   initSchema(db)
 
