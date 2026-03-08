@@ -13,7 +13,7 @@ const log = createLogger('db:schema')
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 /** 現在のスキーマバージョン。マイグレーション追加時にインクリメントする */
-const CURRENT_VERSION = 5
+const CURRENT_VERSION = 6
 
 export function initSchema(db: Database.Database): void {
   const version = db.pragma('user_version', { simple: true }) as number
@@ -28,6 +28,7 @@ export function initSchema(db: Database.Database): void {
     if (version < 3) migrateV3(db)
     if (version < 4) migrateV4(db)
     if (version < 5) migrateV5(db)
+    if (version < 6) migrateV6(db)
     db.pragma(`user_version = ${CURRENT_VERSION}`)
   })()
 
@@ -197,6 +198,49 @@ function migrateV5(db: Database.Database): void {
     )
   `)
   db.exec('CREATE INDEX IF NOT EXISTS idx_test_evidence_record ON test_evidence(record_id)')
+}
+
+// ── v6: ワーカー永続化テーブル ────────────────────────────────
+
+function migrateV6(db: Database.Database): void {
+  // ワーカー定義（プロジェクト × 役割）
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS workers (
+      id TEXT PRIMARY KEY,
+      project_slug TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'implementer',
+      display_name TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      last_active_at TEXT,
+      UNIQUE(project_slug, role)
+    )
+  `)
+  db.exec('CREATE INDEX IF NOT EXISTS idx_workers_project ON workers(project_slug)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_workers_status ON workers(status)')
+
+  // ワーカーのタスク
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS worker_tasks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      worker_id TEXT NOT NULL REFERENCES workers(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      description TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      priority TEXT NOT NULL DEFAULT 'medium',
+      issue_ref TEXT,
+      pr_ref TEXT,
+      result TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      started_at TEXT,
+      completed_at TEXT
+    )
+  `)
+  db.exec('CREATE INDEX IF NOT EXISTS idx_worker_tasks_worker ON worker_tasks(worker_id)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_worker_tasks_status ON worker_tasks(status)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_worker_tasks_priority ON worker_tasks(priority, status)')
 }
 
 // ── JSON → SQLite データ移行 ──────────────────────────────
