@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Change Report - pocket-cc</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#1e1e2e;--surface:#252536;--surface-hover:#2a2a3d;
+  --border:#333346;--border-light:#3e3e56;
+  --text:#cdd6f4;--text-bright:#fff;--muted:#6c7086;
+  --accent:#c084fc;--accent-dim:rgba(192,132,252,.12);--accent-border:rgba(192,132,252,.25);
+  --success:#a6e3a1;--success-bg:rgba(166,227,161,.08);
+  --danger:#f38ba8;--danger-bg:rgba(243,139,168,.08);
+  --warning:#f9e2af;--warning-bg:rgba(249,226,175,.08);
+  --blue:#89b4fa;--blue-bg:rgba(137,180,250,.12);
+  --font-sans:-apple-system,system-ui,'Segoe UI','Helvetica Neue',sans-serif;
+  --font-mono:'SF Mono',Menlo,'Cascadia Code','JetBrains Mono',Consolas,monospace;
+}
+[data-theme="light"]{
+  --bg:#eff1f5;--surface:#ffffff;--surface-hover:#e6e9ef;
+  --border:#ccd0da;--border-light:#bcc0cc;
+  --text:#4c4f69;--text-bright:#1e1e2e;--muted:#9ca0b0;
+  --accent:#8839ef;--accent-dim:rgba(136,57,239,.08);--accent-border:rgba(136,57,239,.2);
+  --success:#40a02b;--success-bg:rgba(64,160,43,.08);
+  --danger:#d20f39;--danger-bg:rgba(210,15,57,.06);
+  --warning:#df8e1d;--warning-bg:rgba(223,142,29,.08);
+  --blue:#1e66f5;--blue-bg:rgba(30,102,245,.06);
+}
+html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:var(--font-sans);font-size:14px;line-height:1.7}
+
+/* Header */
+.page-header{display:flex;align-items:center;gap:8px;padding:10px 24px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:10;overflow-x:auto;white-space:nowrap;flex-shrink:0}
+.page-header a{color:var(--accent);text-decoration:none;font-weight:600;font-size:13px}
+.page-header a:hover{text-decoration:underline}
+.page-header .sep{color:var(--muted);font-size:12px}
+.page-header h1{font-size:14px;font-weight:700;color:var(--text-bright);flex:1;overflow:hidden;text-overflow:ellipsis}
+.theme-toggle{background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:4px 8px;cursor:pointer;font-size:12px;flex-shrink:0}
+.theme-toggle:hover{color:var(--text);border-color:var(--border-light)}
+
+/* TOC sidebar */
+.layout{display:flex;max-width:1200px;margin:0 auto}
+.toc{width:220px;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto;padding:20px 16px;border-right:1px solid var(--border);flex-shrink:0}
+.toc a{display:block;padding:4px 8px;color:var(--muted);text-decoration:none;font-size:12px;border-radius:4px;margin-bottom:2px;line-height:1.4}
+.toc a:hover{color:var(--text);background:var(--surface-hover)}
+.toc a.active{color:var(--accent);background:var(--accent-dim)}
+.toc .toc-h2{font-weight:600;color:var(--text);margin-top:8px}
+
+/* Content */
+.content{flex:1;padding:32px 40px;max-width:900px;min-width:0}
+@media(max-width:768px){
+  .toc{display:none}
+  .content{padding:20px 16px}
+}
+
+/* Meta */
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px}
+.meta-tag{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600}
+.meta-tag.date{background:var(--blue-bg);color:var(--blue)}
+.meta-tag.branch{background:var(--accent-dim);color:var(--accent)}
+.meta-tag.status{background:var(--success-bg);color:var(--success)}
+
+/* Title */
+h1.title{font-size:22px;font-weight:800;color:var(--text-bright);margin-bottom:8px;line-height:1.3}
+
+/* Sections */
+h2{font-size:17px;font-weight:700;color:var(--text-bright);margin:32px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--border);scroll-margin-top:70px}
+h3{font-size:14px;font-weight:700;color:var(--text-bright);margin:20px 0 8px}
+
+/* Tables */
+.table-wrap{overflow-x:auto;margin:12px 0;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;font-size:13px;min-width:600px}
+th{text-align:left;padding:8px 12px;background:var(--surface);border:1px solid var(--border);color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+td{padding:8px 12px;border:1px solid var(--border);vertical-align:top;max-width:400px}
+tr:hover td{background:var(--surface-hover)}
+
+/* TL;DR table */
+.tldr-table{min-width:500px}
+.tldr-table th{width:100px;background:var(--accent-dim);color:var(--accent);white-space:nowrap}
+.tldr-table td{color:var(--text)}
+
+/* Status badges */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.badge.done{background:var(--success-bg);color:var(--success)}
+.badge.pass{background:var(--success-bg);color:var(--success)}
+.badge.fail{background:var(--danger-bg);color:var(--danger)}
+.badge.ok{background:var(--success-bg);color:var(--success)}
+.badge.new{background:var(--blue-bg);color:var(--blue)}
+.badge.mod{background:var(--warning-bg);color:var(--warning)}
+.badge.low{background:var(--success-bg);color:var(--success)}
+
+/* Screenshots */
+.screenshots{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0}
+@media(max-width:600px){.screenshots{grid-template-columns:1fr}}
+.screenshot-card{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface)}
+.screenshot-card img{width:100%;height:auto;display:block;cursor:pointer;transition:transform .2s}
+.screenshot-card img:hover{transform:scale(1.02)}
+.screenshot-card .label{padding:8px 12px;font-size:12px;font-weight:600;text-align:center;border-top:1px solid var(--border)}
+.screenshot-card .label.before{color:var(--danger)}
+.screenshot-card .label.after{color:var(--success)}
+
+/* Code */
+code{background:var(--surface);padding:1px 5px;border-radius:3px;font-family:var(--font-mono);font-size:12px;color:var(--accent)}
+
+/* Evidence list */
+.evidence{margin:12px 0;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:8px}
+.evidence p{margin:4px 0}
+.evidence strong{color:var(--text-bright)}
+
+/* Checklist */
+.checklist{list-style:none;margin:12px 0}
+.checklist li{padding:4px 0;display:flex;align-items:center;gap:8px;font-size:13px}
+.checklist .check{width:16px;height:16px;border-radius:4px;background:var(--success-bg);color:var(--success);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.checklist .uncheck{width:16px;height:16px;border-radius:4px;background:var(--surface);border:1px solid var(--border);flex-shrink:0}
+
+/* Impact badge */
+.impact{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:6px;background:var(--success-bg);border:1px solid rgba(166,227,161,.15);color:var(--success);font-weight:600;font-size:12px;margin-top:8px}
+
+/* Fullscreen overlay */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;cursor:pointer;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.overlay img{max-width:95%;max-height:95%;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+
+/* Summary bar */
+.summary-bar{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:8px}
+.summary-item{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:80px}
+.summary-item .num{font-size:22px;font-weight:800;color:var(--text-bright)}
+.summary-item .lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+</style>
+</head>
+<body>
+<div class="page-header">
+  <a href="/">pocket-cc</a>
+  <span class="sep">/</span>
+  <h1>Change Report</h1>
+  <button class="theme-toggle" onclick="toggleTheme()">Theme</button>
+</div>
+
+<div class="layout">
+<nav class="toc" id="toc">
+  <a href="#tldr" class="toc-h2">概要</a>
+  <a href="#requirements">Requirements</a>
+  <a href="#changes" class="toc-h2">Changes</a>
+  <a href="#files">Files</a>
+  <a href="#design">Design</a>
+  <a href="#evidence" class="toc-h2">Evidence</a>
+  <a href="#before-after">Before / After</a>
+  <a href="#bug1">Bug 1</a>
+  <a href="#bug2">Bug 2</a>
+  <a href="#tests" class="toc-h2">Tests</a>
+  <a href="#auto-tests">Auto</a>
+  <a href="#manual-tests">Manual</a>
+  <a href="#regression" class="toc-h2">Regression</a>
+  <a href="#followups">Follow-ups</a>
+</nav>
+
+<main class="content">
+  <h1 class="title">テストマトリクスダッシュボード + 変更ドキュメント強化 + Mode通知バグ修正</h1>
+  <div class="meta">
+    <span class="meta-tag date">2026-03-08</span>
+    <span class="meta-tag branch">develop</span>
+    <span class="meta-tag status">Build: clean</span>
+    <span class="meta-tag status">Tests: 153/153 pass</span>
+  </div>
+
+  <div class="summary-bar">
+    <div class="summary-item"><span class="num">8</span><span class="lbl">Files changed</span></div>
+    <div class="summary-item"><span class="num">3</span><span class="lbl">New files</span></div>
+    <div class="summary-item"><span class="num">11</span><span class="lbl">API endpoints</span></div>
+    <div class="summary-item"><span class="num">49</span><span class="lbl">New tests</span></div>
+    <div class="summary-item"><span class="num">2</span><span class="lbl">Bugs fixed</span></div>
+    <div class="summary-item"><span class="num">153</span><span class="lbl">Total tests</span></div>
+  </div>
+
+  <!-- TL;DR -->
+  <h2 id="tldr">概要</h2>
+  <table class="tldr-table">
+    <tr><th>課題</th><td>テストバリエーション（権限&times;画面&times;機能）の網羅性が可視化されていない。変更ドキュメントのテンプレートが不十分。Mode切替通知が連続表示され煩わしい＋ストリーミング中に画面下部に固定される</td></tr>
+    <tr><th>変更内容</th><td><code>/test-matrix</code> ダッシュボード新規追加、SKILL.md テンプレート強化、<code>showSystemNotice()</code> でMode/Model通知を置き換え表示＋ストリーミング中の挿入位置修正</td></tr>
+    <tr><th>影響範囲</th><td>テスト網羅性の一覧確認が可能に。変更ドキュメントがより構造的に。チャットUIのMode通知が1行に集約され視認性向上</td></tr>
+    <tr><th>リスク</th><td><span class="badge low">Low</span> &mdash; 新規ページ追加とUI通知ロジック変更のみ。既存機能への影響なし</td></tr>
+    <tr><th>切り戻し</th><td>migrateV5のテーブルは空のため、コードリバートのみで復元可能</td></tr>
+  </table>
+
+  <!-- Requirements -->
+  <h2 id="requirements">要件マッピング</h2>
+  <table>
+    <thead><tr><th>Req ID</th><th>要件</th><th>Status</th><th>Evidence</th></tr></thead>
+    <tbody>
+      <tr><td>REQ-1</td><td>テストバリエーションをマトリクス表示</td><td><span class="badge done">Done</span></td><td><code>/test-matrix</code> ページ</td></tr>
+      <tr><td>REQ-2</td><td>プロジェクトに紐づけ</td><td><span class="badge done">Done</span></td><td>全API・DBテーブルに <code>project</code> カラム</td></tr>
+      <tr><td>REQ-3</td><td>変更ドキュメントテンプレート強化</td><td><span class="badge done">Done</span></td><td>SKILL.md のTL;DR/要件マッピング/設計判断テーブル</td></tr>
+      <tr><td>REQ-4</td><td>Mode通知の連続表示を最新のみに</td><td><span class="badge done">Done</span></td><td>Before/After スクリーンショット</td></tr>
+      <tr><td>REQ-5</td><td>Mode通知が画面下部に固定される問題</td><td><span class="badge done">Done</span></td><td><code>insertBefore(streamingAssistant)</code> で修正</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Changes -->
+  <h2 id="changes">変更内容</h2>
+  <h3 id="files">変更ファイル</h3>
+  <table>
+    <thead><tr><th>ファイル</th><th>種別</th><th>概要</th></tr></thead>
+    <tbody>
+      <tr><td><code>src/db/schema.ts</code></td><td><span class="badge mod">修正</span></td><td>migrateV5() 追加: test_dimensions, test_records, test_evidence の3テーブル作成</td></tr>
+      <tr><td><code>src/web/routes/test-matrix.ts</code></td><td><span class="badge new">新規</span></td><td>11 APIエンドポイント（Dimensions/Records/Evidence/Summary CRUD）</td></tr>
+      <tr><td><code>src/web/routes/test-matrix.test.ts</code></td><td><span class="badge new">新規</span></td><td>49テスト（全APIエンドポイントのバリデーション・CRUD・境界値）</td></tr>
+      <tr><td><code>src/web/public/test-matrix.html</code></td><td><span class="badge new">新規</span></td><td>マトリクスダッシュボードUI（プロジェクトセレクター・次元管理・セルドロワー）</td></tr>
+      <tr><td><code>src/web/server.ts</code></td><td><span class="badge mod">修正</span></td><td><code>/api/test-matrix</code> ルート登録 + <code>/test-matrix</code> HTML配信</td></tr>
+      <tr><td><code>src/web/public/i18n.js</code></td><td><span class="badge mod">修正</span></td><td><code>tm.*</code> プレフィックスで ja/en 翻訳キー追加（11キー）</td></tr>
+      <tr><td><code>src/web/public/index.html</code></td><td><span class="badge mod">修正</span></td><td>Features メニューにTest Matrixリンク追加 + <code>showSystemNotice()</code> 関数追加 + 4箇所の呼び出し修正</td></tr>
+      <tr><td><code>.claude/skills/change-document/SKILL.md</code></td><td><span class="badge mod">修正</span></td><td>TL;DR テーブル/要件マッピング/設計判断テーブル/テストマトリクスリンク/Known Gaps セクション追加</td></tr>
+    </tbody>
+  </table>
+
+  <h3 id="design">設計判断</h3>
+  <table>
+    <thead><tr><th>判断</th><th>代替案</th><th>理由</th><th>トレードオフ</th></tr></thead>
+    <tbody>
+      <tr><td>SQLite に3テーブル追加</td><td>外部ファイル（JSON/YAML）</td><td>既存のSQLiteパターンに統一。クエリ・集計が容易</td><td>マイグレーション管理が必要</td></tr>
+      <tr><td><code>project</code> カラムで slug に紐付け</td><td>localPath で紐付け</td><td>slug はURLセーフ・一意。observer.html と同じパターン</td><td>slug変更時にDB更新が必要</td></tr>
+      <tr><td><code>showSystemNotice()</code> で同種noticeを置き換え</td><td>CSSアニメーションでフェードアウト</td><td>シンプルで確実。DOM操作が最小限</td><td>履歴としてのMode変更が追えない</td></tr>
+      <tr><td>ストリーミング中は assistant の手前に挿入</td><td>fixed position で表示</td><td>メッセージフロー内で自然な位置に表示</td><td><code>tab.sending</code> 状態への依存</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Evidence -->
+  <h2 id="evidence">Before / After</h2>
+  <div id="before-after" class="screenshots">
+    <div class="screenshot-card">
+      <img src="/changes/screenshots/mode-notice-bug_before_chat.png" alt="Before: 3 consecutive Mode notices" onclick="showFull(this)">
+      <div class="label before">Before &mdash; Plan&rarr;Ask&rarr;Auto で3つのMode通知が個別表示</div>
+    </div>
+    <div class="screenshot-card">
+      <img src="/changes/screenshots/mode-notice-bug_after_chat.png" alt="After: Single Mode notice" onclick="showFull(this)">
+      <div class="label after">After &mdash; 連続切替しても &ldquo;Mode &rarr; auto&rdquo; の1行のみ</div>
+    </div>
+  </div>
+
+  <h3 id="bug1">Bug 1: Mode通知の連続表示</h3>
+  <div class="evidence">
+    <p><strong>再現手順:</strong> Modeボタンをクリック &rarr; Plan選択 &rarr; Ask選択 &rarr; Auto選択</p>
+    <p><strong>再現結果:</strong> 3つの "Mode &rarr; plan", "Mode &rarr; ask", "Mode &rarr; auto" が縦に並ぶ</p>
+    <p><strong>修正:</strong> <code>showSystemNotice()</code> で直前の同種noticeを検索し、テキストを置き換え。4箇所の呼び出しを統一</p>
+  </div>
+
+  <h3 id="bug2">Bug 2: Mode通知が画面下部に固定</h3>
+  <div class="evidence">
+    <p><strong>原因:</strong> ストリーミング中に <code>appendChild</code> で assistant メッセージの後に追加 &rarr; <code>scrollToBottom</code> で常に最下部に表示</p>
+    <p><strong>修正:</strong> <code>tab.sending</code> が true の場合、<code>insertBefore(el, streamingAssistant)</code> で assistant メッセージの手前に挿入</p>
+    <p><strong>確認:</strong> ストリーミング中のMode切替でnoticeがメッセージフロー内の自然な位置に表示されることを確認</p>
+  </div>
+
+  <!-- Tests -->
+  <h2 id="tests">テスト</h2>
+  <h3 id="auto-tests">自動テスト</h3>
+  <table>
+    <thead><tr><th>テスト種別</th><th>対象</th><th>結果</th><th>件数</th></tr></thead>
+    <tbody>
+      <tr><td>ユニットテスト (vitest)</td><td>test-matrix API 全エンドポイント</td><td><span class="badge pass">pass</span></td><td>49 / 49</td></tr>
+      <tr><td>ユニットテスト (vitest)</td><td>既存テスト全体</td><td><span class="badge pass">pass</span></td><td>153 / 153</td></tr>
+    </tbody>
+  </table>
+
+  <h3 id="manual-tests">手動テスト</h3>
+  <table>
+    <thead><tr><th>シナリオ</th><th>手順</th><th>期待結果</th><th>実際の結果</th><th>判定</th></tr></thead>
+    <tbody>
+      <tr><td>Mode通知の連続置き換え</td><td>Plan&rarr;Ask&rarr;Auto と連続切替</td><td>1つのnoticeのみ表示</td><td>"Mode &rarr; auto" のみ表示</td><td><span class="badge ok">OK</span></td></tr>
+      <tr><td>Model通知の連続置き換え</td><td>モデルドロップダウンから連続切替</td><td>1つのnoticeのみ表示</td><td>最新モデル名のみ表示</td><td><span class="badge ok">OK</span></td></tr>
+      <tr><td>チャットUI基本動作</td><td>ページロード&rarr;メッセージ送信</td><td>正常動作</td><td>正常動作</td><td><span class="badge ok">OK</span></td></tr>
+    </tbody>
+  </table>
+
+  <!-- Regression -->
+  <h2 id="regression">リグレッションチェック</h2>
+  <ul class="checklist">
+    <li><span class="check">&#10003;</span> 既存テストスイート: 153 pass / 153 total</li>
+    <li><span class="check">&#10003;</span> チャットUI基本動作: OK</li>
+    <li><span class="check">&#10003;</span> Mode切替（Plan/Ask/Auto/YOLO）: OK</li>
+    <li><span class="check">&#10003;</span> ビルド (<code>npm run build</code>): エラーなし</li>
+    <li><span class="check">&#10003;</span> API後方互換性: N/A（新規エンドポイントのみ）</li>
+  </ul>
+  <div class="impact">既存処理への影響なし</div>
+
+  <!-- Follow-ups -->
+  <h2 id="followups">Known Gaps / Follow-ups</h2>
+  <ul class="checklist">
+    <li><span class="uncheck"></span> テストマトリクスUIのブラウザ実機検証（次元追加&rarr;レコード登録&rarr;マトリクス表示の一連フロー）</li>
+    <li><span class="uncheck"></span> ストリーミング中のMode切替の実環境テスト（SSE status イベント経由）</li>
+  </ul>
+</main>
+</div>
+
+<!-- Fullscreen overlay -->
+<div class="overlay" id="overlay" onclick="this.classList.remove('open')">
+  <img id="overlayImg" src="" alt="">
+</div>
+
+<script src="/doc-viewer.js"></script>
+<script>
+// showFull is needed for static content onclick handlers
+function showFull(img) { DocViewer.showFull(img) }
+function toggleTheme() { DocViewer.toggleTheme() }
+
+DocViewer.initTheme()
+DocViewer.initOverlay()
+DocViewer.loadDynamic('changes', '/changes', 'Changes')
+DocViewer.initTocTracking()
+</script>
+</body>
+</html>

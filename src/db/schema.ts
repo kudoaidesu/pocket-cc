@@ -13,7 +13,7 @@ const log = createLogger('db:schema')
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 /** 現在のスキーマバージョン。マイグレーション追加時にインクリメントする */
-const CURRENT_VERSION = 4
+const CURRENT_VERSION = 5
 
 export function initSchema(db: Database.Database): void {
   const version = db.pragma('user_version', { simple: true }) as number
@@ -27,6 +27,7 @@ export function initSchema(db: Database.Database): void {
     if (version < 2) migrateV2(db)
     if (version < 3) migrateV3(db)
     if (version < 4) migrateV4(db)
+    if (version < 5) migrateV5(db)
     db.pragma(`user_version = ${CURRENT_VERSION}`)
   })()
 
@@ -140,6 +141,62 @@ function migrateV4(db: Database.Database): void {
   db.exec(`ALTER TABLE sessions ADD COLUMN total_cost REAL NOT NULL DEFAULT 0`)
   db.exec(`ALTER TABLE sessions ADD COLUMN total_turns INTEGER NOT NULL DEFAULT 0`)
   db.exec(`ALTER TABLE sessions ADD COLUMN total_duration_ms INTEGER NOT NULL DEFAULT 0`)
+}
+
+// ── v5: テストマトリクステーブル ──────────────────────────────
+
+function migrateV5(db: Database.Database): void {
+  // テスト次元定義（プロジェクトごとに独立）
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS test_dimensions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      project TEXT NOT NULL,
+      name TEXT NOT NULL,
+      display_name TEXT NOT NULL,
+      values_json TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(project, name)
+    )
+  `)
+  db.exec('CREATE INDEX IF NOT EXISTS idx_test_dimensions_project ON test_dimensions(project)')
+
+  // テストレコード（マトリクスの各セル）
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS test_records (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      project TEXT NOT NULL,
+      coordinates_json TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'not_tested',
+      confidence INTEGER NOT NULL DEFAULT 0,
+      flaky_rate REAL NOT NULL DEFAULT 0,
+      pass_count INTEGER NOT NULL DEFAULT 0,
+      fail_count INTEGER NOT NULL DEFAULT 0,
+      skip_count INTEGER NOT NULL DEFAULT 0,
+      total_runs INTEGER NOT NULL DEFAULT 0,
+      last_run_at TEXT,
+      notes TEXT,
+      test_name TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `)
+  db.exec('CREATE INDEX IF NOT EXISTS idx_test_records_project ON test_records(project)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_test_records_status ON test_records(project, status)')
+
+  // テストエビデンス（スクリーンショット・ログ等）
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS test_evidence (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      record_id INTEGER NOT NULL REFERENCES test_records(id) ON DELETE CASCADE,
+      type TEXT NOT NULL,
+      path TEXT NOT NULL,
+      description TEXT,
+      created_at TEXT NOT NULL
+    )
+  `)
+  db.exec('CREATE INDEX IF NOT EXISTS idx_test_evidence_record ON test_evidence(record_id)')
 }
 
 // ── JSON → SQLite データ移行 ──────────────────────────────

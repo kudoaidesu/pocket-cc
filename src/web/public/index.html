@@ -183,6 +183,36 @@ pre:hover .code-copy-btn{opacity:1}
 .warning-badge{display:flex;align-items:center;gap:8px;background:var(--warning-bg);color:var(--warning);border:1px solid rgba(249,226,175,.2);border-radius:8px;padding:8px 12px;font-size:12px;margin:4px 0}
 .warning-badge svg.ic{font-size:14px;flex-shrink:0}
 
+/* ── TodoWrite リスト ── */
+.todo-card{margin:4px 0;font-size:13px;line-height:1.6}
+.todo-card-list{list-style:none}
+.todo-card-list li{color:var(--text);padding:1px 0}
+.todo-card-list li.todo-completed{color:var(--muted);text-decoration:line-through}
+.todo-card-list li.todo-in_progress{color:var(--text-bright);font-weight:500}
+.todo-card-show-all{text-align:left;margin-top:2px}
+.todo-card-show-all button{background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:0}
+.todo-card-show-all button:hover{color:var(--text)}
+
+/* ── Task (サブエージェント) ── */
+.task-card{margin:6px 0;font-size:13px;line-height:1.5}
+.task-card-header{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.task-card-header svg.ic{font-size:13px;flex-shrink:0;color:var(--accent)}
+.task-card-header .task-label{color:var(--accent);font-weight:600;font-size:12px}
+.task-card-header .task-badge{font-size:11px;font-weight:600}
+.task-card-header .task-card-duration{font-size:11px;color:var(--muted);font-family:var(--font-mono)}
+.task-badge.running{color:var(--blue)}
+.task-badge.completed{color:var(--success)}
+.task-badge.error{color:var(--danger)}
+.task-card-desc{color:var(--text);font-size:13px;margin-top:2px}
+.task-card-preview{color:var(--muted);font-size:12px;line-height:1.5;margin-top:4px}
+.task-card-body{display:none;margin-top:4px;max-height:300px;overflow:auto;white-space:pre-wrap;word-break:break-all;color:var(--muted);font-family:var(--font-mono);font-size:12px;line-height:1.4}
+.task-card-body.open{display:block}
+.task-card-toggle{color:var(--muted);font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px;user-select:none;margin-top:2px}
+.task-card-toggle:hover{color:var(--text)}
+
+/* ── ツールステータス拡張 ── */
+.tool-detail-header .tool-status.error{color:var(--danger)}
+
 /* ── コスト表示 ── */
 .meta{font-size:11px;color:var(--muted);margin-top:2px;display:flex;gap:12px;font-family:var(--font-mono)}
 
@@ -589,6 +619,22 @@ pre:hover .code-copy-btn{opacity:1}
       <button class="features-menu-item" onclick="closeFeaturesMenu();openScreenshots()">
         <svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
         <span class="fm-label" data-i18n="ss.title">Screenshots</span>
+      </button>
+      <button class="features-menu-item" onclick="closeFeaturesMenu();window.location='/test-matrix'">
+        <svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span class="fm-label" data-i18n="tm.title">Test Matrix</span>
+      </button>
+      <button class="features-menu-item" onclick="closeFeaturesMenu();window.location='/changes'">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <span class="fm-label" data-i18n="cr.title">Changes</span>
+      </button>
+      <button class="features-menu-item" onclick="closeFeaturesMenu();window.location='/status'">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <span class="fm-label" data-i18n="st.title">Status</span>
+      </button>
+      <button class="features-menu-item" onclick="closeFeaturesMenu();window.location='/incidents'">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span class="fm-label" data-i18n="inc.title">Incidents</span>
       </button>
     </div>
   </div>
@@ -1167,10 +1213,7 @@ function showModelDropdown(e) {
     el.onclick = (ev) => {
       ev.stopPropagation()
       if (tab) { tab.model = modelId; localStorage.setItem(MODEL_STORAGE_KEY, modelId); saveTabs(); updateModelChip() }
-      const msgEl = document.createElement('div')
-      msgEl.className = 'msg system-notice'
-      msgEl.innerHTML = `<div class="notice-badge">Model → ${esc(modelId)}</div>`
-      if (tab) { tab.messagesEl.appendChild(msgEl); scrollToBottom(activeTabId, false) }
+      if (tab) { showSystemNotice(tab, 'Model', modelId) }
       closeChipDropdown()
     }
     dd.appendChild(el)
@@ -1192,16 +1235,42 @@ function positionDropdown(dd, btn) {
   dd.style.top = Math.max(8, top) + 'px'
   dd.style.left = Math.max(8, left) + 'px'
 }
+/** 連続する同種の system-notice を最新のみ表示する（Mode/Model 切替通知） */
+function showSystemNotice(tab, prefix, value, tabId) {
+  // ストリーミング中は最後の assistant メッセージの手前に挿入する
+  const msgs = tab.messagesEl.children
+  const lastChild = msgs[msgs.length - 1]
+  const streamingAssistant = (tab.sending && lastChild && lastChild.classList.contains('assistant')) ? lastChild : null
+
+  // 直前の system-notice が同じ prefix（Mode/Model）なら置き換え
+  const searchStart = streamingAssistant ? msgs.length - 2 : msgs.length - 1
+  for (let i = searchStart; i >= 0; i--) {
+    const msg = msgs[i]
+    if (!msg.classList.contains('system-notice')) break
+    const badge = msg.querySelector('.notice-badge')
+    if (badge && badge.textContent.startsWith(prefix)) {
+      badge.textContent = `${prefix} → ${value}`
+      scrollToBottom(tabId || activeTabId, false)
+      return
+    }
+  }
+  const el = document.createElement('div')
+  el.className = 'msg system-notice'
+  el.innerHTML = `<div class="notice-badge">${esc(prefix)} → ${esc(value)}</div>`
+  if (streamingAssistant) {
+    tab.messagesEl.insertBefore(el, streamingAssistant)
+  } else {
+    tab.messagesEl.appendChild(el)
+  }
+  scrollToBottom(tabId || activeTabId, false)
+}
+
 function setPermissionMode(mode, silent) {
   const tab = tabs.get(activeTabId)
   if (tab) tab.permissionMode = mode
   saveTabs()
   if (!silent && tab) {
-    const el = document.createElement('div')
-    el.className = 'msg system-notice'
-    el.innerHTML = `<div class="notice-badge">Mode → ${esc(mode)}</div>`
-    tab.messagesEl.appendChild(el)
-    scrollToBottom(activeTabId, false)
+    showSystemNotice(tab, 'Mode', mode)
   }
   updateInputBoxModeColor()
   renderTabs()
@@ -1589,11 +1658,7 @@ function cycleModel() {
   localStorage.setItem(MODEL_STORAGE_KEY, next)
   saveTabs()
   updateModelChip()
-  const el = document.createElement('div')
-  el.className = 'msg system-notice'
-  el.innerHTML = `<div class="notice-badge">Model → ${esc(getModelLabel(next))}</div>`
-  tab.messagesEl.appendChild(el)
-  scrollToBottom(activeTabId, false)
+  showSystemNotice(tab, 'Model', getModelLabel(next))
 }
 
 function updateModelChip() {
@@ -3045,17 +3110,25 @@ function renderHistoryMessages(tabId, messages) {
         currentAssistantEl = addMessage(tabId, 'assistant', '')
         currentContent = currentAssistantEl.querySelector('.content')
       }
-      const panel = createToolDetailPanel({
-        name: msg.toolUse.name,
-        input: msg.toolUse.input,
-      })
-      currentContent.appendChild(panel)
+      const detail = { name: msg.toolUse.name, input: msg.toolUse.input }
+      // TodoWrite: 既存カードをin-place更新（履歴でも同様）
+      if (msg.toolUse.name === 'TodoWrite') {
+        const existingCard = currentContent.querySelector('.todo-card:last-of-type')
+        if (existingCard) {
+          updateTodoCard(existingCard, detail)
+        } else {
+          currentContent.appendChild(createToolDetailPanel(detail))
+        }
+      } else {
+        currentContent.appendChild(createToolDetailPanel(detail))
+      }
     }
     else if (msg.role === 'user' && msg.type === 'tool_result') {
       if (currentContent) {
-        const panels = currentContent.querySelectorAll('.tool-detail')
-        if (panels.length > 0) {
-          appendToolOutput(panels[panels.length - 1], msg.toolResult?.output || '')
+        // すべてのカードタイプから最後のパネルを検索
+        const allPanels = currentContent.querySelectorAll('.todo-card, .task-card, .tool-detail')
+        if (allPanels.length > 0) {
+          appendToolOutput(allPanels[allPanels.length - 1], msg.toolResult?.output || '')
         }
       }
     }
@@ -3341,7 +3414,7 @@ async function sendMessage() {
     if (e.name === 'AbortError') {
       const typing = content.querySelector('.typing')
       if (typing) typing.remove()
-      if (!content.querySelector('.text-segment') && !content.querySelector('.tool-detail') && !content.querySelector('.warning-badge')) {
+      if (!content.querySelector('.text-segment') && !content.querySelector('.tool-detail') && !content.querySelector('.todo-card') && !content.querySelector('.task-card') && !content.querySelector('.warning-badge')) {
         assistantEl.remove()
       }
       addInterruptIndicator(tabId)
@@ -3475,17 +3548,37 @@ function handleSSE(tabId, event, data, content, msgEl) {
     try {
       const info = JSON.parse(data)
       if (info.status === 'input' && info.detail) {
-        const panel = createToolDetailPanel(info.detail)
-        content.appendChild(panel)
+        // TodoWrite: 既存カードをin-place更新
+        if (info.detail.name === 'TodoWrite') {
+          const existingCard = content.querySelector('.todo-card:last-of-type')
+          if (existingCard) {
+            updateTodoCard(existingCard, info.detail)
+          } else {
+            content.appendChild(createToolDetailPanel(info.detail))
+          }
+        } else {
+          content.appendChild(createToolDetailPanel(info.detail))
+        }
         scrollToBottom(tabId)
       }
       if (info.status === 'output' && info.detail) {
-        const panels = content.querySelectorAll('.tool-detail')
-        for (let i = panels.length - 1; i >= 0; i--) {
-          const nameEl = panels[i].querySelector('.tool-name')
-          if (nameEl && nameEl.textContent === info.detail.name) {
-            appendToolOutput(panels[i], info.detail.output || '')
-            break
+        // data-tool-name ベースで対象パネルを検索
+        const name = info.detail.name
+        const selector = name === 'TodoWrite' ? '.todo-card'
+          : name === 'Task' ? '.task-card'
+          : `.tool-detail[data-tool-name="${CSS.escape(name)}"]`
+        const panels = content.querySelectorAll(selector)
+        if (panels.length > 0) {
+          appendToolOutput(panels[panels.length - 1], info.detail.output || '')
+        } else {
+          // フォールバック: 旧方式（.tool-name テキストマッチ）
+          const allPanels = content.querySelectorAll('.tool-detail')
+          for (let i = allPanels.length - 1; i >= 0; i--) {
+            const nameEl = allPanels[i].querySelector('.tool-name')
+            if (nameEl && nameEl.textContent === name) {
+              appendToolOutput(allPanels[i], info.detail.output || '')
+              break
+            }
           }
         }
         scrollToBottom(tabId)
@@ -3569,12 +3662,8 @@ function handleSSE(tabId, event, data, content, msgEl) {
         const mode = sdkToUi[s.permissionMode] || 'ask'
         if (tab.permissionMode !== mode) {
           tab.permissionMode = mode
-          // 内部切替時は通知表示
-          const el = document.createElement('div')
-          el.className = 'msg system-notice'
-          el.innerHTML = `<div class="notice-badge">Mode → ${esc(mode)}</div>`
-          tab.messagesEl.appendChild(el)
-          if (tabId === activeTabId) scrollToBottom(activeTabId, false)
+          // 内部切替時は通知表示（連続する場合は置き換え）
+          showSystemNotice(tab, 'Mode', mode, tabId)
         }
         if (tabId === activeTabId) updateInputBoxModeColor()
         renderTabs()
@@ -3833,11 +3922,120 @@ function createToolApprovalPanel(requestId, toolName, input, description, decisi
   return panel
 }
 
+// --- TodoWrite リスト ---
+function renderTodoItem(todo) {
+  const cls = `todo-${todo.status}`
+  return `<li class="${cls}">${esc(todo.content)}</li>`
+}
+
+function createTodoCard(detail) {
+  const card = document.createElement('div')
+  card.className = 'todo-card'
+  card.setAttribute('data-testid', 'todo-card')
+  card.setAttribute('data-tool-name', 'TodoWrite')
+
+  const todos = detail.input?.todos || []
+  const MAX_VISIBLE = 8
+  const hasMore = todos.length > MAX_VISIBLE
+  const visible = hasMore ? todos.slice(0, MAX_VISIBLE) : todos
+
+  let html = '<ul class="todo-card-list">'
+  visible.forEach(t => { html += renderTodoItem(t) })
+  html += '</ul>'
+
+  if (hasMore) {
+    html += `<div class="todo-card-show-all"><button onclick="this.closest('.todo-card').querySelector('.todo-card-hidden').style.display='block';this.parentElement.remove()">… ${todos.length - MAX_VISIBLE} more</button></div>`
+    html += '<ul class="todo-card-list todo-card-hidden" style="display:none">'
+    todos.slice(MAX_VISIBLE).forEach(t => { html += renderTodoItem(t) })
+    html += '</ul>'
+  }
+
+  card.innerHTML = html
+  return card
+}
+
+function updateTodoCard(existingCard, detail) {
+  const newCard = createTodoCard(detail)
+  existingCard.innerHTML = newCard.innerHTML
+}
+
+// --- Task (サブエージェント) カード ---
+function createTaskCard(detail) {
+  const card = document.createElement('div')
+  card.className = 'task-card'
+  card.setAttribute('data-testid', 'task-card')
+  card.setAttribute('data-tool-name', 'Task')
+
+  const description = detail.input?.description || detail.input?.prompt || 'Subagent task'
+  const descTruncated = description.length > 80 ? description.slice(0, 80) + '…' : description
+
+  let html = `<div class="task-card-header">`
+  html += ic('bot', 14)
+  html += `<span class="task-label">Task</span>`
+  html += `<span class="task-badge running">running</span>`
+  html += `</div>`
+  html += `<div class="task-card-desc">${esc(descTruncated)}</div>`
+  html += `<div class="task-card-preview"></div>`
+
+  card.innerHTML = html
+  card._startTime = Date.now()
+  return card
+}
+
+function appendTaskOutput(card, output) {
+  const badge = card.querySelector('.task-badge')
+  if (badge) {
+    const isError = output && /^(Error|error|Failed|FAILED)/.test(output.trim())
+    badge.className = `task-badge ${isError ? 'error' : 'completed'}`
+    badge.textContent = isError ? 'error' : 'done'
+  }
+
+  if (card._startTime) {
+    const duration = ((Date.now() - card._startTime) / 1000).toFixed(1)
+    const header = card.querySelector('.task-card-header')
+    if (header && !header.querySelector('.task-card-duration')) {
+      const durEl = document.createElement('span')
+      durEl.className = 'task-card-duration'
+      durEl.textContent = `${duration}s`
+      header.appendChild(durEl)
+    }
+  }
+
+  const preview = card.querySelector('.task-card-preview')
+  if (preview && output) {
+    const lines = output.split('\n').filter(l => l.trim()).slice(0, 2)
+    preview.textContent = lines.join('\n')
+    if (output.split('\n').filter(l => l.trim()).length > 2) preview.textContent += '…'
+  }
+
+  if (output && !card.querySelector('.task-card-toggle')) {
+    const toggle = document.createElement('div')
+    toggle.className = 'task-card-toggle'
+    toggle.innerHTML = `<span class="tool-chevron">${ic('chevron-right', 10)}</span> 概要`
+    toggle.onclick = function() {
+      this.nextElementSibling.classList.toggle('open')
+      this.querySelector('.tool-chevron').classList.toggle('open')
+    }
+    card.appendChild(toggle)
+
+    const body = document.createElement('div')
+    body.className = 'task-card-body'
+    body.textContent = output
+    card.appendChild(body)
+  }
+}
+
 // --- ツール詳細パネル ---
 function createToolDetailPanel(detail) {
+  // Tier 2: Summary cards
+  if (detail.name === 'TodoWrite') return createTodoCard(detail)
+  if (detail.name === 'Task') return createTaskCard(detail)
+
+  // Tier 3: Collapsed accordion
   const panel = document.createElement('div')
   panel.className = 'tool-detail'
   panel.setAttribute('data-testid', 'tool-detail')
+  panel.setAttribute('data-tool-name', detail.name)
 
   const summary = getToolSummary(detail)
   const iconName = TOOL_ICON_MAP[detail.name] || 'wrench'
@@ -3850,7 +4048,7 @@ function createToolDetailPanel(detail) {
         <span class="tool-name">${esc(detail.name)}</span>
       </div>
       <span class="tool-file">${esc(summary)}</span>
-      <span class="tool-status">${ic('check', 12)}</span>
+      <span class="tool-status"></span>
     </div>
     <div class="tool-detail-body">${formatToolInput(detail)}</div>
   `
@@ -3866,6 +4064,12 @@ function getToolSummary(detail) {
   if (detail.name === 'Bash') return (inp.command || '').slice(0, 80)
   if (detail.name === 'Glob') return inp.pattern || ''
   if (detail.name === 'Grep') return inp.pattern || ''
+  if (detail.name === 'TodoWrite') {
+    const todos = inp.todos || []
+    const done = todos.filter(t => t.status === 'completed').length
+    return `${done}/${todos.length} done`
+  }
+  if (detail.name === 'Task') return inp.description || (inp.prompt || '').slice(0, 60) || ''
   return JSON.stringify(inp).slice(0, 80)
 }
 
@@ -4000,11 +4204,34 @@ function formatToolOutput(toolName, output) {
 }
 
 function appendToolOutput(panel, output) {
+  const toolName = panel.getAttribute('data-tool-name') || panel.querySelector('.tool-name')?.textContent || ''
+
+  // TodoWrite: output event は確認のみ、表示変更不要
+  if (toolName === 'TodoWrite') return
+
+  // Task: サマリーカード更新
+  if (toolName === 'Task') {
+    appendTaskOutput(panel, output)
+    return
+  }
+
+  // 標準アコーディオン
   const body = panel.querySelector('.tool-detail-body')
   if (!body) return
-  const toolName = panel.querySelector('.tool-name')?.textContent || ''
   if (output) {
     body.innerHTML += `<div style="margin-top:6px;border-top:1px solid var(--border);padding-top:6px">${formatToolOutput(toolName, output)}</div>`
+
+    // ステータスアイコン更新
+    const statusEl = panel.querySelector('.tool-status')
+    if (statusEl) {
+      if (toolName === 'Bash' && /exit code[:\s]+[1-9]/i.test(output)) {
+        statusEl.className = 'tool-status error'
+        statusEl.innerHTML = ic('alert-triangle', 12)
+      } else {
+        statusEl.innerHTML = ic('check', 12)
+      }
+    }
+
     // Dev Server URLを検出してボタンを挿入
     const urls = detectDevServerUrls(output)
     if (urls.length > 0) {

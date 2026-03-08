@@ -151,6 +151,25 @@
       'time.minAgo': '分前',
       'time.hoursAgo': '時間前',
       'time.daysAgo': '日前',
+
+      // ── Changes ──
+      'cr.title': '変更レポート',
+      'cr.allProjects': '全プロジェクト',
+      'cr.loading': '読み込み中...',
+      'cr.noReports': '変更レポートがありません',
+
+      // ── Test Matrix ──
+      'tm.title': 'テストマトリクス',
+      'tm.row': '行',
+      'tm.col': '列',
+      'tm.filter': 'フィルター',
+      'tm.showEmpty': '空セル',
+      'tm.noDimensions': 'まず次元を設定してください',
+      'tm.setupGuide': '2つ以上の次元（例: 権限、画面）を追加するとマトリクスが表示されます。',
+      'tm.addDimension': '+ 次元追加',
+      'tm.manageDimensions': '次元管理',
+      'tm.noRecords': 'テストレコードがありません',
+      'tm.close': '閉じる',
     },
 
     en: {
@@ -303,6 +322,25 @@
       'time.minAgo': ' min ago',
       'time.hoursAgo': ' hours ago',
       'time.daysAgo': ' days ago',
+
+      // ── Changes ──
+      'cr.title': 'Changes',
+      'cr.allProjects': 'All Projects',
+      'cr.loading': 'Loading...',
+      'cr.noReports': 'No change reports found',
+
+      // ── Test Matrix ──
+      'tm.title': 'Test Matrix',
+      'tm.row': 'Row',
+      'tm.col': 'Col',
+      'tm.filter': 'Filter',
+      'tm.showEmpty': 'Empty',
+      'tm.noDimensions': 'Set up dimensions first',
+      'tm.setupGuide': 'Add at least 2 dimensions (e.g. Permission, Screen) to display the test matrix.',
+      'tm.addDimension': '+ Dimension',
+      'tm.manageDimensions': 'Manage Dimensions',
+      'tm.noRecords': 'No test records yet',
+      'tm.close': 'Close',
     }
   }
 

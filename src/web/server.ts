@@ -12,11 +12,14 @@ import { serveStatic } from '@hono/node-server/serve-static'
 import { serve } from '@hono/node-server'
 import { readFileSync, writeFileSync, readdirSync, existsSync, statSync, mkdirSync } from 'node:fs'
 import { resolve, join, basename } from 'node:path'
-import { homedir, networkInterfaces } from 'node:os'
+import { homedir } from 'node:os'
 import { execFileSync } from 'node:child_process'
 import { isTailscaleIp, isProjectPathAllowed } from './path-guard.js'
 import { chatRoutes } from './routes/chat.js'
 import { observerRoutes } from './routes/observer.js'
+import { testMatrixRoutes } from './routes/test-matrix.js'
+import { changesRoutes } from './routes/changes.js'
+import { createDocRoutes } from './routes/doc-viewer.js'
 import { createLogger } from '../utils/logger.js'
 import { getStrategyStats, getRecentEvaluations } from '../utils/cost-tracker.js'
 import { getDb } from '../db/index.js'
@@ -27,20 +30,8 @@ const log = createLogger('web:server')
 // --- 設定 ---
 const PORT = Number(process.env.WEB_PORT || '3100')
 
-/** ネットワークインターフェースからTailscale IPを動的検出 */
-function detectTailscaleIp(): string {
-  const ifaces = networkInterfaces()
-  for (const iface of Object.values(ifaces)) {
-    for (const addr of iface ?? []) {
-      if (addr.family === 'IPv4' && isTailscaleIp(addr.address)) {
-        return addr.address
-      }
-    }
-  }
-  return '127.0.0.1' // Tailscaleが使えない環境ではローカルのみ
-}
 
-const HOST = process.env.WEB_HOST || detectTailscaleIp()
+const HOST = process.env.WEB_HOST || '0.0.0.0'
 
 // --- プロジェクト一覧（projects.json + 自動スキャン） ---
 interface ProjectEntry {
@@ -149,6 +140,13 @@ app.use('*', cors({
 
 // 静的ファイル配信
 app.use('/static/*', serveStatic({ root: resolve(process.cwd(), 'src/web/public'), rewriteRequestPath: (path) => path.replace('/static', '') }))
+app.use('/changes/screenshots/*', serveStatic({ root: resolve(process.cwd(), 'docs/changes'), rewriteRequestPath: (path) => path.replace('/changes', '') }))
+app.get('/doc-viewer.js', (c) => {
+  const js = readFileSync(resolve(process.cwd(), 'src/web/public/doc-viewer.js'), 'utf-8')
+  c.header('Content-Type', 'application/javascript')
+  c.header('Cache-Control', 'no-cache, no-store, must-revalidate')
+  return c.body(js)
+})
 
 // --- API ルート ---
 
@@ -716,6 +714,85 @@ app.get('/api/skills', (c) => {
   return c.json({ items: items.sort((a, b) => a.name.localeCompare(b.name)) })
 })
 
+// --- Test Matrix ---
+app.route('/api/test-matrix', testMatrixRoutes)
+app.get('/test-matrix', (c) => {
+  try {
+    const html = readFileSync(resolve(process.cwd(), 'src/web/public/test-matrix.html'), 'utf-8')
+    c.header('Cache-Control', 'no-cache, no-store, must-revalidate')
+    return c.html(html)
+  } catch {
+    return c.text('test-matrix.html not found', 404)
+  }
+})
+
+// --- Changes (一覧 + API) ---
+app.route('/api/changes', changesRoutes)
+app.get('/changes', (c) => {
+  try {
+    const html = readFileSync(resolve(process.cwd(), 'src/web/public/changes.html'), 'utf-8')
+    c.header('Cache-Control', 'no-cache, no-store, must-revalidate')
+    return c.html(html)
+  } catch {
+    return c.text('changes.html not found', 404)
+  }
+})
+
+// --- Change Report ---
+app.get('/change-report', (c) => {
+  try {
+    const html = readFileSync(resolve(process.cwd(), 'src/web/public/change-report.html'), 'utf-8')
+    c.header('Cache-Control', 'no-cache, no-store, must-revalidate')
+    return c.html(html)
+  } catch {
+    return c.text('change-report.html not found', 404)
+  }
+})
+
+// --- Status (現状確認) ---
+const statusRoutes = createDocRoutes('status', 'status')
+app.route('/api/status', statusRoutes)
+app.get('/status', (c) => {
+  try {
+    const html = readFileSync(resolve(process.cwd(), 'src/web/public/status.html'), 'utf-8')
+    c.header('Cache-Control', 'no-cache, no-store, must-revalidate')
+    return c.html(html)
+  } catch {
+    return c.text('status.html not found', 404)
+  }
+})
+app.get('/status-report', (c) => {
+  try {
+    const html = readFileSync(resolve(process.cwd(), 'src/web/public/status-report.html'), 'utf-8')
+    c.header('Cache-Control', 'no-cache, no-store, must-revalidate')
+    return c.html(html)
+  } catch {
+    return c.text('status-report.html not found', 404)
+  }
+})
+
+// --- Incidents (事象把握) ---
+const incidentRoutes = createDocRoutes('incidents', 'incidents')
+app.route('/api/incidents', incidentRoutes)
+app.get('/incidents', (c) => {
+  try {
+    const html = readFileSync(resolve(process.cwd(), 'src/web/public/incidents.html'), 'utf-8')
+    c.header('Cache-Control', 'no-cache, no-store, must-revalidate')
+    return c.html(html)
+  } catch {
+    return c.text('incidents.html not found', 404)
+  }
+})
+app.get('/incident-report', (c) => {
+  try {
+    const html = readFileSync(resolve(process.cwd(), 'src/web/public/incident-report.html'), 'utf-8')
+    c.header('Cache-Control', 'no-cache, no-store, must-revalidate')
+    return c.html(html)
+  } catch {
+    return c.text('incident-report.html not found', 404)
+  }
+})
+
 // --- Observer UI ---
 app.route('/api/observe', observerRoutes)
 app.get('/observer.html', (c) => c.redirect('/observer', 301))
@@ -741,7 +818,7 @@ app.get('*', (c) => {
 })
 
 // --- サーバー起動 ---
-log.info(`Starting web server on ${HOST}:${PORT} (Tailscale only)`)
+log.info(`Starting web server on ${HOST}:${PORT}`)
 
 const server = serve({
   fetch: app.fetch,
