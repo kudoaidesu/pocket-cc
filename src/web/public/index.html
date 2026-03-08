@@ -83,7 +83,7 @@ svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:ro
 .tab{display:flex;align-items:center;gap:6px;padding:8px 14px;font-size:13px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .1s;min-width:0;max-width:180px;flex-shrink:0}
 .tab:hover{color:var(--text);background:var(--surface-hover)}
 .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
-.tab .tab-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tab .tab-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
 .tab .tab-dot{width:6px;height:6px;border-radius:50%;background:var(--tab-mode-color, var(--accent));flex-shrink:0;transition:background .2s}
 .tab .tab-dot.streaming{animation:pulse 1.2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
@@ -301,11 +301,13 @@ pre:hover .code-copy-btn{opacity:1}
 .drawer-content{position:absolute;bottom:0;left:0;right:0;background:var(--surface);border-radius:14px 14px 0 0;padding:0 16px 16px;padding-bottom:calc(16px + env(safe-area-inset-bottom));max-height:70vh;overflow-y:auto;border:1px solid var(--border)}
 
 /* ドロワータブ */
-.drawer-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:1;padding-top:16px;margin-bottom:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none;mask-image:linear-gradient(to right,#000 calc(100% - 24px),transparent);-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 24px),transparent)}
+.drawer-tabs{display:flex;align-items:flex-end;gap:0;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:1;padding-top:14px;margin-bottom:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none;mask-image:linear-gradient(to right,#000 calc(100% - 20px),transparent);-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 20px),transparent)}
 .drawer-tabs::-webkit-scrollbar{display:none}
-.drawer-tab{padding:8px 14px;font-size:13px;color:var(--muted);cursor:pointer;border:none;background:none;font-family:var(--font-sans);border-bottom:2px solid transparent;font-weight:500;transition:color .1s;white-space:nowrap;flex-shrink:0}
+.drawer-tab{display:flex;align-items:center;gap:5px;padding:7px 12px;font-size:12px;color:var(--muted);cursor:pointer;border:none;background:none;font-family:var(--font-sans);border-bottom:2px solid transparent;font-weight:500;transition:color .1s;white-space:nowrap;flex-shrink:0}
 .drawer-tab:hover{color:var(--text)}
 .drawer-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.drawer-tab svg.ic{font-size:13px;flex-shrink:0}
+.drawer-tab-sep{width:1px;height:16px;background:var(--border);flex-shrink:0;margin:0 4px 8px}
 .drawer-tab-content{display:none}
 .drawer-tab-content.active{display:block}
 
@@ -431,13 +433,15 @@ pre:hover .code-copy-btn{opacity:1}
 [data-theme="light"] .ss-panel{box-shadow:0 12px 40px rgba(0,0,0,.15)}
 
 /* ── 機能メニュー ── */
-.features-menu{position:absolute;top:100%;right:0;margin-top:4px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,.3);z-index:12;animation:tapSlideDown .12s;display:none}
+.features-menu{position:absolute;top:100%;right:0;margin-top:4px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;min-width:210px;box-shadow:0 8px 24px rgba(0,0,0,.3);z-index:12;animation:tapSlideDown .12s;display:none}
 .features-menu.open{display:block}
-.features-menu-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;color:var(--text);font-size:13px;cursor:pointer;transition:background .1s;border:none;background:none;width:100%;text-align:left;font-family:var(--font-sans)}
+.features-menu-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;color:var(--text);font-size:13px;cursor:pointer;transition:background .1s;border:none;background:none;width:100%;text-align:left;font-family:var(--font-sans)}
 .features-menu-item:hover{background:var(--surface-hover)}
-.features-menu-item svg.ic{font-size:16px;color:var(--muted);flex-shrink:0}
+.features-menu-item svg.ic{font-size:15px;color:var(--muted);flex-shrink:0}
 .features-menu-item .fm-label{flex:1}
 .features-menu-item .fm-badge{font-size:10px;color:var(--muted);background:var(--surface-hover);padding:1px 6px;border-radius:4px}
+.features-menu-sep{height:1px;background:var(--border);margin:4px 8px}
+.features-menu-group{padding:4px 12px 2px;font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.05em;text-transform:uppercase}
 [data-theme="light"] .features-menu{box-shadow:0 8px 24px rgba(0,0,0,.1)}
 
 /* ── タブアクションパネル: モードセレクター ── */
@@ -490,7 +494,7 @@ pre:hover .code-copy-btn{opacity:1}
   .input-footer{gap:4px;padding:4px 6px 6px}
   .input-footer button{width:36px;height:36px}
   .input-footer button.send-btn{width:40px;height:40px}
-  .messages{padding:10px}
+  .messages{padding:10px;gap:12px}
 }
 
 /* ── 接続バナー ── */
@@ -624,6 +628,7 @@ pre:hover .code-copy-btn{opacity:1}
   <div style="position:relative">
     <button class="header-btn" id="featuresBtn" onclick="toggleFeaturesMenu()" title="Features"></button>
     <div class="features-menu" id="featuresMenu">
+      <div class="features-menu-group">Chat</div>
       <button class="features-menu-item" onclick="closeFeaturesMenu();openDrawer('sessions')">
         <svg class="ic" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
         <span class="fm-label" data-i18n="drawer.sessions">Sessions</span>
@@ -632,6 +637,8 @@ pre:hover .code-copy-btn{opacity:1}
         <svg class="ic" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
         <span class="fm-label">Observer</span>
       </button>
+      <div class="features-menu-sep"></div>
+      <div class="features-menu-group">Monitor</div>
       <button class="features-menu-item" onclick="closeFeaturesMenu();openDashboard()">
         <svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
         <span class="fm-label" data-i18n="dash.title">Dashboard</span>
@@ -640,18 +647,6 @@ pre:hover .code-copy-btn{opacity:1}
         <svg class="ic" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
         <span class="fm-label" data-i18n="cost.title">Cost</span>
       </button>
-      <button class="features-menu-item" onclick="closeFeaturesMenu();openScreenshots()">
-        <svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-        <span class="fm-label" data-i18n="ss.title">Screenshots</span>
-      </button>
-      <button class="features-menu-item" onclick="closeFeaturesMenu();window.location='/test-matrix'">
-        <svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        <span class="fm-label" data-i18n="tm.title">Test Matrix</span>
-      </button>
-      <button class="features-menu-item" onclick="closeFeaturesMenu();window.location='/changes'">
-        <svg class="ic" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-        <span class="fm-label" data-i18n="cr.title">Changes</span>
-      </button>
       <button class="features-menu-item" onclick="closeFeaturesMenu();window.location='/status'">
         <svg class="ic" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
         <span class="fm-label" data-i18n="st.title">Status</span>
@@ -659,6 +654,20 @@ pre:hover .code-copy-btn{opacity:1}
       <button class="features-menu-item" onclick="closeFeaturesMenu();window.location='/incidents'">
         <svg class="ic" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         <span class="fm-label" data-i18n="inc.title">Incidents</span>
+      </button>
+      <div class="features-menu-sep"></div>
+      <div class="features-menu-group">Content</div>
+      <button class="features-menu-item" onclick="closeFeaturesMenu();openScreenshots()">
+        <svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+        <span class="fm-label" data-i18n="ss.title">Screenshots</span>
+      </button>
+      <button class="features-menu-item" onclick="closeFeaturesMenu();window.location='/changes'">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <span class="fm-label" data-i18n="cr.title">Changes</span>
+      </button>
+      <button class="features-menu-item" onclick="closeFeaturesMenu();window.location='/test-matrix'">
+        <svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span class="fm-label" data-i18n="tm.title">Test Matrix</span>
       </button>
     </div>
   </div>
@@ -729,15 +738,40 @@ pre:hover .code-copy-btn{opacity:1}
 
 <div class="drawer" id="drawer" onclick="closeDrawer()">
   <div class="drawer-content" onclick="event.stopPropagation()">
-    <div class="drawer-tabs">
-      <button class="drawer-tab active" data-tab="sessions" onclick="switchDrawerTab('sessions')" data-i18n="drawer.sessions">Sessions</button>
-      <button class="drawer-tab" data-tab="files" onclick="switchDrawerTab('files')" data-i18n="drawer.files">Files</button>
-      <button class="drawer-tab" data-tab="git" onclick="switchDrawerTab('git')" data-i18n="drawer.git">Git</button>
-      <button class="drawer-tab" data-tab="services" onclick="switchDrawerTab('services')" data-i18n="drawer.services">Services</button>
-      <button class="drawer-tab" data-tab="tools" onclick="switchDrawerTab('tools')" data-i18n="drawer.tools">Tools</button>
-      <button class="drawer-tab" data-tab="links" onclick="switchDrawerTab('links')" data-i18n="drawer.links">Links</button>
-      <button class="drawer-tab" data-tab="projects" onclick="switchDrawerTab('projects')" data-i18n="drawer.projects">Projects</button>
-      <button class="drawer-tab" data-tab="issues" onclick="switchDrawerTab('issues')">Issues</button>
+    <div class="drawer-tabs" id="drawerTabs">
+      <button class="drawer-tab active" data-tab="sessions" onclick="switchDrawerTab('sessions')">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+        <span data-i18n="drawer.sessions">Sessions</span>
+      </button>
+      <button class="drawer-tab" data-tab="issues" onclick="switchDrawerTab('issues')">
+        <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span>Issues</span>
+      </button>
+      <button class="drawer-tab" data-tab="projects" onclick="switchDrawerTab('projects')">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+        <span data-i18n="drawer.projects">Projects</span>
+      </button>
+      <div class="drawer-tab-sep"></div>
+      <button class="drawer-tab" data-tab="files" onclick="switchDrawerTab('files')">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+        <span data-i18n="drawer.files">Files</span>
+      </button>
+      <button class="drawer-tab" data-tab="git" onclick="switchDrawerTab('git')">
+        <svg class="ic" viewBox="0 0 24 24"><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+        <span data-i18n="drawer.git">Git</span>
+      </button>
+      <button class="drawer-tab" data-tab="services" onclick="switchDrawerTab('services')">
+        <svg class="ic" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>
+        <span data-i18n="drawer.services">Services</span>
+      </button>
+      <button class="drawer-tab" data-tab="tools" onclick="switchDrawerTab('tools')">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76Z"/></svg>
+        <span data-i18n="drawer.tools">Tools</span>
+      </button>
+      <button class="drawer-tab" data-tab="links" onclick="switchDrawerTab('links')">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        <span data-i18n="drawer.links">Links</span>
+      </button>
     </div>
     <div id="sessionsTab" class="drawer-tab-content active">
       <div id="currentProjectLabel" style="font-size:12px;color:var(--muted);padding:0 0 8px;font-family:var(--font-mono)"></div>
@@ -1224,6 +1258,11 @@ document.addEventListener('click', closeChipDropdown)
 
 function showModeDropdown(e) {
   e.stopPropagation()
+  const activeTab = tabs.get(activeTabId)
+  if (activeTab?.sending) {
+    showToast('<p style="color:var(--warning)">Cannot change mode while streaming</p>', 1500)
+    return
+  }
   closeChipDropdown()
   const current = getActivePermissionMode()
   const modeItems = [
@@ -1247,8 +1286,12 @@ function showModeDropdown(e) {
 
 function showModelDropdown(e) {
   e.stopPropagation()
-  closeChipDropdown()
   const tab = tabs.get(activeTabId)
+  if (tab?.sending) {
+    showToast('<p style="color:var(--warning)">Cannot change model while streaming</p>', 1500)
+    return
+  }
+  closeChipDropdown()
   const current = tab?.model || 'claude-sonnet-4-6'
   const dd = document.createElement('div')
   dd.className = 'chip-dropdown'
@@ -1582,31 +1625,59 @@ const CMD_ITEMS = [
   { name: '/clear', desc: 'Clear chat', icon: 'eraser', action: () => clearCurrentTab() },
 ]
 let cmdMenuOpen = false
+let cmdFocusIdx = -1
+let _cmdFiltered = []
 function toggleCmdMenu() {
   cmdMenuOpen = !cmdMenuOpen
   const menu = document.getElementById('cmdMenu')
   menu.classList.toggle('open', cmdMenuOpen)
-  if (cmdMenuOpen) renderCmdMenu()
+  if (cmdMenuOpen) { cmdFocusIdx = -1; renderCmdMenu() }
 }
 function closeCmdMenu() {
   cmdMenuOpen = false
+  cmdFocusIdx = -1
+  _cmdFiltered = []
   document.getElementById('cmdMenu').classList.remove('open')
 }
 function renderCmdMenu(filter = '') {
   const menu = document.getElementById('cmdMenu')
-  const filtered = CMD_ITEMS.map((c, i) => ({ ...c, idx: i })).filter(c => !filter || c.name.slice(1).startsWith(filter))
+  _cmdFiltered = CMD_ITEMS.map((c, i) => ({ ...c, idx: i })).filter(c => !filter || c.name.slice(1).startsWith(filter))
   menu.innerHTML = ''
-  if (filtered.length === 0) {
+  if (_cmdFiltered.length === 0) {
+    cmdFocusIdx = -1
     menu.innerHTML = '<div class="cmd-item" style="color:var(--muted)">' + t('noMatchingCommands') + '</div>'
     return
   }
-  for (const c of filtered) {
+  // フォーカスインデックスが範囲外になった場合はリセット
+  if (cmdFocusIdx >= _cmdFiltered.length) cmdFocusIdx = _cmdFiltered.length - 1
+  for (let i = 0; i < _cmdFiltered.length; i++) {
+    const c = _cmdFiltered[i]
     const div = document.createElement('div')
-    div.className = 'cmd-item'
+    div.className = 'cmd-item' + (i === cmdFocusIdx ? ' focused' : '')
     div.innerHTML = `${ic(c.icon, 15)} <span class="cmd-name">${c.name}</span> <span class="cmd-desc">${c.desc}</span>`
-    div.addEventListener('click', () => execCmd(c.idx))
+    div.addEventListener('click', () => execCmdFiltered(i))
+    div.addEventListener('mouseenter', () => { cmdFocusIdx = i; updateCmdFocus() })
     menu.appendChild(div)
   }
+  scrollCmdFocusIntoView(menu)
+}
+function updateCmdFocus() {
+  const menu = document.getElementById('cmdMenu')
+  const items = menu.querySelectorAll('.cmd-item')
+  items.forEach((el, i) => el.classList.toggle('focused', i === cmdFocusIdx))
+  scrollCmdFocusIntoView(menu)
+}
+function scrollCmdFocusIntoView(menu) {
+  if (cmdFocusIdx < 0) return
+  const items = menu.querySelectorAll('.cmd-item')
+  if (items[cmdFocusIdx]) items[cmdFocusIdx].scrollIntoView({ block: 'nearest' })
+}
+function execCmdFiltered(filteredIdx) {
+  const c = _cmdFiltered[filteredIdx]
+  if (!c) return
+  closeCmdMenu()
+  inputEl.value = ''
+  CMD_ITEMS[c.idx].action()
 }
 function execCmd(idx) {
   closeCmdMenu()
@@ -2197,6 +2268,11 @@ function updateStreamingUI(streaming) {
   const box = document.querySelector('.input-box')
   box.classList.toggle('streaming', streaming)
   document.getElementById('globalTyping').classList.toggle('active', streaming)
+  // ストリーミング中はモデル/モード変更ボタンを視覚的に無効化
+  const modelBtn = document.getElementById('modelBtn')
+  const modeBtn = document.getElementById('modeBtn')
+  if (modelBtn) modelBtn.style.opacity = streaming ? '.5' : ''
+  if (modeBtn) modeBtn.style.opacity = streaming ? '.5' : ''
   // streaming終了時にメッセージ内の残留.typingも除去
   if (!streaming) {
     document.querySelectorAll('.content .typing').forEach(el => el.remove())
@@ -4405,6 +4481,38 @@ function autoResize() {
 }
 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0
 inputEl.addEventListener('keydown', (e) => {
+  // コマンドメニューが開いている場合の矢印キーナビゲーション
+  if (cmdMenuOpen) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      if (_cmdFiltered.length > 0) {
+        cmdFocusIdx = (cmdFocusIdx + 1) % _cmdFiltered.length
+        updateCmdFocus()
+      }
+      return
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      if (_cmdFiltered.length > 0) {
+        cmdFocusIdx = (cmdFocusIdx - 1 + _cmdFiltered.length) % _cmdFiltered.length
+        updateCmdFocus()
+      }
+      return
+    }
+    if (e.key === 'Enter' && !e.isComposing && cmdFocusIdx >= 0) {
+      e.preventDefault()
+      execCmdFiltered(cmdFocusIdx)
+      return
+    }
+    if (e.key === 'Tab') {
+      e.preventDefault()
+      if (_cmdFiltered.length > 0) {
+        const target = _cmdFiltered[cmdFocusIdx >= 0 ? cmdFocusIdx : 0]
+        if (target) { inputEl.value = target.name + ' '; renderCmdMenu(target.name.slice(1)) }
+      }
+      return
+    }
+  }
   if (e.key === 'Enter' && !e.isComposing) {
     if (isTouchDevice) {
       // モバイル: Enter = 改行（デフォルト動作）、送信はボタンで
