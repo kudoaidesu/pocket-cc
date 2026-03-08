@@ -55,7 +55,7 @@ export function initWebPush(): void {
       vapidKeys = {
         publicKey: generated.publicKey,
         privateKey: generated.privateKey,
-        subject: 'mailto:pocket-cc@localhost',
+        subject: 'https://teruyamac-mini.tail65878f.ts.net',
       }
       // data/ ディレクトリがなければ作成
       const dataDir = dirname(VAPID_KEYS_PATH)
