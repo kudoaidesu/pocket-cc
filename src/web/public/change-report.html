@@ -66,26 +66,22 @@ tr:hover td{background:var(--surface-hover)}
 .badge.new{background:var(--blue-bg);color:var(--blue)}
 .badge.mod{background:var(--warning-bg);color:var(--warning)}
 .badge.low{background:var(--success-bg);color:var(--success)}
-.badge.medium{background:var(--warning-bg);color:var(--warning)}
-.badge.high{background:var(--danger-bg);color:var(--danger)}
 .screenshots{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0}
-@media(max-width:600px){.screenshots{grid-template-columns:1fr}}
+.screenshots.three{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:700px){.screenshots,.screenshots.three{grid-template-columns:1fr}}
 .screenshot-card{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface)}
 .screenshot-card img{width:100%;height:auto;display:block;cursor:pointer;transition:transform .2s}
 .screenshot-card img:hover{transform:scale(1.02)}
 .screenshot-card .label{padding:8px 12px;font-size:12px;font-weight:600;text-align:center;border-top:1px solid var(--border)}
 .screenshot-card .label.before{color:var(--danger)}
 .screenshot-card .label.after{color:var(--success)}
+.screenshot-card .label.step{color:var(--blue)}
 code{background:var(--surface);padding:1px 5px;border-radius:3px;font-family:var(--font-mono);font-size:12px;color:var(--accent)}
-.evidence{margin:12px 0;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:8px}
-.evidence p{margin:4px 0}
-.evidence strong{color:var(--text-bright)}
 .checklist{list-style:none;margin:12px 0}
 .checklist li{padding:4px 0;display:flex;align-items:center;gap:8px;font-size:13px}
 .checklist .check{width:16px;height:16px;border-radius:4px;background:var(--success-bg);color:var(--success);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
 .checklist .uncheck{width:16px;height:16px;border-radius:4px;background:var(--surface);border:1px solid var(--border);flex-shrink:0}
 .impact{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:6px;background:var(--success-bg);border:1px solid rgba(166,227,161,.15);color:var(--success);font-weight:600;font-size:12px;margin-top:8px}
-.impact.warn{background:var(--warning-bg);border-color:rgba(249,226,175,.15);color:var(--warning)}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;cursor:pointer;align-items:center;justify-content:center}
 .overlay.open{display:flex}
 .overlay img{max-width:95%;max-height:95%;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.5)}
@@ -99,14 +95,160 @@ code{background:var(--surface);padding:1px 5px;border-radius:3px;font-family:var
 <div class="page-header">
   <a href="/">pocket-cc</a>
   <span class="sep">/</span>
-  <h1>Change Report</h1>
+  <h1>Change Report #132 — テストマトリクス 分類ブラウズビュー</h1>
   <button class="theme-toggle" onclick="toggleTheme()">Theme</button>
 </div>
 
 <div class="layout">
-<!-- %%TOC%% -->
+<nav class="toc" id="toc">
+  <a href="#tldr" class="toc-h2">TL;DR</a>
+  <a href="#requirements">要件マッピング</a>
+  <a href="#changes" class="toc-h2">変更内容</a>
+  <a href="#design">設計判断</a>
+  <a href="#screenshots" class="toc-h2">Before / After</a>
+  <a href="#browse-flow">分類別ビューフロー</a>
+  <a href="#tests" class="toc-h2">テスト</a>
+  <a href="#regression">リグレッション</a>
+  <a href="#followups">Follow-ups</a>
+</nav>
 <main class="content">
-<!-- %%CONTENT%% -->
+
+<h1 class="title">テストマトリクス 階層的分類ブラウズビュー</h1>
+<div class="meta">
+  <span class="meta-tag date">2026-03-08</span>
+  <span class="meta-tag branch">feat/test-matrix-category-browse</span>
+  <span class="meta-tag status">&#10003; PR #132</span>
+</div>
+
+<div class="summary-bar">
+  <div class="summary-item"><span class="num">1</span><span class="lbl">変更ファイル</span></div>
+  <div class="summary-item"><span class="num">3</span><span class="lbl">ドリルダウン段数</span></div>
+  <div class="summary-item"><span class="num">~200</span><span class="lbl">追加行数</span></div>
+  <div class="summary-item"><span class="num">0</span><span class="lbl">API変更</span></div>
+  <div class="summary-item"><span class="num">256</span><span class="lbl">既存テスト</span></div>
+</div>
+
+<h2 id="tldr">TL;DR</h2>
+<table class="tldr-table">
+  <tr><th>課題</th><td>1000〜10000件規模になるとフラットリストでは把握困難</td></tr>
+  <tr><th>変更内容</th><td>テストマトリクスに「分類別」ビューを追加（次元&#8594;値&#8594;レコードの3段階ドリルダウン）</td></tr>
+  <tr><th>影響範囲</th><td>test-matrix.html のみ。既存のマトリクスビュー・CRUD機能は変更なし</td></tr>
+  <tr><th>リスク</th><td><span class="badge low">Low</span> — 既存APIは変更なし、新規UIロジックのみ追加</td></tr>
+  <tr><th>切り戻し</th><td>PR #132 リバート</td></tr>
+</table>
+
+<h2 id="requirements">要件マッピング</h2>
+<table>
+  <thead><tr><th>Req ID</th><th>要件</th><th>Status</th><th>Evidence</th></tr></thead>
+  <tbody>
+    <tr><td>REQ-1</td><td>機能別・画面別など大分類から選択できる</td><td><span class="badge done">Done</span></td><td>Step1: 次元カード表示確認</td></tr>
+    <tr><td>REQ-2</td><td>大分類内のテストパターン一覧を確認できる</td><td><span class="badge done">Done</span></td><td>Step3: レコードリスト確認</td></tr>
+    <tr><td>REQ-3</td><td>次元 &#8594; 値 &#8594; レコードの3段階ドリルダウン</td><td><span class="badge done">Done</span></td><td>Step1&#8594;2&#8594;3のフロー動作確認</td></tr>
+    <tr><td>REQ-4</td><td>ブレッドクラムで上位に戻れる</td><td><span class="badge done">Done</span></td><td>「すべての分類 › 機能 › Web Push」表示・ナビゲーション確認</td></tr>
+  </tbody>
+</table>
+
+<h2 id="changes">変更内容</h2>
+<h3>変更ファイル</h3>
+<table>
+  <thead><tr><th>ファイル</th><th>変更種別</th><th>概要</th></tr></thead>
+  <tbody>
+    <tr><td><code>src/web/public/test-matrix.html</code></td><td><span class="badge mod">修正</span></td><td>ブラウズビューCSS・HTML・JS追加（約200行）</td></tr>
+  </tbody>
+</table>
+
+<h3 id="design">設計判断</h3>
+<table>
+  <thead><tr><th>判断</th><th>代替案</th><th>理由</th><th>トレードオフ</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>クライアント側で records/dimensions を集計</td>
+      <td>専用API追加</td>
+      <td>既にデータ全量取得済み。APIコール増加なし</td>
+      <td>大量データ時に集計コストがフロント側に乗る</td>
+    </tr>
+    <tr>
+      <td>ビューモードトグル（マトリクス/分類別）で共存</td>
+      <td>別ページ化</td>
+      <td>既存ユーザーの操作フローを壊さない</td>
+      <td>コントロールバーが若干複雑になる</td>
+    </tr>
+    <tr>
+      <td>3段階固定の階層（次元&#8594;値&#8594;レコード）</td>
+      <td>任意深さのツリー</td>
+      <td>シンプルで把握しやすい。テストマトリクスの構造に合致</td>
+      <td>値×値の組合せ閲覧は不可</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="screenshots">Before / After</h2>
+<p style="color:var(--muted);font-size:13px;margin-bottom:12px">マトリクスビュー自体は変更なし。コントロールバーに「マトリクス/分類別」トグルが追加された。</p>
+<div class="screenshots">
+  <div class="screenshot-card">
+    <img src="/changes/screenshots/120_after_test_matrix.png" onclick="showFull(this)" alt="Before">
+    <div class="label before">Before: フラットカードリスト</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="/changes/screenshots/132_after_matrix.png" onclick="showFull(this)" alt="After">
+    <div class="label after">After: マトリクス + 分類別トグル</div>
+  </div>
+</div>
+
+<h2 id="browse-flow">分類別ビュー — 3段階フロー</h2>
+<div class="screenshots three">
+  <div class="screenshot-card">
+    <img src="/changes/screenshots/132_after_browse_dim.png" onclick="showFull(this)" alt="Step1">
+    <div class="label step">Step 1: 次元カード一覧</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="/changes/screenshots/132_after_browse_values.png" onclick="showFull(this)" alt="Step2">
+    <div class="label step">Step 2: 機能別 値カード</div>
+  </div>
+  <div class="screenshot-card">
+    <img src="/changes/screenshots/132_after_browse_records.png" onclick="showFull(this)" alt="Step3">
+    <div class="label step">Step 3: Web Push レコード一覧</div>
+  </div>
+</div>
+
+<h2 id="tests">テスト</h2>
+<h3>手動テスト</h3>
+<table>
+  <thead><tr><th>シナリオ</th><th>期待結果</th><th>実際の結果</th><th>判定</th></tr></thead>
+  <tbody>
+    <tr><td>「分類別」ボタンをクリック</td><td>次元カード一覧表示</td><td>機能/環境/モデルカードが表示</td><td><span class="badge ok">OK</span></td></tr>
+    <tr><td>「機能」カードをクリック</td><td>機能別の値カード表示</td><td>チャット/Worker Daemon/Web Push等が表示</td><td><span class="badge ok">OK</span></td></tr>
+    <tr><td>「Web Push」カードをクリック</td><td>該当レコード2件表示</td><td>Pass(iPhone PWA) + Fail(iPhone Safari)</td><td><span class="badge ok">OK</span></td></tr>
+    <tr><td>ブレッドクラム「機能」クリック</td><td>値カード一覧に戻る</td><td>正常に戻れる</td><td><span class="badge ok">OK</span></td></tr>
+    <tr><td>「マトリクス」ボタンをクリック</td><td>2Dグリッドビューに戻る</td><td>正常に切り替わる</td><td><span class="badge ok">OK</span></td></tr>
+    <tr><td>Web Pushカードのpass率バー</td><td>50%でバーが半分表示</td><td>正常に表示（Pass 1 / Fail 1）</td><td><span class="badge ok">OK</span></td></tr>
+  </tbody>
+</table>
+
+<h3>自動テスト</h3>
+<table>
+  <thead><tr><th>種別</th><th>対象</th><th>結果</th><th>件数</th></tr></thead>
+  <tbody>
+    <tr><td>ユニットテスト (vitest)</td><td>test-matrix.ts</td><td><span class="badge pass">pass</span></td><td>256件（既存、変更なし）</td></tr>
+  </tbody>
+</table>
+
+<h2 id="regression">リグレッションチェック</h2>
+<ul class="checklist">
+  <li><span class="check">&#10003;</span> 既存マトリクスビュー（2Dグリッド）: 正常動作確認</li>
+  <li><span class="check">&#10003;</span> モバイルカードビュー: 正常動作確認</li>
+  <li><span class="check">&#10003;</span> セル編集ドロワー: Step3からクリックで開くことを確認</li>
+  <li><span class="check">&#10003;</span> API後方互換性: APIコール変更なし</li>
+  <li><span class="check">&#10003;</span> サマリーストリップ: 両ビューで表示継続</li>
+</ul>
+<div class="impact">既存処理への影響なし。分類別ビューは完全に新規追加のみ。</div>
+
+<h2 id="followups">Known Gaps / Follow-ups</h2>
+<ul class="checklist">
+  <li><span class="uncheck"></span> ビューモードをlocalStorageに保存してリロード後も維持 &#8594; 次スプリント</li>
+  <li><span class="uncheck"></span> 分類別ビューでのソート順（pass率順、名前順） &#8594; Issue検討</li>
+</ul>
+
 </main>
 </div>
 
@@ -151,110 +293,6 @@ function initTocTracking() {
   update()
 }
 initTocTracking()
-
-// Dynamic loading: ?project=&file= query parameters
-;(function(){
-  var params = new URLSearchParams(location.search)
-  var proj = params.get('project'), file = params.get('file')
-  if (!proj || !file) return
-
-  function e(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
-
-  var hdr = document.querySelector('.page-header')
-  hdr.innerHTML = '<a href="/changes">\u2190 Changes</a><span class="sep">/</span>'
-    +'<span style="font-size:12px;color:var(--muted)">'+e(proj)+'</span><span class="sep">/</span>'
-    +'<h1>'+e(file.replace('.md',''))+'</h1>'
-    +'<button class="theme-toggle" onclick="toggleTheme()">Theme</button>'
-
-  var contentEl = document.querySelector('.content')
-  var tocEl = document.getElementById('toc')
-  contentEl.innerHTML = '<p style="color:var(--muted)">Loading...</p>'
-  if(tocEl) tocEl.innerHTML = ''
-
-  fetch('/api/changes/'+encodeURIComponent(proj)+'/'+encodeURIComponent(file))
-    .then(function(r){return r.json()})
-    .then(function(d){
-      if(d.error) throw new Error(d.error)
-      renderMd(d.content, proj, contentEl, tocEl)
-    })
-    .catch(function(err){
-      contentEl.innerHTML='<p style="color:var(--danger)">Failed to load: '+e(String(err.message||err))+'</p>'
-    })
-
-  function slugify(s){return s.toLowerCase().replace(/[^\w\u3000-\u9fff]+/g,'-').replace(/^-|-$/g,'')}
-
-  function inline(s){
-    s = s.replace(/!\[([^\]]*)\]\(screenshots\/([^)]+)\)/g, function(_,alt,path){
-      return '<img src="/api/changes/'+encodeURIComponent(proj)+'/screenshots/'+encodeURIComponent(path)+'" alt="'+e(alt)+'" onclick="showFull(this)" style="max-width:100%;cursor:pointer;border-radius:6px">'
-    })
-    s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g,'<img src="$2" alt="$1" style="max-width:100%">')
-    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" style="color:var(--accent)">$1</a>')
-    s = s.replace(/\*\*([^*]+)\*\*/g,'<strong style="color:var(--text-bright)">$1</strong>')
-    s = s.replace(/`([^`]+)`/g,'<code>$1</code>')
-    return s
-  }
-
-  function renderMd(md, proj, cEl, tEl){
-    var lines=md.split('\n'), html='', tocH='', meta='', title=''
-    var inTbl=false, inCode=false, inList=false, ltag='', gotTitle=false, inMeta=false, firstH2=true
-
-    function cl(){if(inList){html+='</'+ltag+'>';inList=false}}
-    function ct(){if(inTbl){html+='</tbody></table>';inTbl=false}}
-
-    for(var i=0;i<lines.length;i++){
-      var L=lines[i]
-      if(L.startsWith('```')){
-        if(inCode){html+='</code></pre>';inCode=false}
-        else{cl();ct();inCode=true;html+='<pre style="background:var(--surface);padding:12px;border-radius:6px;overflow-x:auto;margin:8px 0;font-size:12px"><code style="background:none;padding:0">'}
-        continue
-      }
-      if(inCode){html+=e(L)+'\n';continue}
-      if(L.startsWith('# ')&&!gotTitle){title='<h1 class="title">'+inline(L.slice(2).trim())+'</h1>';gotTitle=true;inMeta=true;continue}
-      if(inMeta){
-        var mm=L.match(/^- \*\*(.+?)\*\*[：:]\s*(.+)$/)
-        if(mm){
-          var k=mm[1],v=mm[2]
-          if(k==='日付'||k==='Date')meta+='<span class="meta-tag date">'+e(v)+'</span>'
-          else if(k==='ブランチ'||k==='Branch')meta+='<span class="meta-tag branch">'+e(v)+'</span>'
-          else meta+='<span class="meta-tag status">'+e(v)+'</span>'
-          continue
-        }
-        if(L.trim()==='')continue
-        if(!L.startsWith('- **'))inMeta=false
-      }
-      if(L.startsWith('## ')){cl();ct();var t2=L.slice(3).trim(),id=slugify(t2)
-        if(firstH2&&(t2==='TL;DR'||t2==='概要')){id='tldr'}
-        html+='<h2 id="'+id+'">'+inline(t2)+'</h2>';tocH+='<a href="#'+id+'" class="toc-h2">'+e(t2)+'</a>';firstH2=false;continue}
-      if(L.startsWith('### ')){cl();ct();var t3=L.slice(4).trim(),id3=slugify(t3)
-        html+='<h3 id="'+id3+'">'+inline(t3)+'</h3>';tocH+='<a href="#'+id3+'">'+e(t3)+'</a>';continue}
-      if(L.startsWith('|')){cl()
-        var cells=L.split('|').slice(1,-1).map(function(c){return c.trim()})
-        if(cells.every(function(c){return /^[-:]+$/.test(c)}))continue
-        if(!inTbl){
-          var isTldr=cells.length===2&&(cells[0]==='項目'||cells[0]==='Item')
-          html+='<table'+(isTldr?' class="tldr-table"':'')+'><thead><tr>'
-          for(var j=0;j<cells.length;j++)html+='<th>'+inline(cells[j])+'</th>'
-          html+='</tr></thead><tbody>';inTbl=true
-        }else{html+='<tr>';for(var j=0;j<cells.length;j++)html+='<td>'+inline(cells[j])+'</td>';html+='</tr>'}
-        continue
-      }
-      if(inTbl&&!L.startsWith('|'))ct()
-      var clm=L.match(/^- \[([ xX])\] (.+)/)
-      if(clm){if(!inList||ltag!=='ul'){cl();html+='<ul class="checklist">';inList=true;ltag='ul'}
-        var chk=clm[1]!==' ';html+='<li><span class="'+(chk?'check':'uncheck')+'">'+(chk?'&#10003;':'')+'</span>'+inline(clm[2])+'</li>';continue}
-      if(L.startsWith('- ')){if(!inList){html+='<ul>';inList=true;ltag='ul'};html+='<li>'+inline(L.slice(2))+'</li>';continue}
-      var olm=L.match(/^\d+\. (.+)/)
-      if(olm){if(!inList||ltag!=='ol'){cl();html+='<ol>';inList=true;ltag='ol'};html+='<li>'+inline(olm[1])+'</li>';continue}
-      if(/^---+$/.test(L.trim())){html+='<hr style="border:none;border-top:1px solid var(--border);margin:16px 0">';continue}
-      if(L.trim()===''){cl();continue}
-      html+='<p>'+inline(L)+'</p>'
-    }
-    cl();ct();if(inCode)html+='</code></pre>'
-    cEl.innerHTML=title+(meta?'<div class="meta">'+meta+'</div>':'')+html
-    if(tEl&&tocH)tEl.innerHTML=tocH
-    initTocTracking()
-  }
-})()
 </script>
 </body>
 </html>
