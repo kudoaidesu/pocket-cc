@@ -19,6 +19,7 @@ import { chatRoutes } from './routes/chat.js'
 import { observerRoutes } from './routes/observer.js'
 import { testMatrixRoutes } from './routes/test-matrix.js'
 import { changesRoutes } from './routes/changes.js'
+import { createDocRoutes } from './routes/doc-viewer.js'
 import { createLogger } from '../utils/logger.js'
 import { getStrategyStats, getRecentEvaluations } from '../utils/cost-tracker.js'
 import { getDb } from '../db/index.js'
@@ -152,6 +153,12 @@ app.use('*', cors({
 // 静的ファイル配信
 app.use('/static/*', serveStatic({ root: resolve(process.cwd(), 'src/web/public'), rewriteRequestPath: (path) => path.replace('/static', '') }))
 app.use('/changes/screenshots/*', serveStatic({ root: resolve(process.cwd(), 'docs/changes'), rewriteRequestPath: (path) => path.replace('/changes', '') }))
+app.get('/doc-viewer.js', (c) => {
+  const js = readFileSync(resolve(process.cwd(), 'src/web/public/doc-viewer.js'), 'utf-8')
+  c.header('Content-Type', 'application/javascript')
+  c.header('Cache-Control', 'no-cache, no-store, must-revalidate')
+  return c.body(js)
+})
 
 // --- API ルート ---
 
@@ -751,6 +758,50 @@ app.get('/change-report', (c) => {
     return c.html(html)
   } catch {
     return c.text('change-report.html not found', 404)
+  }
+})
+
+// --- Status (現状確認) ---
+const statusRoutes = createDocRoutes('status', 'status')
+app.route('/api/status', statusRoutes)
+app.get('/status', (c) => {
+  try {
+    const html = readFileSync(resolve(process.cwd(), 'src/web/public/status.html'), 'utf-8')
+    c.header('Cache-Control', 'no-cache, no-store, must-revalidate')
+    return c.html(html)
+  } catch {
+    return c.text('status.html not found', 404)
+  }
+})
+app.get('/status-report', (c) => {
+  try {
+    const html = readFileSync(resolve(process.cwd(), 'src/web/public/status-report.html'), 'utf-8')
+    c.header('Cache-Control', 'no-cache, no-store, must-revalidate')
+    return c.html(html)
+  } catch {
+    return c.text('status-report.html not found', 404)
+  }
+})
+
+// --- Incidents (事象把握) ---
+const incidentRoutes = createDocRoutes('incidents', 'incidents')
+app.route('/api/incidents', incidentRoutes)
+app.get('/incidents', (c) => {
+  try {
+    const html = readFileSync(resolve(process.cwd(), 'src/web/public/incidents.html'), 'utf-8')
+    c.header('Cache-Control', 'no-cache, no-store, must-revalidate')
+    return c.html(html)
+  } catch {
+    return c.text('incidents.html not found', 404)
+  }
+})
+app.get('/incident-report', (c) => {
+  try {
+    const html = readFileSync(resolve(process.cwd(), 'src/web/public/incident-report.html'), 'utf-8')
+    c.header('Cache-Control', 'no-cache, no-store, must-revalidate')
+    return c.html(html)
+  } catch {
+    return c.text('incident-report.html not found', 404)
   }
 })
 
