@@ -196,6 +196,63 @@ svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:ro
 .dim-list-actions{display:flex;gap:4px}
 .dim-list-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;border-radius:4px;font-size:12px;display:flex;align-items:center}
 .dim-list-btn:hover{color:var(--text);background:var(--surface-hover)}
+
+/* ── View Mode Toggle ── */
+.view-toggle{display:flex;align-items:center;gap:2px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:2px;margin-left:auto}
+.view-toggle-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:5px 10px;font-size:11px;font-weight:600;border-radius:6px;transition:all .15s;white-space:nowrap}
+.view-toggle-btn.active{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-border)}
+.view-toggle-btn:not(.active):hover{color:var(--text);background:var(--surface-hover)}
+
+/* ── Browse View ── */
+#browseContainer{display:none;padding:16px;flex-direction:column;gap:16px}
+#browseContainer.visible{display:flex}
+
+/* breadcrumb */
+.breadcrumb{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.breadcrumb-item{cursor:pointer;color:var(--accent);text-decoration:none;transition:opacity .15s}
+.breadcrumb-item:hover{opacity:.75}
+.breadcrumb-sep{color:var(--border-light)}
+.breadcrumb-current{color:var(--text);font-weight:600}
+
+/* browse cards grid */
+.browse-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.browse-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;transition:all .18s;display:flex;flex-direction:column;gap:8px}
+.browse-card:hover{border-color:var(--accent-border);background:var(--surface-hover);transform:translateY(-1px)}
+.browse-card-name{font-size:14px;font-weight:700;color:var(--text-bright)}
+.browse-card-meta{font-size:11px;color:var(--muted);font-family:var(--font-mono)}
+.browse-card-stats{display:flex;gap:6px;flex-wrap:wrap}
+.browse-stat{font-size:10px;font-weight:600;padding:2px 6px;border-radius:6px}
+.browse-stat.pass{background:var(--st-pass-bg);color:var(--st-pass)}
+.browse-stat.fail{background:var(--st-fail-bg);color:var(--st-fail)}
+.browse-stat.skip{background:var(--st-skip-bg);color:var(--st-skip)}
+.browse-stat.flaky{background:var(--st-flaky-bg);color:var(--st-flaky)}
+.browse-stat.not_tested{background:var(--st-not-tested-bg);color:var(--st-not-tested)}
+
+/* pass rate bar */
+.browse-bar-wrap{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.browse-bar{height:100%;border-radius:2px;background:var(--success);transition:width .3s}
+
+/* record list */
+.browse-record-list{display:flex;flex-direction:column;gap:8px}
+.browse-record{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:10px}
+.browse-record:hover{border-color:var(--accent-border);background:var(--surface-hover)}
+.browse-record-main{flex:1;min-width:0}
+.browse-record-chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px}
+.browse-record-chip{font-size:10px;padding:2px 7px;background:var(--accent-dim);color:var(--accent);border-radius:10px;font-weight:600}
+.browse-record-runs{font-size:11px;color:var(--muted);font-family:var(--font-mono);white-space:nowrap}
+
+/* browse section title */
+.browse-section-title{font-size:13px;font-weight:700;color:var(--text-bright);margin-bottom:2px}
+.browse-section-sub{font-size:11px;color:var(--muted)}
+
+/* mobile overrides for browse view */
+@media(max-width:767px){
+  .browse-grid{grid-template-columns:1fr 1fr}
+  .browse-card{padding:10px 12px}
+}
+@media(max-width:400px){
+  .browse-grid{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
@@ -246,6 +303,10 @@ svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:ro
   <label class="control-toggle">
     <input type="checkbox" id="showPct" onchange="renderMatrix()"> <span>%</span>
   </label>
+  <div class="view-toggle" id="viewToggle">
+    <button class="view-toggle-btn active" id="btnViewMatrix" onclick="setViewMode('matrix')">マトリクス</button>
+    <button class="view-toggle-btn" id="btnViewBrowse" onclick="setViewMode('browse')">分類別</button>
+  </div>
 </div>
 
 <!-- Summary -->
@@ -253,8 +314,14 @@ svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:ro
 
 <!-- Main -->
 <div class="main">
-  <div class="matrix-container" id="matrixContainer"></div>
-  <div class="cards-container" id="cardsContainer"></div>
+  <div id="matrixSection">
+    <div class="matrix-container" id="matrixContainer"></div>
+    <div class="cards-container" id="cardsContainer"></div>
+  </div>
+  <div id="browseContainer">
+    <nav class="breadcrumb" id="breadcrumb"></nav>
+    <div id="browseContent"></div>
+  </div>
 </div>
 
 <!-- Drawer overlay -->
@@ -298,6 +365,10 @@ let dimensions = []
 let records = []
 let summary = {}
 let selectedCell = null
+
+// ── Browse view state ──
+let viewMode = 'matrix' // 'matrix' | 'browse'
+let browseState = { dim: null, value: null } // Step1: null/null, Step2: dim/null, Step3: dim/value
 
 // ── Glyphs ──
 const GLYPHS = { pass: '\u2713', fail: '\u2717', skip: '\u2013', not_tested: '\u25CB', flaky: '\u223C' }
@@ -364,6 +435,7 @@ async function refresh() {
   renderSummary()
   renderMatrix()
   renderCards()
+  if (viewMode === 'browse') renderBrowseView()
 }
 
 function populateDimSelectors() {
@@ -813,6 +885,168 @@ async function deleteDim(id) {
   await fetch(`/api/test-matrix/dimensions/${id}`, { method: 'DELETE' })
   await refresh()
   renderDimList()
+}
+
+// ── View Mode ──
+function setViewMode(mode) {
+  viewMode = mode
+  const matrixSection = document.getElementById('matrixSection')
+  const browseContainer = document.getElementById('browseContainer')
+  const btnMatrix = document.getElementById('btnViewMatrix')
+  const btnBrowse = document.getElementById('btnViewBrowse')
+  if (mode === 'browse') {
+    matrixSection.style.display = 'none'
+    browseContainer.classList.add('visible')
+    btnMatrix.classList.remove('active')
+    btnBrowse.classList.add('active')
+    renderBrowseView()
+  } else {
+    matrixSection.style.display = ''
+    browseContainer.classList.remove('visible')
+    btnMatrix.classList.add('active')
+    btnBrowse.classList.remove('active')
+  }
+}
+
+// ── Browse View ──
+function renderBrowseView() {
+  renderBreadcrumb()
+  const content = document.getElementById('browseContent')
+  if (!browseState.dim) {
+    content.innerHTML = renderDimBrowser()
+  } else if (!browseState.value) {
+    content.innerHTML = renderValueBrowser(browseState.dim)
+  } else {
+    content.innerHTML = renderRecordBrowser(browseState.dim, browseState.value)
+  }
+}
+
+function renderBreadcrumb() {
+  const bc = document.getElementById('breadcrumb')
+  const parts = []
+  parts.push(`<span class="breadcrumb-item" onclick="browseTo(null, null)">すべての分類</span>`)
+  if (browseState.dim) {
+    const dim = dimensions.find(d => d.name === browseState.dim)
+    const dimLabel = dim ? esc(dim.display_name) : esc(browseState.dim)
+    if (browseState.value) {
+      parts.push(`<span class="breadcrumb-sep">›</span>`)
+      parts.push(`<span class="breadcrumb-item" onclick="browseTo('${esc(browseState.dim)}', null)">${dimLabel}</span>`)
+      parts.push(`<span class="breadcrumb-sep">›</span>`)
+      parts.push(`<span class="breadcrumb-current">${esc(browseState.value)}</span>`)
+    } else {
+      parts.push(`<span class="breadcrumb-sep">›</span>`)
+      parts.push(`<span class="breadcrumb-current">${dimLabel}</span>`)
+    }
+  }
+  bc.innerHTML = parts.join('')
+}
+
+function browseTo(dimName, value) {
+  browseState = { dim: dimName, value: value }
+  renderBrowseView()
+}
+
+function renderDimBrowser() {
+  if (dimensions.length === 0) {
+    return `<div class="empty-state">
+      <div class="empty-icon">&#x2395;</div>
+      <div class="empty-title">次元が登録されていません</div>
+      <div class="empty-desc">まず次元（機能・環境など）を追加してください。</div>
+      <button class="btn-primary" onclick="openDimModal()">+ 次元を追加</button>
+    </div>`
+  }
+  const cards = dimensions.map(dim => {
+    const vals = JSON.parse(dim.values_json)
+    const dimRecords = records.filter(r => {
+      const coord = JSON.parse(r.coordinates_json)
+      return coord[dim.name] !== undefined
+    })
+    const passCount = dimRecords.filter(r => r.status === 'pass').length
+    const total = dimRecords.length
+    const pct = total > 0 ? Math.round(passCount / total * 100) : 0
+    return `<div class="browse-card" onclick="browseTo('${esc(dim.name)}', null)">
+      <div class="browse-card-name">${esc(dim.display_name)}</div>
+      <div class="browse-card-meta">${vals.length} カテゴリ &nbsp;•&nbsp; ${total} 件のテスト</div>
+      <div class="browse-bar-wrap"><div class="browse-bar" style="width:${pct}%"></div></div>
+      <div class="browse-card-meta">pass率 ${pct}%</div>
+    </div>`
+  }).join('')
+  return `<div>
+    <div class="browse-section-title">次元一覧</div>
+    <div class="browse-section-sub" style="margin-bottom:12px">次元を選択してカテゴリを絞り込みます</div>
+    <div class="browse-grid">${cards}</div>
+  </div>`
+}
+
+function renderValueBrowser(dimName) {
+  const dim = dimensions.find(d => d.name === dimName)
+  if (!dim) return ''
+  const vals = JSON.parse(dim.values_json)
+  const cards = vals.map(val => {
+    const matched = records.filter(r => {
+      const coord = JSON.parse(r.coordinates_json)
+      return coord[dimName] === val
+    })
+    const counts = { pass: 0, fail: 0, skip: 0, flaky: 0, not_tested: 0 }
+    matched.forEach(r => { counts[r.status] = (counts[r.status] || 0) + 1 })
+    const total = matched.length
+    const pct = total > 0 ? Math.round(counts.pass / total * 100) : 0
+    const statsHtml = Object.entries(counts)
+      .filter(([, n]) => n > 0)
+      .map(([st, n]) => `<span class="browse-stat ${st}">${STATUS_LABELS[st]} ${n}</span>`)
+      .join('')
+    return `<div class="browse-card" onclick="browseTo('${esc(dimName)}', '${esc(val)}')">
+      <div class="browse-card-name">${esc(val)}</div>
+      <div class="browse-card-stats">${statsHtml || '<span class="browse-card-meta">テストなし</span>'}</div>
+      <div class="browse-bar-wrap"><div class="browse-bar" style="width:${pct}%"></div></div>
+      <div class="browse-card-meta">pass率 ${pct}% &nbsp;•&nbsp; ${total} 件</div>
+    </div>`
+  }).join('')
+  return `<div>
+    <div class="browse-section-title">${esc(dim.display_name)}</div>
+    <div class="browse-section-sub" style="margin-bottom:12px">値を選択してテストレコードを確認します</div>
+    <div class="browse-grid">${cards}</div>
+  </div>`
+}
+
+function renderRecordBrowser(dimName, value) {
+  const matched = records.filter(r => {
+    const coord = JSON.parse(r.coordinates_json)
+    return coord[dimName] === value
+  })
+  if (matched.length === 0) {
+    return `<div class="empty-state">
+      <div class="empty-icon">&#x25CB;</div>
+      <div class="empty-title">テストレコードがありません</div>
+      <div class="empty-desc">${esc(dimName)}: ${esc(value)} に該当するレコードがまだ登録されていません。</div>
+    </div>`
+  }
+  const items = matched.map(r => {
+    const coord = JSON.parse(r.coordinates_json)
+    // 選択中の次元を除いた他の座標をチップ表示
+    const otherChips = Object.entries(coord)
+      .filter(([k]) => k !== dimName)
+      .map(([k, v]) => `<span class="browse-record-chip">${esc(k)}: ${esc(v)}</span>`)
+      .join('')
+    const runs = `${r.pass_count}/${r.total_runs} runs`
+    const lastRun = r.last_run_at ? new Date(r.last_run_at).toLocaleDateString() : ''
+    return `<div class="browse-record" onclick="openDrawerForRecord(${JSON.stringify(r).replace(/"/g, '&quot;')})">
+      <div class="browse-record-main">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="status-badge ${r.status}">${GLYPHS[r.status]} ${STATUS_LABELS[r.status]}</span>
+          ${lastRun ? `<span style="font-size:11px;color:var(--muted)">${lastRun}</span>` : ''}
+        </div>
+        <div class="browse-record-chips" style="margin-top:6px">${otherChips}</div>
+      </div>
+      <div class="browse-record-runs">${runs}</div>
+    </div>`
+  }).join('')
+  const dim = dimensions.find(d => d.name === dimName)
+  return `<div>
+    <div class="browse-section-title">${esc(dim ? dim.display_name : dimName)}: ${esc(value)}</div>
+    <div class="browse-section-sub" style="margin-bottom:12px">${matched.length} 件のテストレコード</div>
+    <div class="browse-record-list">${items}</div>
+  </div>`
 }
 
 // ── Theme ──
