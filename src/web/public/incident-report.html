@@ -31,12 +31,12 @@
 html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:var(--font-sans);font-size:14px;line-height:1.7}
 
 /* Header */
-.page-header{display:flex;align-items:center;gap:12px;padding:14px 24px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:10}
+.page-header{display:flex;align-items:center;gap:8px;padding:10px 24px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:10;overflow-x:auto;white-space:nowrap;flex-shrink:0}
 .page-header a{color:var(--accent);text-decoration:none;font-weight:600;font-size:13px}
 .page-header a:hover{text-decoration:underline}
 .page-header .sep{color:var(--muted);font-size:12px}
-.page-header h1{font-size:15px;font-weight:700;color:var(--text-bright);flex:1}
-.theme-toggle{background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px}
+.page-header h1{font-size:14px;font-weight:700;color:var(--text-bright);flex:1;overflow:hidden;text-overflow:ellipsis}
+.theme-toggle{background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:4px 8px;cursor:pointer;font-size:12px;flex-shrink:0}
 .theme-toggle:hover{color:var(--text);border-color:var(--border-light)}
 
 /* TOC sidebar */
@@ -69,13 +69,15 @@ h2{font-size:17px;font-weight:700;color:var(--text-bright);margin:32px 0 12px;pa
 h3{font-size:14px;font-weight:700;color:var(--text-bright);margin:20px 0 8px}
 
 /* Tables */
-table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
-th{text-align:left;padding:8px 12px;background:var(--surface);border:1px solid var(--border);color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px}
-td{padding:8px 12px;border:1px solid var(--border);vertical-align:top}
+.table-wrap{overflow-x:auto;margin:12px 0;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;font-size:13px;min-width:600px}
+th{text-align:left;padding:8px 12px;background:var(--surface);border:1px solid var(--border);color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+td{padding:8px 12px;border:1px solid var(--border);vertical-align:top;max-width:400px}
 tr:hover td{background:var(--surface-hover)}
 
 /* TL;DR table */
-.tldr-table th{width:120px;background:var(--accent-dim);color:var(--accent)}
+.tldr-table{min-width:500px}
+.tldr-table th{width:100px;background:var(--accent-dim);color:var(--accent);white-space:nowrap}
 .tldr-table td{color:var(--text)}
 
 /* Status badges */

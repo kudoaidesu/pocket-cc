@@ -98,7 +98,7 @@
     var gotTitle = false, inMeta = false, firstH2 = true
 
     function cl() { if (inList) { html += '</' + ltag + '>'; inList = false } }
-    function ct() { if (inTbl) { html += '</tbody></table>'; inTbl = false } }
+    function ct() { if (inTbl) { html += '</tbody></table></div>'; inTbl = false } }
     function inl(s) { return DV.inline(s, proj, docType) }
 
     for (var i = 0; i < lines.length; i++) {
@@ -152,7 +152,7 @@
         if (cells.every(function(c) { return /^[-:]+$/.test(c) })) continue
         if (!inTbl) {
           var isTldr = cells.length === 2 && (cells[0] === '項目' || cells[0] === 'Item')
-          html += '<table' + (isTldr ? ' class="tldr-table"' : '') + '><thead><tr>'
+          html += '<div class="table-wrap"><table' + (isTldr ? ' class="tldr-table"' : '') + '><thead><tr>'
           for (var j = 0; j < cells.length; j++) html += '<th>' + inl(cells[j]) + '</th>'
           html += '</tr></thead><tbody>'; inTbl = true
         } else {
