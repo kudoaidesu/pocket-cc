@@ -23,13 +23,15 @@
     "better-sqlite3": "^12.6.2",
     "dotenv": "^16.4.0",
     "hono": "^4.12.2",
-    "node-cron": "^3.0.3"
+    "node-cron": "^3.0.3",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.0.0",
     "@types/node-cron": "^3.0.11",
+    "@types/web-push": "^3.6.4",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"

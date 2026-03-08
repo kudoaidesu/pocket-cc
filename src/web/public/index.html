@@ -28,7 +28,7 @@ body{display:flex;flex-direction:column;height:100dvh}
 svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none;vertical-align:-.125em;flex-shrink:0}
 
 /* ── ヘッダー ── */
-.header{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.header{display:flex;align-items:center;gap:8px;padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top));border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
 .header-logo{display:flex;align-items:center;gap:6px;color:var(--accent);font-weight:700;font-size:13px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .1s;padding:4px 0}
 .header-logo:active{opacity:.7}
 .header-logo svg.ic{font-size:18px}
@@ -481,7 +481,7 @@ pre:hover .code-copy-btn{opacity:1}
 
 /* ── レスポンシブ ── */
 @media(max-width:480px){
-  .header{gap:4px;padding:8px 10px}
+  .header{gap:4px;padding:8px 10px;padding-top:calc(8px + env(safe-area-inset-top))}
   .header-btn{padding:8px 10px;font-size:13px;min-height:40px}
   .header-btn .btn-label{display:inline}
   .model-select{font-size:13px;padding:8px 10px;min-height:40px}
@@ -590,6 +590,30 @@ pre:hover .code-copy-btn{opacity:1}
 [data-theme="light"] .cmd-menu{box-shadow:0 -4px 16px rgba(0,0,0,.08)}
 [data-theme="light"] .tool-approve-body{border-top-color:rgba(136,57,239,.15)}
 [data-theme="light"] .tool-approve-actions{border-top-color:rgba(136,57,239,.15)}
+/* ── 通知ベル ── */
+.notif-bell{position:relative}
+.notif-bell .notif-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;border-radius:8px;background:var(--danger);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;pointer-events:none}
+.notif-bell .notif-badge:empty,.notif-bell .notif-badge[data-count="0"]{display:none}
+.notif-panel{display:none;position:fixed;top:calc(54px + env(safe-area-inset-top));right:8px;width:320px;max-height:400px;background:var(--surface);border:1px solid var(--border-light);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:100;overflow:hidden;flex-direction:column}
+.notif-panel.open{display:flex}
+.notif-panel-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;color:var(--text-bright)}
+.notif-panel-actions{display:flex;gap:8px;align-items:center}
+.notif-panel-action{background:none;border:none;color:var(--accent);font-size:11px;cursor:pointer;padding:2px 6px;border-radius:4px;transition:all .1s}
+.notif-panel-action:hover{background:var(--accent-dim)}
+.notif-list{overflow-y:auto;max-height:340px;flex:1}
+.notif-item{display:flex;align-items:flex-start;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
+.notif-item:hover{background:var(--surface-hover)}
+.notif-item:last-child{border-bottom:none}
+.notif-item-icon{flex-shrink:0;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;background:var(--accent-dim);color:var(--accent)}
+.notif-item-body{flex:1;min-width:0}
+.notif-item-title{font-size:12px;font-weight:600;color:var(--text-bright);line-height:1.3}
+.notif-item-text{font-size:11px;color:var(--muted);line-height:1.4;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.notif-item-time{font-size:10px;color:var(--muted);flex-shrink:0;margin-left:4px}
+.notif-empty{padding:24px;text-align:center;color:var(--muted);font-size:12px}
+.notif-push-row{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-top:1px solid var(--border);font-size:11px;color:var(--muted)}
+.notif-push-btn{background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;transition:all .1s}
+.notif-push-btn:hover{color:var(--text);border-color:var(--border-light)}
+.notif-push-btn.active{color:var(--success);border-color:rgba(166,227,161,.3)}
 </style>
 </head>
 <body>
@@ -638,7 +662,29 @@ pre:hover .code-copy-btn{opacity:1}
       </button>
     </div>
   </div>
+  <div class="notif-bell">
+    <button class="header-btn" id="notifBellBtn" onclick="toggleNotifPanel()" title="Notifications">
+      <svg class="ic" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    </button>
+    <span class="notif-badge" id="notifBadge" data-count="0"></span>
+  </div>
   <button class="header-btn" id="settingsBtn" onclick="openSettingsPanel()" title="Settings"></button>
+</div>
+<!-- Notification Panel -->
+<div class="notif-panel" id="notifPanel">
+  <div class="notif-panel-header">
+    <span>通知</span>
+    <div class="notif-panel-actions">
+      <button class="notif-panel-action" onclick="markAllNotifRead()">すべて既読</button>
+    </div>
+  </div>
+  <div class="notif-list" id="notifList">
+    <div class="notif-empty">通知はありません</div>
+  </div>
+  <div class="notif-push-row">
+    <span>プッシュ通知</span>
+    <button class="notif-push-btn" id="pushToggleBtn" onclick="togglePush(this)">Push OFF</button>
+  </div>
 </div>
 <div id="connectionBanner" class="connection-banner" role="status" aria-live="polite"></div>
 <div class="tab-bar-wrap">
@@ -4884,7 +4930,136 @@ function showGitPillTooltip(el, type, a, b) {
   setTimeout(() => document.addEventListener('click', dismiss), 0)
 }
 
+// ── Notifications ──
+let _notifSSE = null
+function initNotifications() {
+  loadNotifications()
+  connectNotifSSE()
+  // Service Worker + Push
+  registerServiceWorker().then(() => {
+    const btn = document.getElementById('pushToggleBtn')
+    if (btn) updatePushButton(btn)
+  })
+}
+function connectNotifSSE() {
+  if (_notifSSE) { try { _notifSSE.close() } catch {} }
+  _notifSSE = new EventSource('/api/notifications/stream')
+  _notifSSE.addEventListener('notification', (e) => {
+    try {
+      const n = JSON.parse(e.data)
+      prependNotification(n)
+      updateNotifBadge()
+    } catch {}
+  })
+  _notifSSE.onerror = () => {
+    setTimeout(connectNotifSSE, 5000)
+  }
+}
+async function loadNotifications() {
+  try {
+    const res = await fetch('/api/notifications')
+    const { items } = await res.json()
+    renderNotifList(items || [])
+    updateNotifBadge(items?.length || 0)
+  } catch {}
+}
+function renderNotifList(items) {
+  const list = document.getElementById('notifList')
+  if (!list) return
+  if (!items.length) {
+    list.innerHTML = '<div class="notif-empty">通知はありません</div>'
+    return
+  }
+  list.innerHTML = items.map(n => {
+    const icon = n.type === 'task_completed' ? '&#10003;' : n.type === 'error' ? '!' : '&#9679;'
+    const ago = timeAgo(n.createdAt)
+    const body = n.body ? `<div class="notif-item-text">${esc(n.body)}</div>` : ''
+    return `<div class="notif-item" data-id="${n.id}" onclick="markNotifRead(${n.id}, this)">
+      <div class="notif-item-icon">${icon}</div>
+      <div class="notif-item-body"><div class="notif-item-title">${esc(n.title)}</div>${body}</div>
+      <span class="notif-item-time">${ago}</span>
+    </div>`
+  }).join('')
+}
+function prependNotification(n) {
+  const list = document.getElementById('notifList')
+  if (!list) return
+  const empty = list.querySelector('.notif-empty')
+  if (empty) empty.remove()
+  const icon = n.type === 'task_completed' ? '&#10003;' : n.type === 'error' ? '!' : '&#9679;'
+  const ago = timeAgo(n.createdAt)
+  const body = n.body ? `<div class="notif-item-text">${esc(n.body)}</div>` : ''
+  const div = document.createElement('div')
+  div.className = 'notif-item'
+  div.dataset.id = String(n.id)
+  div.onclick = () => markNotifRead(n.id, div)
+  div.innerHTML = `<div class="notif-item-icon">${icon}</div>
+    <div class="notif-item-body"><div class="notif-item-title">${esc(n.title)}</div>${body}</div>
+    <span class="notif-item-time">${ago}</span>`
+  list.prepend(div)
+}
+function updateNotifBadge(count) {
+  const badge = document.getElementById('notifBadge')
+  if (!badge) return
+  if (count === undefined) {
+    const list = document.getElementById('notifList')
+    count = list ? list.querySelectorAll('.notif-item').length : 0
+  }
+  badge.dataset.count = String(count)
+  badge.textContent = count > 0 ? (count > 99 ? '99+' : String(count)) : ''
+}
+function toggleNotifPanel() {
+  const panel = document.getElementById('notifPanel')
+  if (!panel) return
+  panel.classList.toggle('open')
+  if (panel.classList.contains('open')) {
+    loadNotifications()
+    // パネル外クリックで閉じる
+    setTimeout(() => {
+      const dismiss = (e) => {
+        if (!panel.contains(e.target) && !document.getElementById('notifBellBtn')?.contains(e.target)) {
+          panel.classList.remove('open')
+          document.removeEventListener('click', dismiss)
+        }
+      }
+      document.addEventListener('click', dismiss)
+    }, 0)
+  }
+}
+async function markNotifRead(id, el) {
+  try {
+    await fetch(`/api/notifications/${id}/read`, { method: 'POST' })
+    if (el) el.remove()
+    updateNotifBadge()
+    const list = document.getElementById('notifList')
+    if (list && !list.querySelector('.notif-item')) {
+      list.innerHTML = '<div class="notif-empty">通知はありません</div>'
+    }
+  } catch {}
+}
+async function markAllNotifRead() {
+  try {
+    await fetch('/api/notifications/read-all', { method: 'POST' })
+    loadNotifications()
+  } catch {}
+}
+function timeAgo(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const s = Math.floor((Date.now() - d.getTime()) / 1000)
+  if (s < 60) return 'now'
+  if (s < 3600) return Math.floor(s / 60) + 'm'
+  if (s < 86400) return Math.floor(s / 3600) + 'h'
+  return Math.floor(s / 86400) + 'd'
+}
+function esc(s) {
+  if (!s) return ''
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+}
+
 init()
+initNotifications()
 </script>
+<script src="/static/push-client.js"></script>
 </body>
 </html>

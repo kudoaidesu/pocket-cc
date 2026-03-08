@@ -20,6 +20,9 @@ import { observerRoutes } from './routes/observer.js'
 import { testMatrixRoutes } from './routes/test-matrix.js'
 import { changesRoutes } from './routes/changes.js'
 import { createDocRoutes } from './routes/doc-viewer.js'
+import notificationRoutes from './routes/notifications.js'
+import pushRoutes from './routes/push.js'
+import { initWebPush } from './services/push-service.js'
 import { createLogger } from '../utils/logger.js'
 import { getStrategyStats, getRecentEvaluations } from '../utils/cost-tracker.js'
 import { getDb } from '../db/index.js'
@@ -148,10 +151,25 @@ app.get('/doc-viewer.js', (c) => {
   return c.body(js)
 })
 
+// Service Worker（ルートパスでサーブ）
+app.get('/sw.js', (c) => {
+  const js = readFileSync(resolve(process.cwd(), 'src/web/public/sw.js'), 'utf-8')
+  c.header('Content-Type', 'application/javascript')
+  c.header('Cache-Control', 'no-cache, no-store, must-revalidate')
+  c.header('Service-Worker-Allowed', '/')
+  return c.body(js)
+})
+
 // --- API ルート ---
 
 // チャット（SSEストリーミング）
 app.route('/api/chat', chatRoutes)
+
+// 通知
+app.route('/api/notifications', notificationRoutes)
+
+// Web Push
+app.route('/api/push', pushRoutes)
 
 // プロジェクト一覧（手動 + 自動スキャン + フロントデスク）
 app.get('/api/projects', (c) => {
@@ -816,6 +834,9 @@ app.get('*', (c) => {
     return c.text('index.html not found', 404)
   }
 })
+
+// --- Web Push 初期化 ---
+initWebPush()
 
 // --- サーバー起動 ---
 log.info(`Starting web server on ${HOST}:${PORT}`)
