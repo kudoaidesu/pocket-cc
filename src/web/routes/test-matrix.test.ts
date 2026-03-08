@@ -53,6 +53,20 @@ function createTables(db: Database.Database): void {
       created_at TEXT NOT NULL
     )
   `)
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS test_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      record_id INTEGER NOT NULL REFERENCES test_records(id) ON DELETE CASCADE,
+      project TEXT NOT NULL,
+      coordinates_json TEXT NOT NULL,
+      status TEXT NOT NULL,
+      confidence INTEGER NOT NULL DEFAULT 0,
+      notes TEXT,
+      test_name TEXT,
+      created_at TEXT NOT NULL
+    )
+  `)
 }
 
 // getDb をモックしてインメモリ DB を返す
@@ -834,6 +848,426 @@ describe('test-matrix routes', () => {
         expect(res.status).toBe(200)
         const body = await res.json()
         expect(body.counts.total).toBe(0)
+      })
+
+      it('coverageRate と totalCombinations を返す', async () => {
+        // 2次元: permission(2値) × screen(2値) = 4組み合わせ
+        const ts = '2026-01-01T00:00:00Z'
+        db.prepare(`
+          INSERT INTO test_dimensions (project, name, display_name, values_json, sort_order, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run('my-project', 'permission', '権限', '["admin","user"]', 0, ts, ts)
+        db.prepare(`
+          INSERT INTO test_dimensions (project, name, display_name, values_json, sort_order, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run('my-project', 'screen', '画面', '["home","settings"]', 1, ts, ts)
+
+        // pass 1件 + fail 1件 = テスト済み2件
+        db.prepare(`
+          INSERT INTO test_records (project, coordinates_json, status, confidence, flaky_rate,
+            pass_count, fail_count, skip_count, total_runs, last_run_at, notes, test_name, created_at, updated_at)
+          VALUES (?, ?, ?, 0, 0, 1, 0, 0, 1, ?, NULL, NULL, ?, ?)
+        `).run('my-project', '{"permission":"admin","screen":"home"}', 'pass', ts, ts, ts)
+        db.prepare(`
+          INSERT INTO test_records (project, coordinates_json, status, confidence, flaky_rate,
+            pass_count, fail_count, skip_count, total_runs, last_run_at, notes, test_name, created_at, updated_at)
+          VALUES (?, ?, ?, 0, 0, 0, 1, 0, 1, ?, NULL, NULL, ?, ?)
+        `).run('my-project', '{"permission":"admin","screen":"settings"}', 'fail', ts, ts, ts)
+
+        const res = await app.request('/api/test-matrix/summary?project=my-project')
+        expect(res.status).toBe(200)
+        const body = await res.json()
+        expect(body.totalCombinations).toBe(4)
+        expect(body.coverageRate).toBeCloseTo(2 / 4) // pass + fail = 2件
+      })
+    })
+  })
+
+  // ── P6: POST冪等性・flaky_rate・座標バリデーション ─────────
+
+  describe('P6 データ品質', () => {
+    describe('POST /records 冪等性', () => {
+      it('同じ座標・同じステータスの場合はカウンタをインクリメントしない', async () => {
+        // 初回作成
+        const res1 = await app.request('/api/test-matrix/records', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project: 'my-project',
+            coordinates: { permission: 'admin' },
+            status: 'pass',
+          }),
+        })
+        expect(res1.status).toBe(201)
+        const body1 = await res1.json()
+
+        // 同じ座標・同じステータスで再投入 → スキップ
+        const res2 = await app.request('/api/test-matrix/records', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project: 'my-project',
+            coordinates: { permission: 'admin' },
+            status: 'pass',
+          }),
+        })
+        expect(res2.status).toBe(200)
+        const body2 = await res2.json()
+        expect(body2.updated).toBe(true)
+        expect(body2.skipped).toBe(true)
+
+        // カウンタが増えていないことを確認
+        const row = db.prepare('SELECT * FROM test_records WHERE id = ?').get(body1.id) as Record<string, unknown>
+        expect(row.total_runs).toBe(1)
+        expect(row.pass_count).toBe(1)
+      })
+
+      it('同じ座標・異なるステータスの場合はカウンタをインクリメントする', async () => {
+        // 初回作成 (pass)
+        const res1 = await app.request('/api/test-matrix/records', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project: 'my-project',
+            coordinates: { permission: 'admin' },
+            status: 'pass',
+          }),
+        })
+        const body1 = await res1.json()
+
+        // 異なるステータス (fail) で再投入 → カウンタインクリメント
+        const res2 = await app.request('/api/test-matrix/records', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project: 'my-project',
+            coordinates: { permission: 'admin' },
+            status: 'fail',
+          }),
+        })
+        expect(res2.status).toBe(200)
+        const body2 = await res2.json()
+        expect(body2.updated).toBe(true)
+        expect(body2.skipped).toBeUndefined()
+
+        const row = db.prepare('SELECT * FROM test_records WHERE id = ?').get(body1.id) as Record<string, unknown>
+        expect(row.total_runs).toBe(2)
+        expect(row.pass_count).toBe(1)
+        expect(row.fail_count).toBe(1)
+      })
+    })
+
+    describe('flaky_rate 自動計算', () => {
+      it('fail→pass の順でステータス更新した場合に flaky_rate が正しく計算される', async () => {
+        // 初回 fail
+        const res1 = await app.request('/api/test-matrix/records', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project: 'my-project',
+            coordinates: { permission: 'admin' },
+            status: 'fail',
+          }),
+        })
+        const body1 = await res1.json()
+        const row1 = db.prepare('SELECT * FROM test_records WHERE id = ?').get(body1.id) as Record<string, unknown>
+        // 初回: fail_count=1, total_runs=1 → flaky_rate=1.0
+        expect(row1.flaky_rate).toBe(1)
+
+        // 2回目 pass
+        await app.request('/api/test-matrix/records', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project: 'my-project',
+            coordinates: { permission: 'admin' },
+            status: 'pass',
+          }),
+        })
+        const row2 = db.prepare('SELECT * FROM test_records WHERE id = ?').get(body1.id) as Record<string, unknown>
+        // 更新後: fail_count=1, total_runs=2 → flaky_rate=0.5
+        expect(row2.flaky_rate).toBeCloseTo(0.5)
+      })
+    })
+
+    describe('座標バリデーション', () => {
+      beforeEach(() => {
+        const ts = '2026-01-01T00:00:00Z'
+        db.prepare(`
+          INSERT INTO test_dimensions (project, name, display_name, values_json, sort_order, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run('my-project', 'permission', '権限', '["admin","user"]', 0, ts, ts)
+      })
+
+      it('既知の次元値に含まれる場合は正常に作成できる', async () => {
+        const res = await app.request('/api/test-matrix/records', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project: 'my-project',
+            coordinates: { permission: 'admin' },
+            status: 'pass',
+          }),
+        })
+        expect(res.status).toBe(201)
+      })
+
+      it('次元が定義されているが値が不正な場合は 400 を返す', async () => {
+        const res = await app.request('/api/test-matrix/records', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project: 'my-project',
+            coordinates: { permission: 'superadmin' },
+            status: 'pass',
+          }),
+        })
+        expect(res.status).toBe(400)
+        const body = await res.json()
+        expect(body.error).toContain('superadmin')
+        expect(body.error).toContain('permission')
+      })
+
+      it('次元が未定義の場合はバリデーションをスキップする', async () => {
+        // 'screen' 次元は未登録なのでバリデーションしない
+        const res = await app.request('/api/test-matrix/records', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project: 'my-project',
+            coordinates: { screen: 'any_value' },
+            status: 'pass',
+          }),
+        })
+        expect(res.status).toBe(201)
+      })
+    })
+  })
+
+  // ── P1: Gap View ───────────────────────────────────────
+
+  describe('P1 Gap View', () => {
+    describe('GET /:slug/gaps', () => {
+      it('次元が未定義の場合は空のセルリストを返す', async () => {
+        const res = await app.request('/api/test-matrix/my-project/gaps')
+        expect(res.status).toBe(200)
+        const body = await res.json()
+        expect(body.cells).toEqual([])
+        expect(body.totalCombinations).toBe(0)
+      })
+
+      it('全セルを untested として返す（レコードなし）', async () => {
+        const ts = '2026-01-01T00:00:00Z'
+        db.prepare(`
+          INSERT INTO test_dimensions (project, name, display_name, values_json, sort_order, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run('my-project', 'permission', '権限', '["admin","user"]', 0, ts, ts)
+
+        const res = await app.request('/api/test-matrix/my-project/gaps')
+        expect(res.status).toBe(200)
+        const body = await res.json()
+        expect(body.totalCombinations).toBe(2)
+        expect(body.untested).toBe(2)
+        expect(body.recent).toBe(0)
+        expect(body.cells).toHaveLength(2)
+        expect(body.cells.every((c: { state: string }) => c.state === 'untested')).toBe(true)
+      })
+
+      it('デカルト積が正しく計算される（2次元）', async () => {
+        const ts = '2026-01-01T00:00:00Z'
+        db.prepare(`
+          INSERT INTO test_dimensions (project, name, display_name, values_json, sort_order, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run('my-project', 'permission', '権限', '["admin","user"]', 0, ts, ts)
+        db.prepare(`
+          INSERT INTO test_dimensions (project, name, display_name, values_json, sort_order, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run('my-project', 'screen', '画面', '["home","settings"]', 1, ts, ts)
+
+        const res = await app.request('/api/test-matrix/my-project/gaps')
+        expect(res.status).toBe(200)
+        const body = await res.json()
+        expect(body.totalCombinations).toBe(4)
+        expect(body.cells).toHaveLength(4)
+      })
+
+      it('recent セルが正しく識別される', async () => {
+        const ts = '2026-01-01T00:00:00Z'
+        const recentTs = new Date().toISOString() // 現在時刻 → recent
+        db.prepare(`
+          INSERT INTO test_dimensions (project, name, display_name, values_json, sort_order, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run('my-project', 'permission', '権限', '["admin","user"]', 0, ts, ts)
+
+        // admin → recent (直近テスト済み)
+        db.prepare(`
+          INSERT INTO test_records (project, coordinates_json, status, confidence, flaky_rate,
+            pass_count, fail_count, skip_count, total_runs, last_run_at, notes, test_name, created_at, updated_at)
+          VALUES (?, ?, ?, 0, 0, 1, 0, 0, 1, ?, NULL, NULL, ?, ?)
+        `).run('my-project', '{"permission":"admin"}', 'pass', recentTs, ts, ts)
+
+        const res = await app.request('/api/test-matrix/my-project/gaps')
+        expect(res.status).toBe(200)
+        const body = await res.json()
+        expect(body.recent).toBe(1)
+        expect(body.untested).toBe(1)
+
+        const adminCell = body.cells.find((c: { coordinates: Record<string, string> }) => c.coordinates.permission === 'admin')
+        expect(adminCell.state).toBe('recent')
+        const userCell = body.cells.find((c: { coordinates: Record<string, string> }) => c.coordinates.permission === 'user')
+        expect(userCell.state).toBe('untested')
+      })
+
+      it('stale_warn と stale_danger が正しく識別される', async () => {
+        const ts = '2026-01-01T00:00:00Z'
+        db.prepare(`
+          INSERT INTO test_dimensions (project, name, display_name, values_json, sort_order, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run('my-project', 'permission', '権限', '["admin","user","guest"]', 0, ts, ts)
+
+        // admin → 10日前 (stale_warn: 7d以上, 30d未満)
+        const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+        db.prepare(`
+          INSERT INTO test_records (project, coordinates_json, status, confidence, flaky_rate,
+            pass_count, fail_count, skip_count, total_runs, last_run_at, notes, test_name, created_at, updated_at)
+          VALUES (?, ?, ?, 0, 0, 1, 0, 0, 1, ?, NULL, NULL, ?, ?)
+        `).run('my-project', '{"permission":"admin"}', 'pass', tenDaysAgo, ts, ts)
+
+        // user → 35日前 (stale_danger: 30d以上)
+        const thirtyFiveDaysAgo = new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString()
+        db.prepare(`
+          INSERT INTO test_records (project, coordinates_json, status, confidence, flaky_rate,
+            pass_count, fail_count, skip_count, total_runs, last_run_at, notes, test_name, created_at, updated_at)
+          VALUES (?, ?, ?, 0, 0, 1, 0, 0, 1, ?, NULL, NULL, ?, ?)
+        `).run('my-project', '{"permission":"user"}', 'pass', thirtyFiveDaysAgo, ts, ts)
+
+        const res = await app.request('/api/test-matrix/my-project/gaps')
+        expect(res.status).toBe(200)
+        const body = await res.json()
+
+        const adminCell = body.cells.find((c: { coordinates: Record<string, string> }) => c.coordinates.permission === 'admin')
+        expect(adminCell.state).toBe('stale_warn')
+        const userCell = body.cells.find((c: { coordinates: Record<string, string> }) => c.coordinates.permission === 'user')
+        expect(userCell.state).toBe('stale_danger')
+        const guestCell = body.cells.find((c: { coordinates: Record<string, string> }) => c.coordinates.permission === 'guest')
+        expect(guestCell.state).toBe('untested')
+
+        expect(body.staleWarn).toBe(1)
+        expect(body.staleDanger).toBe(1)
+        expect(body.untested).toBe(1)
+      })
+
+      it('staleDays のデフォルト値が返される', async () => {
+        const res = await app.request('/api/test-matrix/my-project/gaps')
+        expect(res.status).toBe(200)
+        const body = await res.json()
+        expect(body.staleDays).toEqual({ warn: 7, danger: 30 })
+      })
+    })
+  })
+
+  // ── P2: テスト履歴 ─────────────────────────────────────
+
+  describe('P2 テスト履歴', () => {
+    describe('GET /records/:id/history', () => {
+      it('存在しない record id で 404 を返す', async () => {
+        const res = await app.request('/api/test-matrix/records/9999/history')
+        expect(res.status).toBe(404)
+      })
+
+      it('不正な id で 400 を返す', async () => {
+        const res = await app.request('/api/test-matrix/records/abc/history')
+        expect(res.status).toBe(400)
+      })
+
+      it('POST /records で作成時に履歴レコードが自動作成される', async () => {
+        const res = await app.request('/api/test-matrix/records', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project: 'my-project',
+            coordinates: { permission: 'admin' },
+            status: 'pass',
+            notes: '初回テスト',
+          }),
+        })
+        expect(res.status).toBe(201)
+        const body = await res.json()
+
+        // 履歴レコードを確認
+        const histRes = await app.request(`/api/test-matrix/records/${body.id}/history`)
+        expect(histRes.status).toBe(200)
+        const histBody = await histRes.json()
+        expect(histBody).toHaveLength(1)
+        expect(histBody[0].status).toBe('pass')
+        expect(histBody[0].notes).toBe('初回テスト')
+        expect(histBody[0].record_id).toBe(body.id)
+      })
+
+      it('POST /records でステータス変更時に履歴レコードが追加される', async () => {
+        // 初回作成 (pass)
+        const res1 = await app.request('/api/test-matrix/records', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project: 'my-project',
+            coordinates: { permission: 'admin' },
+            status: 'pass',
+          }),
+        })
+        const body1 = await res1.json()
+
+        // 異なるステータスで更新 (fail)
+        await app.request('/api/test-matrix/records', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project: 'my-project',
+            coordinates: { permission: 'admin' },
+            status: 'fail',
+            notes: '失敗',
+          }),
+        })
+
+        // 履歴が2件になっていることを確認
+        const histRes = await app.request(`/api/test-matrix/records/${body1.id}/history`)
+        expect(histRes.status).toBe(200)
+        const histBody = await histRes.json()
+        expect(histBody).toHaveLength(2)
+        // status が pass と fail の両方が含まれていることを確認（順序はタイムスタンプ依存）
+        const statuses = histBody.map((h: { status: string }) => h.status)
+        expect(statuses).toContain('pass')
+        expect(statuses).toContain('fail')
+      })
+
+      it('同じステータスでスキップされた場合は履歴が追加されない', async () => {
+        // 初回作成 (pass)
+        const res1 = await app.request('/api/test-matrix/records', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project: 'my-project',
+            coordinates: { permission: 'admin' },
+            status: 'pass',
+          }),
+        })
+        const body1 = await res1.json()
+
+        // 同一ステータスで再投入 → スキップ (履歴追加なし)
+        await app.request('/api/test-matrix/records', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project: 'my-project',
+            coordinates: { permission: 'admin' },
+            status: 'pass',
+          }),
+        })
+
+        // 履歴は1件のまま
+        const histRes = await app.request(`/api/test-matrix/records/${body1.id}/history`)
+        const histBody = await histRes.json()
+        expect(histBody).toHaveLength(1)
       })
     })
   })

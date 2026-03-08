@@ -134,14 +134,35 @@ testMatrixRoutes.post('/records', async (c) => {
   const db = getDb()
   const ts = now()
 
+  // 座標バリデーション: 各次元の値が既知の次元値に含まれるか検証
+  for (const [dimName, dimValue] of Object.entries(body.coordinates)) {
+    const dim = db.prepare(
+      'SELECT values_json FROM test_dimensions WHERE project = ? AND name = ?'
+    ).get(body.project, dimName) as { values_json: string } | undefined
+
+    if (dim) {
+      const allowedValues = JSON.parse(dim.values_json) as string[]
+      if (!allowedValues.includes(dimValue)) {
+        return c.json({
+          error: `Invalid coordinate value "${dimValue}" for dimension "${dimName}". Allowed values: ${allowedValues.join(', ')}`
+        }, 400)
+      }
+    }
+  }
+
   // 同じ座標のレコードが既に存在するかチェック
   const coordJson = JSON.stringify(body.coordinates)
   const existing = db.prepare(
-    'SELECT id FROM test_records WHERE project = ? AND coordinates_json = ?'
-  ).get(body.project, coordJson) as { id: number } | undefined
+    'SELECT id, status FROM test_records WHERE project = ? AND coordinates_json = ?'
+  ).get(body.project, coordJson) as { id: number; status: string } | undefined
 
   if (existing) {
-    // 既存レコードを更新（ステータス・信頼度・ノート）
+    // 冪等性: 同じ座標・同じステータスの場合はカウンタをインクリメントしない
+    if (existing.status === status) {
+      return c.json({ id: existing.id, updated: true, skipped: true })
+    }
+
+    // ステータスが変わった場合のみカウンタをインクリメント
     const passInc = status === 'pass' ? 1 : 0
     const failInc = status === 'fail' ? 1 : 0
     const skipInc = status === 'skip' ? 1 : 0
@@ -150,12 +171,20 @@ testMatrixRoutes.post('/records', async (c) => {
       UPDATE test_records SET
         status = ?, confidence = ?, notes = COALESCE(?, notes),
         pass_count = pass_count + ?, fail_count = fail_count + ?, skip_count = skip_count + ?,
-        total_runs = total_runs + 1, last_run_at = ?, updated_at = ?
+        total_runs = total_runs + 1, last_run_at = ?, updated_at = ?,
+        flaky_rate = CAST(fail_count + ? AS REAL) / (total_runs + 1)
       WHERE id = ?
     `).run(
       status, body.confidence ?? 0, body.notes ?? null,
-      passInc, failInc, skipInc, ts, ts, existing.id
+      passInc, failInc, skipInc, ts, ts,
+      failInc, existing.id
     )
+
+    // 履歴レコードを追加
+    db.prepare(`
+      INSERT INTO test_history (record_id, project, coordinates_json, status, confidence, notes, test_name, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(existing.id, body.project, coordJson, status, body.confidence ?? 0, body.notes ?? null, body.testName ?? null, ts)
 
     return c.json({ id: existing.id, updated: true })
   }
@@ -163,21 +192,30 @@ testMatrixRoutes.post('/records', async (c) => {
   const passCount = status === 'pass' ? 1 : 0
   const failCount = status === 'fail' ? 1 : 0
   const skipCount = status === 'skip' ? 1 : 0
+  const flakyRate = failCount // 1回目: 0/1=0 or 1/1=1
 
   const result = db.prepare(`
     INSERT INTO test_records (
       project, coordinates_json, status, confidence, flaky_rate,
       pass_count, fail_count, skip_count, total_runs,
       last_run_at, notes, test_name, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, 0, ?, ?, ?, 1, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)
   `).run(
-    body.project, coordJson, status, body.confidence ?? 0,
+    body.project, coordJson, status, body.confidence ?? 0, flakyRate,
     passCount, failCount, skipCount,
     ts, body.notes ?? null, body.testName ?? null, ts, ts
   )
 
+  const newId = Number(result.lastInsertRowid)
+
+  // 初回作成時も履歴レコードを追加
+  db.prepare(`
+    INSERT INTO test_history (record_id, project, coordinates_json, status, confidence, notes, test_name, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(newId, body.project, coordJson, status, body.confidence ?? 0, body.notes ?? null, body.testName ?? null, ts)
+
   log.info(`Created test record for ${body.project}: ${coordJson}`)
-  return c.json({ id: result.lastInsertRowid, created: true }, 201)
+  return c.json({ id: newId, created: true }, 201)
 })
 
 /** PUT /records/:id — レコード更新 */
@@ -300,6 +338,26 @@ testMatrixRoutes.delete('/evidence/:id', (c) => {
   return c.json({ deleted: true })
 })
 
+// ── History ───────────────────────────────────────────
+
+/** GET /records/:id/history — テスト履歴タイムライン */
+testMatrixRoutes.get('/records/:id/history', (c) => {
+  const recordId = Number(c.req.param('id'))
+  if (isNaN(recordId)) return c.json({ error: 'Invalid id' }, 400)
+
+  const db = getDb()
+
+  // レコード存在確認
+  const record = db.prepare('SELECT id FROM test_records WHERE id = ?').get(recordId)
+  if (!record) return c.json({ error: 'Record not found' }, 404)
+
+  const rows = db.prepare(
+    'SELECT * FROM test_history WHERE record_id = ? ORDER BY created_at DESC'
+  ).all(recordId)
+
+  return c.json(rows)
+})
+
 // ── Summary ───────────────────────────────────────────
 
 /** GET /summary?project={slug} */
@@ -324,9 +382,114 @@ testMatrixRoutes.get('/summary', (c) => {
     'SELECT name, display_name, values_json FROM test_dimensions WHERE project = ? ORDER BY sort_order'
   ).all(project)
 
+  // カバレッジ率: テスト済み（pass/fail/skip/flaky）/ 全次元の組み合わせ数
+  const dimRows = dimensions as Array<{ values_json: string }>
+  const totalCombinations = dimRows.reduce((acc, d) => {
+    const values = JSON.parse(d.values_json) as string[]
+    return acc * values.length
+  }, dimRows.length > 0 ? 1 : 0)
+  const testedCount = counts.pass + counts.fail + counts.skip + counts.flaky
+  const coverageRate = totalCombinations > 0 ? testedCount / totalCombinations : 0
+
   return c.json({
     project,
     counts,
     dimensions,
+    coverageRate,
+    totalCombinations,
+  })
+})
+
+// ── Gap View ───────────────────────────────────────────
+
+const STALE_WARN_DAYS = 7
+const STALE_DANGER_DAYS = 30
+
+/** GET /:slug/gaps?project={slug} — 未テスト・陳腐化セルの可視化 */
+testMatrixRoutes.get('/:slug/gaps', (c) => {
+  const slug = c.req.param('slug')
+  const db = getDb()
+
+  const dimensions = db.prepare(
+    'SELECT name, values_json FROM test_dimensions WHERE project = ? ORDER BY sort_order'
+  ).all(slug) as Array<{ name: string; values_json: string }>
+
+  if (dimensions.length === 0) {
+    return c.json({
+      project: slug, cells: [], totalCombinations: 0, coverageRate: 0,
+      untested: 0, staleWarn: 0, staleDanger: 0, recent: 0,
+      staleDays: { warn: STALE_WARN_DAYS, danger: STALE_DANGER_DAYS },
+    })
+  }
+
+  // デカルト積を生成
+  const dimValues = dimensions.map(d => ({
+    name: d.name,
+    values: JSON.parse(d.values_json) as string[],
+  }))
+
+  const cartesian = (dims: Array<{ name: string; values: string[] }>): Array<Record<string, string>> => {
+    if (dims.length === 0) return [{}]
+    const [first, ...rest] = dims
+    const restCombinations = cartesian(rest)
+    const result: Array<Record<string, string>> = []
+    for (const value of first.values) {
+      for (const combo of restCombinations) {
+        result.push({ [first.name]: value, ...combo })
+      }
+    }
+    return result
+  }
+
+  const allCombinations = cartesian(dimValues)
+  const nowMs = Date.now()
+  const warnMs = STALE_WARN_DAYS * 24 * 60 * 60 * 1000
+  const dangerMs = STALE_DANGER_DAYS * 24 * 60 * 60 * 1000
+
+  const cells = allCombinations.map(coords => {
+    const coordJson = JSON.stringify(coords)
+    const record = db.prepare(
+      'SELECT id, status, last_run_at, flaky_rate FROM test_records WHERE project = ? AND coordinates_json = ?'
+    ).get(slug, coordJson) as { id: number; status: string; last_run_at: string | null; flaky_rate: number } | undefined
+
+    if (!record || record.status === 'not_tested') {
+      return { coordinates: coords, state: 'untested' as const, record: null }
+    }
+
+    const lastRunAt = record.last_run_at
+    if (!lastRunAt) {
+      return { coordinates: coords, state: 'untested' as const, record }
+    }
+
+    const ageMs = nowMs - new Date(lastRunAt).getTime()
+    let state: 'recent' | 'stale_warn' | 'stale_danger'
+    if (ageMs >= dangerMs) {
+      state = 'stale_danger'
+    } else if (ageMs >= warnMs) {
+      state = 'stale_warn'
+    } else {
+      state = 'recent'
+    }
+
+    return { coordinates: coords, state, record }
+  })
+
+  const untested = cells.filter(c => c.state === 'untested').length
+  const staleWarn = cells.filter(c => c.state === 'stale_warn').length
+  const staleDanger = cells.filter(c => c.state === 'stale_danger').length
+  const recent = cells.filter(c => c.state === 'recent').length
+  const totalCombinations = allCombinations.length
+  const coverageRate = totalCombinations > 0 ? recent / totalCombinations : 0
+
+  return c.json({
+    project: slug,
+    cells,
+    totalCombinations,
+    coverageRate,
+    untested,
+    staleWarn,
+    staleDanger,
+    recent,
+    staleDays: { warn: STALE_WARN_DAYS, danger: STALE_DANGER_DAYS },
   })
 })

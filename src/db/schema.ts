@@ -13,7 +13,7 @@ const log = createLogger('db:schema')
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 /** 現在のスキーマバージョン。マイグレーション追加時にインクリメントする */
-const CURRENT_VERSION = 7
+const CURRENT_VERSION = 8
 
 export function initSchema(db: Database.Database): void {
   const version = db.pragma('user_version', { simple: true }) as number
@@ -30,6 +30,7 @@ export function initSchema(db: Database.Database): void {
     if (version < 5) migrateV5(db)
     if (version < 6) migrateV6(db)
     if (version < 7) migrateV7(db)
+    if (version < 8) migrateV8(db)
     db.pragma(`user_version = ${CURRENT_VERSION}`)
   })()
 
@@ -302,6 +303,27 @@ function migrateV7(db: Database.Database): void {
     )
   `)
   db.exec('CREATE INDEX IF NOT EXISTS idx_push_subscriptions_endpoint ON push_subscriptions(endpoint)')
+}
+
+// ── v8: テスト履歴テーブル ────────────────────────────────────
+
+function migrateV8(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS test_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      record_id INTEGER NOT NULL REFERENCES test_records(id) ON DELETE CASCADE,
+      project TEXT NOT NULL,
+      coordinates_json TEXT NOT NULL,
+      status TEXT NOT NULL,
+      confidence INTEGER NOT NULL DEFAULT 0,
+      notes TEXT,
+      test_name TEXT,
+      created_at TEXT NOT NULL
+    )
+  `)
+  db.exec('CREATE INDEX IF NOT EXISTS idx_test_history_record ON test_history(record_id)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_test_history_project ON test_history(project)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_test_history_created ON test_history(created_at DESC)')
 }
 
 // ── JSON → SQLite データ移行 ──────────────────────────────
