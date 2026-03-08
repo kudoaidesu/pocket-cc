@@ -95,7 +95,7 @@ code{background:var(--surface);padding:1px 5px;border-radius:3px;font-family:var
 <div class="page-header">
   <a href="/">pocket-cc</a>
   <span class="sep">/</span>
-  <h1>Change Report #132 — テストマトリクス 分類ブラウズビュー</h1>
+  <h1>Change Report #132 — テストマトリクス 分類ブラウズ専用化</h1>
   <button class="theme-toggle" onclick="toggleTheme()">Theme</button>
 </div>
 
@@ -106,14 +106,14 @@ code{background:var(--surface);padding:1px 5px;border-radius:3px;font-family:var
   <a href="#changes" class="toc-h2">変更内容</a>
   <a href="#design">設計判断</a>
   <a href="#screenshots" class="toc-h2">Before / After</a>
-  <a href="#browse-flow">分類別ビューフロー</a>
+  <a href="#browse-flow">3段階フロー</a>
   <a href="#tests" class="toc-h2">テスト</a>
   <a href="#regression">リグレッション</a>
   <a href="#followups">Follow-ups</a>
 </nav>
 <main class="content">
 
-<h1 class="title">テストマトリクス 階層的分類ブラウズビュー</h1>
+<h1 class="title">テストマトリクス 分類ブラウズビュー専用化 + テストケース説明追加</h1>
 <div class="meta">
   <span class="meta-tag date">2026-03-08</span>
   <span class="meta-tag branch">feat/test-matrix-category-browse</span>
@@ -122,18 +122,18 @@ code{background:var(--surface);padding:1px 5px;border-radius:3px;font-family:var
 
 <div class="summary-bar">
   <div class="summary-item"><span class="num">1</span><span class="lbl">変更ファイル</span></div>
-  <div class="summary-item"><span class="num">3</span><span class="lbl">ドリルダウン段数</span></div>
-  <div class="summary-item"><span class="num">~200</span><span class="lbl">追加行数</span></div>
+  <div class="summary-item"><span class="num">-257</span><span class="lbl">削除行数</span></div>
+  <div class="summary-item"><span class="num">+4</span><span class="lbl">追加行数</span></div>
+  <div class="summary-item"><span class="num">12</span><span class="lbl">説明更新レコード</span></div>
   <div class="summary-item"><span class="num">0</span><span class="lbl">API変更</span></div>
-  <div class="summary-item"><span class="num">256</span><span class="lbl">既存テスト</span></div>
 </div>
 
 <h2 id="tldr">TL;DR</h2>
 <table class="tldr-table">
-  <tr><th>課題</th><td>1000〜10000件規模になるとフラットリストでは把握困難</td></tr>
-  <tr><th>変更内容</th><td>テストマトリクスに「分類別」ビューを追加（次元&#8594;値&#8594;レコードの3段階ドリルダウン）</td></tr>
-  <tr><th>影響範囲</th><td>test-matrix.html のみ。既存のマトリクスビュー・CRUD機能は変更なし</td></tr>
-  <tr><th>リスク</th><td><span class="badge low">Low</span> — 既存APIは変更なし、新規UIロジックのみ追加</td></tr>
+  <tr><th>課題</th><td>1000〜10000件規模のデータではフラット2Dマトリクスが把握困難。何を確認しているかも不明瞭</td></tr>
+  <tr><th>変更内容</th><td>マトリクスビューを完全削除し分類別ブラウズ専用化。末端テストケースに「〇〇であること」説明を表示</td></tr>
+  <tr><th>影響範囲</th><td>test-matrix.html のみ。既存のCRUD・ドロワー機能は変更なし</td></tr>
+  <tr><th>リスク</th><td><span class="badge low">Low</span> — APIは変更なし、UIのみの変更</td></tr>
   <tr><th>切り戻し</th><td>PR #132 リバート</td></tr>
 </table>
 
@@ -141,10 +141,10 @@ code{background:var(--surface);padding:1px 5px;border-radius:3px;font-family:var
 <table>
   <thead><tr><th>Req ID</th><th>要件</th><th>Status</th><th>Evidence</th></tr></thead>
   <tbody>
-    <tr><td>REQ-1</td><td>機能別・画面別など大分類から選択できる</td><td><span class="badge done">Done</span></td><td>Step1: 次元カード表示確認</td></tr>
-    <tr><td>REQ-2</td><td>大分類内のテストパターン一覧を確認できる</td><td><span class="badge done">Done</span></td><td>Step3: レコードリスト確認</td></tr>
-    <tr><td>REQ-3</td><td>次元 &#8594; 値 &#8594; レコードの3段階ドリルダウン</td><td><span class="badge done">Done</span></td><td>Step1&#8594;2&#8594;3のフロー動作確認</td></tr>
-    <tr><td>REQ-4</td><td>ブレッドクラムで上位に戻れる</td><td><span class="badge done">Done</span></td><td>「すべての分類 › 機能 › Web Push」表示・ナビゲーション確認</td></tr>
+    <tr><td>REQ-1</td><td>次元&#8594;値&#8594;レコードの3段階ドリルダウン</td><td><span class="badge done">Done</span></td><td>Step1&#8594;2&#8594;3のフロー確認済み</td></tr>
+    <tr><td>REQ-2</td><td>マトリクスビューを削除して分類別専用ページに</td><td><span class="badge done">Done</span></td><td>トグルボタン・2Dグリッド・Row/Col/Filterセレクタ削除確認</td></tr>
+    <tr><td>REQ-3</td><td>末端テストケースに「〇〇であること」を表示</td><td><span class="badge done">Done</span></td><td>Step3スクリーンショット：各カード上部に説明テキスト表示</td></tr>
+    <tr><td>REQ-4</td><td>分類カード（Step1・Step2）には説明不要</td><td><span class="badge done">Done</span></td><td>Step1・Step2に説明テキストなし確認</td></tr>
   </tbody>
 </table>
 
@@ -153,75 +153,75 @@ code{background:var(--surface);padding:1px 5px;border-radius:3px;font-family:var
 <table>
   <thead><tr><th>ファイル</th><th>変更種別</th><th>概要</th></tr></thead>
   <tbody>
-    <tr><td><code>src/web/public/test-matrix.html</code></td><td><span class="badge mod">修正</span></td><td>ブラウズビューCSS・HTML・JS追加（約200行）</td></tr>
+    <tr><td><code>src/web/public/test-matrix.html</code></td><td><span class="badge mod">修正</span></td><td>マトリクスビュー削除（-257行）、notes表示追加（+4行）</td></tr>
   </tbody>
 </table>
+
+<h3>削除したもの</h3>
+<ul style="margin:8px 0 0 16px;font-size:13px;line-height:2">
+  <li>Controls バー（Row / Col / Filter / 空セル / % セレクタ）</li>
+  <li>「マトリクス / 分類別」トグルボタン</li>
+  <li><code>#matrixSection</code>（2Dグリッド・モバイルカード）</li>
+  <li>JS: <code>renderMatrix</code>, <code>renderCards</code>, <code>populateDimSelectors</code>, <code>setViewMode</code> など</li>
+</ul>
 
 <h3 id="design">設計判断</h3>
 <table>
   <thead><tr><th>判断</th><th>代替案</th><th>理由</th><th>トレードオフ</th></tr></thead>
   <tbody>
     <tr>
-      <td>クライアント側で records/dimensions を集計</td>
-      <td>専用API追加</td>
-      <td>既にデータ全量取得済み。APIコール増加なし</td>
-      <td>大量データ時に集計コストがフロント側に乗る</td>
+      <td><code>notes</code> フィールドを「確認内容」として使用</td>
+      <td>専用 <code>test_description</code> カラム追加</td>
+      <td>DBマイグレーション不要。既存APIのまま対応</td>
+      <td>notes本来の用途（自由メモ）と混在する</td>
     </tr>
     <tr>
-      <td>ビューモードトグル（マトリクス/分類別）で共存</td>
-      <td>別ページ化</td>
-      <td>既存ユーザーの操作フローを壊さない</td>
-      <td>コントロールバーが若干複雑になる</td>
-    </tr>
-    <tr>
-      <td>3段階固定の階層（次元&#8594;値&#8594;レコード）</td>
-      <td>任意深さのツリー</td>
-      <td>シンプルで把握しやすい。テストマトリクスの構造に合致</td>
-      <td>値×値の組合せ閲覧は不可</td>
+      <td>マトリクスビュー完全削除</td>
+      <td>非表示・トグルで保持</td>
+      <td>コードの複雑性を下げる。「分類別特化」の意図を明確化</td>
+      <td>2D比較ビューが必要になった場合は再実装が必要</td>
     </tr>
   </tbody>
 </table>
 
 <h2 id="screenshots">Before / After</h2>
-<p style="color:var(--muted);font-size:13px;margin-bottom:12px">マトリクスビュー自体は変更なし。コントロールバーに「マトリクス/分類別」トグルが追加された。</p>
 <div class="screenshots">
   <div class="screenshot-card">
-    <img src="/changes/screenshots/120_after_test_matrix.png" onclick="showFull(this)" alt="Before">
-    <div class="label before">Before: フラットカードリスト</div>
+    <img src="/changes/screenshots/132_after_matrix.png" onclick="showFull(this)" alt="Before">
+    <div class="label before">Before: 2Dマトリクス + 分類別トグル</div>
   </div>
   <div class="screenshot-card">
-    <img src="/changes/screenshots/132_after_matrix.png" onclick="showFull(this)" alt="After">
-    <div class="label after">After: マトリクス + 分類別トグル</div>
+    <img src="/changes/screenshots/132v2_step1.png" onclick="showFull(this)" alt="After">
+    <div class="label after">After: 分類別ブラウズ専用（次元一覧）</div>
   </div>
 </div>
 
-<h2 id="browse-flow">分類別ビュー — 3段階フロー</h2>
+<h2 id="browse-flow">3段階フロー — 最終形</h2>
 <div class="screenshots three">
   <div class="screenshot-card">
-    <img src="/changes/screenshots/132_after_browse_dim.png" onclick="showFull(this)" alt="Step1">
-    <div class="label step">Step 1: 次元カード一覧</div>
+    <img src="/changes/screenshots/132v2_step1.png" onclick="showFull(this)" alt="Step1">
+    <div class="label step">Step 1: 次元一覧</div>
   </div>
   <div class="screenshot-card">
-    <img src="/changes/screenshots/132_after_browse_values.png" onclick="showFull(this)" alt="Step2">
+    <img src="/changes/screenshots/132v2_step2.png" onclick="showFull(this)" alt="Step2">
     <div class="label step">Step 2: 機能別 値カード</div>
   </div>
   <div class="screenshot-card">
-    <img src="/changes/screenshots/132_after_browse_records.png" onclick="showFull(this)" alt="Step3">
-    <div class="label step">Step 3: Web Push レコード一覧</div>
+    <img src="/changes/screenshots/132v2_step3.png" onclick="showFull(this)" alt="Step3">
+    <div class="label step">Step 3: テストケース（「であること」付き）</div>
   </div>
 </div>
 
 <h2 id="tests">テスト</h2>
-<h3>手動テスト</h3>
 <table>
   <thead><tr><th>シナリオ</th><th>期待結果</th><th>実際の結果</th><th>判定</th></tr></thead>
   <tbody>
-    <tr><td>「分類別」ボタンをクリック</td><td>次元カード一覧表示</td><td>機能/環境/モデルカードが表示</td><td><span class="badge ok">OK</span></td></tr>
-    <tr><td>「機能」カードをクリック</td><td>機能別の値カード表示</td><td>チャット/Worker Daemon/Web Push等が表示</td><td><span class="badge ok">OK</span></td></tr>
-    <tr><td>「Web Push」カードをクリック</td><td>該当レコード2件表示</td><td>Pass(iPhone PWA) + Fail(iPhone Safari)</td><td><span class="badge ok">OK</span></td></tr>
-    <tr><td>ブレッドクラム「機能」クリック</td><td>値カード一覧に戻る</td><td>正常に戻れる</td><td><span class="badge ok">OK</span></td></tr>
-    <tr><td>「マトリクス」ボタンをクリック</td><td>2Dグリッドビューに戻る</td><td>正常に切り替わる</td><td><span class="badge ok">OK</span></td></tr>
-    <tr><td>Web Pushカードのpass率バー</td><td>50%でバーが半分表示</td><td>正常に表示（Pass 1 / Fail 1）</td><td><span class="badge ok">OK</span></td></tr>
+    <tr><td>ページロード時</td><td>次元一覧が直接表示</td><td>モデル/機能/環境カードが表示</td><td><span class="badge ok">OK</span></td></tr>
+    <tr><td>「機能」カードをクリック</td><td>機能別値カード（Pass/Fail件数付き）</td><td>5機能・Pass/Fail統計表示</td><td><span class="badge ok">OK</span></td></tr>
+    <tr><td>「チャット」をクリック</td><td>確認内容テキスト付きレコード一覧</td><td>4件・各カード上部に「〇〇であること」</td><td><span class="badge ok">OK</span></td></tr>
+    <tr><td>「Web Push」クリック</td><td>Fail含む2件のレコード</td><td>Pass(iPhone PWA) + Fail(iPhone Safari)</td><td><span class="badge ok">OK</span></td></tr>
+    <tr><td>ブレッドクラム「機能」クリック</td><td>値カード一覧に戻る</td><td>正常</td><td><span class="badge ok">OK</span></td></tr>
+    <tr><td>マトリクストグルボタン</td><td>存在しない（削除済み）</td><td>ボタンなし確認</td><td><span class="badge ok">OK</span></td></tr>
   </tbody>
 </table>
 
@@ -229,24 +229,23 @@ code{background:var(--surface);padding:1px 5px;border-radius:3px;font-family:var
 <table>
   <thead><tr><th>種別</th><th>対象</th><th>結果</th><th>件数</th></tr></thead>
   <tbody>
-    <tr><td>ユニットテスト (vitest)</td><td>test-matrix.ts</td><td><span class="badge pass">pass</span></td><td>256件（既存、変更なし）</td></tr>
+    <tr><td>ユニットテスト (vitest)</td><td>test-matrix.ts</td><td><span class="badge pass">pass</span></td><td>256件（既存・変更なし）</td></tr>
   </tbody>
 </table>
 
 <h2 id="regression">リグレッションチェック</h2>
 <ul class="checklist">
-  <li><span class="check">&#10003;</span> 既存マトリクスビュー（2Dグリッド）: 正常動作確認</li>
-  <li><span class="check">&#10003;</span> モバイルカードビュー: 正常動作確認</li>
+  <li><span class="check">&#10003;</span> ブレッドクラムナビゲーション: 正常</li>
   <li><span class="check">&#10003;</span> セル編集ドロワー: Step3からクリックで開くことを確認</li>
+  <li><span class="check">&#10003;</span> プロジェクト切り替え: pocket-cc / eisamap-2025 選択可</li>
+  <li><span class="check">&#10003;</span> サマリーストリップ（Pass 11 / Fail 1 / 92%）: 正常表示</li>
   <li><span class="check">&#10003;</span> API後方互換性: APIコール変更なし</li>
-  <li><span class="check">&#10003;</span> サマリーストリップ: 両ビューで表示継続</li>
 </ul>
-<div class="impact">既存処理への影響なし。分類別ビューは完全に新規追加のみ。</div>
+<div class="impact">既存処理への影響なし。UIのみの変更。</div>
 
 <h2 id="followups">Known Gaps / Follow-ups</h2>
 <ul class="checklist">
-  <li><span class="uncheck"></span> ビューモードをlocalStorageに保存してリロード後も維持 &#8594; 次スプリント</li>
-  <li><span class="uncheck"></span> 分類別ビューでのソート順（pass率順、名前順） &#8594; Issue検討</li>
+  <li><span class="uncheck"></span> <code>notes</code> をテスト説明専用フィールドとして分離（<code>test_description</code> カラム追加）&#8594; 必要になれば</li>
 </ul>
 
 </main>
