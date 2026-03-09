@@ -19,7 +19,7 @@ description: |
 ## ワークフロー全体像
 
 ```
-1. Before撮影 → 2. 実装 → 3. After撮影 → 4. MD生成 → 5. HTMLレポート生成 → 6. PR記載
+1. Before撮影 → 2. 実装 → 3. After撮影 → 4. MD生成 → 5. HTMLレポート生成 → 6. PR記載 → 7. URLをユーザーに表示
 ```
 
 **重要**: Before スクリーンショットは実装開始前に撮る。後からは撮れない。
@@ -243,6 +243,16 @@ PR作成時、description に以下を含める:
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ```
+
+## Phase 7: レポートURLをユーザーに表示する（必須）
+
+**全フェーズ完了後、必ず以下のURLをユーザーに提示する。**
+
+```
+https://teruyamac-mini.tail65878f.ts.net/change-report
+```
+
+この手順はスキップ不可。コミット・PR作成が終わった後、最後に必ずURLを出力する。
 
 ## 注意事項
 

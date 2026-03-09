@@ -9,6 +9,7 @@ import {
   fetchUnread,
   markRead,
   markAllRead,
+  notify,
   registerSSEClient,
   unregisterSSEClient,
 } from '../services/notification-service.js'
@@ -22,6 +23,21 @@ const notificationRoutes = new Hono()
 notificationRoutes.get('/', (c) => {
   const notifications = fetchUnread()
   return c.json({ items: notifications })
+})
+
+// POST /api/notifications — 通知作成（ワーカーからの通知受付）
+notificationRoutes.post('/', async (c) => {
+  const body = await c.req.json<{ title?: string; body?: string; type?: string; metadata?: Record<string, unknown> }>()
+  if (!body.title) {
+    return c.json({ error: 'title is required' }, 400)
+  }
+  const notification = notify(
+    body.type ?? 'info',
+    body.title,
+    body.body,
+    body.metadata,
+  )
+  return c.json({ ok: true, id: notification.id }, 201)
 })
 
 // POST /api/notifications/:id/read — 既読マーク

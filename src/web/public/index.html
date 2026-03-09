@@ -5047,6 +5047,7 @@ let _notifSSE = null
 function initNotifications() {
   loadNotifications()
   connectNotifSSE()
+  updateNotifBtn()
   // Service Worker + Push
   registerServiceWorker().then(() => {
     const btn = document.getElementById('pushToggleBtn')
@@ -5170,8 +5171,10 @@ function esc(s) {
 }
 
 init()
-initNotifications()
 </script>
 <script src="/static/push-client.js"></script>
+<script>
+initNotifications()
+</script>
 </body>
 </html>
