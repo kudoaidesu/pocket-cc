@@ -456,7 +456,34 @@ pre:hover .code-copy-btn{opacity:1}
 /* ── ソースビューア ── */
 .source-viewer{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:20;backdrop-filter:blur(2px)}
 .source-viewer-content{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--bg);display:flex;flex-direction:column}
-.source-viewer-header{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.source-viewer-header{display:flex;align-items:center;gap:8px;padding:10px 12px;padding-top:calc(env(safe-area-inset-top, 0px) + 10px);border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.source-close-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;width:44px;height:44px;border-radius:10px;flex-shrink:0;-webkit-tap-highlight-color:transparent;transition:color .1s,opacity .1s}
+.source-close-btn:hover{color:var(--text)}
+.source-close-btn:active{opacity:.7;transform:scale(.95)}
+.source-viewer-body{margin:0;padding:12px;overflow:auto;font-size:13px;font-family:var(--font-mono);color:var(--text);line-height:1.5;white-space:pre;-webkit-overflow-scrolling:touch;flex:1}
+.source-viewer-body.md-render{white-space:normal;font-family:var(--font-sans, -apple-system, sans-serif);padding:16px}
+.source-viewer-body.md-render h1,.source-viewer-body.md-render h2,.source-viewer-body.md-render h3,.source-viewer-body.md-render h4{margin:16px 0 8px;color:var(--text-bright, var(--text))}
+.source-viewer-body.md-render h1{font-size:20px;border-bottom:1px solid var(--border);padding-bottom:8px}
+.source-viewer-body.md-render h2{font-size:17px;border-bottom:1px solid var(--border);padding-bottom:6px}
+.source-viewer-body.md-render h3{font-size:15px}
+.source-viewer-body.md-render p{margin:8px 0;line-height:1.6}
+.source-viewer-body.md-render ul,.source-viewer-body.md-render ol{margin:8px 0;padding-left:24px}
+.source-viewer-body.md-render li{margin:4px 0}
+.source-viewer-body.md-render code{font-size:12px;background:var(--surface);padding:2px 6px;border-radius:4px;font-family:var(--font-mono)}
+.source-viewer-body.md-render pre{margin:8px 0;padding:12px;background:var(--surface);border-radius:8px;overflow-x:auto;border:1px solid var(--border)}
+.source-viewer-body.md-render pre code{background:none;padding:0;font-size:12px}
+.source-viewer-body.md-render table{border-collapse:collapse;margin:8px 0;width:100%}
+.source-viewer-body.md-render th,.source-viewer-body.md-render td{border:1px solid var(--border);padding:6px 10px;font-size:13px;text-align:left}
+.source-viewer-body.md-render th{background:var(--surface);font-weight:600}
+.source-viewer-body.md-render blockquote{border-left:3px solid var(--accent);margin:8px 0;padding:4px 12px;color:var(--muted)}
+.source-viewer-body.md-render a{color:var(--accent);text-decoration:none}
+.source-viewer-body.md-render a:hover{text-decoration:underline}
+.source-viewer-body.md-render img{max-width:100%;border-radius:8px}
+.source-viewer-body.image-render{display:flex;align-items:center;justify-content:center;padding:16px;background:var(--surface);white-space:normal}
+.source-viewer-body.image-render img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px}
+.file-open-link{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-family:var(--font-mono);font-weight:600;cursor:pointer;min-height:40px;-webkit-tap-highlight-color:transparent;transition:opacity .1s;margin-top:6px}
+.file-open-link:hover{opacity:.85}
+.file-open-link:active{opacity:.7;transform:scale(.97)}
 /* ── ファイルツリー ── */
 .file-item{display:flex;align-items:center;gap:6px;padding:8px 10px;font-size:13px;font-family:var(--font-mono);color:var(--text);cursor:pointer;border-radius:6px;transition:background .1s}
 .file-item:hover{background:var(--surface-hover)}
@@ -940,11 +967,11 @@ pre:hover .code-copy-btn{opacity:1}
 <div class="source-viewer" id="sourceViewer" style="display:none" onclick="closeSourceViewer()">
   <div class="source-viewer-content" onclick="event.stopPropagation()">
     <div class="source-viewer-header">
-      <span id="sourceViewerTitle" style="font-size:13px;color:var(--text);font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1"></span>
+      <span id="sourceViewerTitle" style="font-size:13px;color:var(--text);font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0"></span>
       <button onclick="copySourceContent()" style="background:none;border:1px solid var(--border);color:var(--muted);padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-family:var(--font-mono);display:flex;align-items:center;gap:4px" id="sourceCopyBtn">Copy</button>
-      <button onclick="closeSourceViewer()" style="background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;display:flex;align-items:center" id="sourceCloseBtn"></button>
+      <button onclick="closeSourceViewer()" class="source-close-btn" id="sourceCloseBtn"></button>
     </div>
-    <pre id="sourceViewerCode" style="margin:0;padding:12px;overflow:auto;font-size:13px;font-family:var(--font-mono);color:var(--text);line-height:1.5;white-space:pre;-webkit-overflow-scrolling:touch"></pre>
+    <div id="sourceViewerCode" class="source-viewer-body"></div>
   </div>
 </div>
 
@@ -4162,6 +4189,10 @@ function createToolDetailPanel(detail) {
   panel.className = 'tool-detail'
   panel.setAttribute('data-testid', 'tool-detail')
   panel.setAttribute('data-tool-name', detail.name)
+  // Write/Edit/Read: ファイルパスを保持（ファイルオープンリンク用）
+  if (detail.input?.file_path) {
+    panel.setAttribute('data-file-path', detail.input.file_path)
+  }
 
   const summary = getToolSummary(detail)
   const iconName = TOOL_ICON_MAP[detail.name] || 'wrench'
@@ -4376,6 +4407,22 @@ function appendToolOutput(panel, output) {
         btn.onclick = () => window.open(tailscaleUrl, '_blank')
         bar.appendChild(btn)
       })
+    }
+
+    // Write/Edit: ファイルを開くリンクを挿入
+    if ((toolName === 'Write' || toolName === 'Edit') && !panel.querySelector('.file-open-link')) {
+      const filePath = panel.getAttribute('data-file-path')
+      if (filePath) {
+        const linkBar = document.createElement('div')
+        linkBar.className = 'dev-url-bar'
+        const linkBtn = document.createElement('button')
+        linkBtn.className = 'file-open-link'
+        const displayName = filePath.split('/').pop()
+        linkBtn.innerHTML = `${ic('external-link', 12)} ${esc(displayName)}`
+        linkBtn.onclick = () => openSourceViewer(filePath, displayName)
+        linkBar.appendChild(linkBtn)
+        panel.appendChild(linkBar)
+      }
     }
   }
 }
@@ -4860,13 +4907,51 @@ function onFileSearch() {
 }
 
 let currentSourceContent = ''
+
+function getFileType(filePath) {
+  const ext = (filePath || '').split('.').pop().toLowerCase()
+  const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp']
+  const codeExts = ['ts', 'tsx', 'js', 'jsx', 'json', 'html', 'css', 'scss', 'less', 'yaml', 'yml', 'toml', 'xml', 'sh', 'bash', 'zsh', 'py', 'rs', 'go', 'java', 'c', 'cpp', 'h', 'hpp', 'sql', 'graphql', 'vue', 'svelte', 'astro', 'prisma', 'env', 'gitignore', 'dockerfile', 'makefile', 'lock']
+  if (ext === 'md' || ext === 'mdx') return 'markdown'
+  if (imageExts.includes(ext)) return 'image'
+  if (codeExts.includes(ext)) return 'code'
+  return 'text'
+}
+
+function renderCodeWithLineNumbers(content) {
+  const lines = content.split('\n')
+  const padLen = String(lines.length).length
+  return lines.map((line, i) => {
+    const num = String(i + 1).padStart(padLen, ' ')
+    return `<span style="color:var(--muted);user-select:none">${num}</span>  ${esc(line)}`
+  }).join('\n')
+}
+
 async function openSourceViewer(filePath, fileName) {
   const viewer = document.getElementById('sourceViewer')
   const title = document.getElementById('sourceViewerTitle')
   const code = document.getElementById('sourceViewerCode')
-  title.textContent = fileName || filePath.split('/').pop()
+  const displayName = fileName || filePath.split('/').pop()
+  title.textContent = displayName
   code.textContent = t('loading')
+  code.className = 'source-viewer-body'
+  code.removeAttribute('style')
   viewer.style.display = 'block'
+
+  const fileType = getFileType(filePath)
+
+  // 画像ファイルは raw エンドポイントで表示
+  if (fileType === 'image') {
+    code.className = 'source-viewer-body image-render'
+    code.innerHTML = ''
+    const img = document.createElement('img')
+    img.src = '/api/files/raw?path=' + encodeURIComponent(filePath)
+    img.alt = displayName
+    img.onerror = () => { code.textContent = 'Failed to load image' }
+    code.appendChild(img)
+    currentSourceContent = ''
+    return
+  }
 
   try {
     const res = await fetch('/api/files/content?path=' + encodeURIComponent(filePath))
@@ -4874,16 +4959,19 @@ async function openSourceViewer(filePath, fileName) {
     if (data.error) {
       code.textContent = 'Error: ' + data.error
       currentSourceContent = ''
+      return
+    }
+
+    currentSourceContent = data.content
+
+    if (fileType === 'markdown') {
+      // Markdown レンダリング
+      code.className = 'source-viewer-body md-render'
+      code.innerHTML = marked.parse(data.content)
     } else {
-      // 行番号付き表示
-      const lines = data.content.split('\n')
-      const padLen = String(lines.length).length
-      const numbered = lines.map((line, i) => {
-        const num = String(i + 1).padStart(padLen, ' ')
-        return `<span style="color:var(--muted);user-select:none">${num}</span>  ${esc(line)}`
-      }).join('\n')
-      code.innerHTML = numbered
-      currentSourceContent = data.content
+      // コード / その他: 行番号付き表示
+      code.className = 'source-viewer-body'
+      code.innerHTML = renderCodeWithLineNumbers(data.content)
     }
   } catch (e) {
     code.textContent = t('failedToLoadFile')

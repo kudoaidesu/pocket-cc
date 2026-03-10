@@ -535,6 +535,36 @@ app.get('/api/files/content', (c) => {
   }
 })
 
+/** 画像ファイルをそのまま返す（ソースビューアの画像表示用） */
+app.get('/api/files/raw', (c) => {
+  const filePath = c.req.query('path')
+  if (!filePath) return c.json({ error: 'path is required' }, 400)
+
+  if (!isProjectPathAllowed(filePath)) {
+    return c.json({ error: 'Access denied: path outside allowed projects' }, 403)
+  }
+
+  const ext = filePath.split('.').pop()?.toLowerCase() || ''
+  const mimeMap: Record<string, string> = {
+    png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+    gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp',
+    ico: 'image/x-icon', bmp: 'image/bmp',
+  }
+  const mime = mimeMap[ext]
+  if (!mime) return c.json({ error: 'Unsupported file type' }, 400)
+
+  try {
+    const stat = statSync(filePath)
+    if (stat.size > 5 * 1024 * 1024) {
+      return c.json({ error: 'File too large (>5MB)' }, 400)
+    }
+    const buf = readFileSync(filePath)
+    return new Response(buf, { headers: { 'Content-Type': mime, 'Cache-Control': 'no-cache' } })
+  } catch (e) {
+    return c.json({ error: String(e) }, 400)
+  }
+})
+
 /** ファイル名検索（再帰、最大100件） */
 app.get('/api/files/search', (c) => {
   const project = c.req.query('project')
