@@ -1,6 +1,7 @@
 import { config } from './config.js'
 import { createLogger } from './utils/logger.js'
 import { startScheduler, stopScheduler, setProcessHandler } from './queue/scheduler.js'
+import { startMonitor, stopMonitor } from './monitor/system-monitor.js'
 import { getIssue } from './github/issues.js'
 import { runTaicho } from './agents/taicho/index.js'
 import type { ProgressReporter } from './agents/taicho/types.js'
@@ -45,12 +46,17 @@ async function main(): Promise<void> {
   startScheduler()
   log.info('Cron scheduler started')
 
+  // システムモニター起動（5分間隔）
+  startMonitor()
+  log.info('System monitor started (5-minute interval)')
+
   // Web UI は別プロセス: npm run web
   log.info('Web UI: run "npm run web" in a separate process')
 
   // Graceful shutdown
   const shutdown = async (): Promise<void> => {
     log.info('Shutting down...')
+    stopMonitor()
     stopScheduler()
     log.info('Goodbye')
     process.exit(0)

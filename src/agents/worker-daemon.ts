@@ -34,6 +34,7 @@ import {
   releaseSlot,
 } from './concurrency-guard.js'
 import { notify } from '../web/services/notification-service.js'
+import { startMonitor, stopMonitor } from '../monitor/system-monitor.js'
 import { createLogger } from '../utils/logger.js'
 
 const log = createLogger('worker-daemon')
@@ -443,6 +444,7 @@ async function shutdown(signal: string): Promise<void> {
   }
   runningTasks.clear()
 
+  stopMonitor()
   log.info('Worker daemon stopped')
   process.exit(0)
 }
@@ -477,7 +479,11 @@ async function main(): Promise<void> {
     }
   }
 
-  // 3. ポーリングループ開始
+  // 3. システムモニター起動（5分間隔）
+  startMonitor()
+  log.info('System monitor started (5-minute interval)')
+
+  // 4. ポーリングループ開始
   log.info('Starting poll loop...')
 
   // 初回は即座に実行
