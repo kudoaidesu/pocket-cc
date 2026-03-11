@@ -72,11 +72,11 @@ function buildActionMessage(alert: Alert): string {
       return `PID ${pid} (${cmd}) がstuckしています。killしてください。`
     }
     case 'high_memory':
-      return `メモリ使用率が ${alert.metadata['memoryPercent'] ?? ''}% です。状況を確認してください。`
+      return `メモリ使用率が ${alert.metadata['memoryUsagePercent'] ?? ''}% です。状況を確認してください。`
     case 'high_load':
-      return `Load Averageが ${alert.metadata['loadAverage'] ?? ''} です。負荷の原因を確認してください。`
+      return `Load Averageが ${alert.metadata['loadAvg1'] ?? ''} です。負荷の原因を確認してください。`
     case 'high_temperature':
-      return `CPU温度が ${alert.metadata['cpuTemp'] ?? ''}℃ です。負荷の原因を確認してください。`
+      return `CPU温度が ${alert.metadata['cpuDieTemp'] ?? ''}℃ です。負荷の原因を確認してください。`
     default:
       return alert.body
   }

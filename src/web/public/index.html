@@ -2375,6 +2375,20 @@ async function init() {
   tabs.forEach((tab, tabId) => {
     if (tab.streamId) reconnectStream(tabId)
   })
+
+  // アラート通知からの遷移: ?alert= パラメータがあれば入力欄にプリセット
+  const alertParam = new URLSearchParams(window.location.search).get('alert')
+  if (alertParam) {
+    const input = document.getElementById('input')
+    if (input) {
+      input.value = alertParam
+      input.style.height = 'auto'
+      input.style.height = input.scrollHeight + 'px'
+      input.focus()
+    }
+    // URLからパラメータを除去（履歴を汚さない）
+    window.history.replaceState({}, '', window.location.pathname)
+  }
 }
 
 function getProjectTabInfo(projectPath) {

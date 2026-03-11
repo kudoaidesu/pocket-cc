@@ -20,7 +20,7 @@ import { promisify } from 'node:util'
 import cron, { type ScheduledTask } from 'node-cron'
 import { createLogger } from '../utils/logger.js'
 import { parseTopOutput, parsePowermetricsOutput, parseProcessList } from './parsers.js'
-import { sendAlert } from './alerts.js'
+import { sendAlert, clearAlert } from './alerts.js'
 import type { Alert, MonitorThresholds, SystemMetrics, TemperatureMetrics, ProcessInfo } from './types.js'
 
 const log = createLogger('system-monitor')
@@ -192,9 +192,50 @@ function evaluateAlerts(
 
 // ── メイン監視ループ ─────────────────────────────────────────
 
+/** 前回アラートされた stuck プロセスの PID を追跡する */
+const previousStuckPids = new Set<number>()
+
+/**
+ * 閾値を下回ったアラートのクールダウンをクリアする。
+ * 解消後に再発したら即座に通知が飛ぶようにする。
+ */
+function clearResolvedAlerts(
+  metrics: SystemMetrics | null,
+  temperature: TemperatureMetrics | null,
+  currentAlerts: Alert[],
+  thresholds: MonitorThresholds,
+): void {
+  // メモリ使用率が閾値以下に回復
+  if (metrics && metrics.memoryUsagePercent <= thresholds.memoryPercent) {
+    clearAlert('high_memory')
+  }
+  // Load Average が閾値以下に回復
+  if (metrics && metrics.loadAverage[0] <= thresholds.loadAverage) {
+    clearAlert('high_load')
+  }
+  // CPU温度が閾値以下に回復
+  if (temperature?.cpuDieTemp != null && temperature.cpuDieTemp <= thresholds.cpuTemperature) {
+    clearAlert('high_temperature')
+  }
+  // stuck プロセスが解消（PIDが消えた or 閾値以下に回復）
+  const currentStuckPids = new Set(
+    currentAlerts.filter(a => a.type === 'stuck_process').map(a => a.metadata['pid'] as number),
+  )
+  for (const pid of previousStuckPids) {
+    if (!currentStuckPids.has(pid)) {
+      clearAlert('stuck_process', { pid })
+    }
+  }
+  // 現在のstuck PIDを記録
+  previousStuckPids.clear()
+  for (const pid of currentStuckPids) {
+    previousStuckPids.add(pid)
+  }
+}
+
 /**
  * 1 回分の監視チェックを実行する。
- * cron から毎分呼び出される想定。
+ * 5 分間隔で cron から呼び出される。
  */
 export async function runMonitorCheck(
   thresholds: MonitorThresholds = DEFAULT_THRESHOLDS,
@@ -210,6 +251,9 @@ export async function runMonitorCheck(
 
   // 閾値判定
   const alerts = evaluateAlerts(metrics, temperature, processes, thresholds)
+
+  // 解消されたアラートのクールダウンをクリア
+  clearResolvedAlerts(metrics, temperature, alerts, thresholds)
 
   if (alerts.length === 0) {
     log.debug('No alerts triggered')
