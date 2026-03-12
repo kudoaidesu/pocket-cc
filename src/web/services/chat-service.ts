@@ -5,6 +5,7 @@
  * settingSources: ['project', 'user'] で CLAUDE.md / .claude/rules/ / ユーザー設定を自動読み込みし、
  * Claude Code CLI と同等の振る舞いを実現する。
  */
+import sharp from 'sharp'
 import { detectDanger } from '../danger-detect.js'
 import { createLogger } from '../../utils/logger.js'
 import { createPendingRequest, cleanupStreamRequests, type PermissionResult } from './permission-bridge.js'
@@ -95,6 +96,42 @@ export interface SdkMessage {
     delta?: { type: string; text?: string }
     content_block?: { type: string; name?: string }
     message?: { usage?: { input_tokens?: number } }
+  }
+}
+
+// ── 画像リサイズ ─────────────────────────────────────
+
+/**
+ * base64 画像データが 4.5MB 相当を超える場合に sharp でリサイズする。
+ * アスペクト比を維持し、面積比で縮小率を算出（sips -Z 2000 相当）。
+ * エラー時はリサイズをスキップして元データをそのまま返す（フォールバック）。
+ */
+const MAX_IMAGE_BYTES = 4.5 * 1024 * 1024
+// base64 は 3バイト → 4文字なので base64 文字列長の上限 = MAX_IMAGE_BYTES * 4/3
+const MAX_BASE64_LENGTH = Math.ceil(MAX_IMAGE_BYTES * 4 / 3)
+
+async function resizeImageIfNeeded(base64Data: string, mediaType: string): Promise<string> {
+  if (base64Data.length <= MAX_BASE64_LENGTH) return base64Data
+
+  try {
+    const buffer = Buffer.from(base64Data, 'base64')
+    const metadata = await sharp(buffer).metadata()
+
+    const originalBytes = buffer.length
+    const ratio = Math.sqrt(MAX_IMAGE_BYTES / originalBytes)
+    const newWidth = Math.max(1, Math.floor((metadata.width ?? 2000) * ratio))
+
+    const format = mediaType === 'image/png' ? ('png' as const) : ('jpeg' as const)
+    const resized = await sharp(buffer)
+      .resize(newWidth)
+      .toFormat(format, { quality: 90 })
+      .toBuffer()
+
+    log.info(`Image resized: ${originalBytes} bytes → ${resized.length} bytes (width=${newWidth})`)
+    return resized.toString('base64')
+  } catch (err) {
+    log.warn(`Image resize failed, using original: ${err instanceof Error ? err.message : String(err)}`)
+    return base64Data
   }
 }
 
@@ -451,9 +488,11 @@ export async function startStream(params: ChatParams): Promise<string> {
       content.push({ type: 'text', text: params.message })
     }
     for (const img of params.images) {
+      // サーバーサイドリサイズ: 4.5MB 超の画像を Anthropic API 送信前に縮小（2段階防御）
+      const resizedData = await resizeImageIfNeeded(img.data, img.mediaType)
       content.push({
         type: 'image',
-        source: { type: 'base64', media_type: img.mediaType, data: img.data },
+        source: { type: 'base64', media_type: img.mediaType, data: resizedData },
       })
     }
     async function* promptGen() {
