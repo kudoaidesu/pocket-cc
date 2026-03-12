@@ -1905,6 +1905,25 @@ function isImageFile(file) {
   return file.type.startsWith('image/') || IMAGE_EXTS.test(file.name)
 }
 
+/** 画像が 4.5MB を超える場合は Canvas API でリサイズして Blob を返す。超えない場合は元の File/Blob をそのまま返す */
+async function resizeImageIfNeeded(file) {
+  const MAX_SIZE_BYTES = 4.5 * 1024 * 1024 // 4.5MB
+  if (file.size <= MAX_SIZE_BYTES) return file
+
+  const bitmap = await createImageBitmap(file)
+  const ratio = Math.sqrt(MAX_SIZE_BYTES / file.size)
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.floor(bitmap.width * ratio)
+  canvas.height = Math.floor(bitmap.height * ratio)
+  const ctx = canvas.getContext('2d')
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+
+  const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg'
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), mimeType, 0.9)
+  })
+}
+
 /** テキストペイロードと画像配列を分離して返す */
 function buildFilePayload() {
   if (pendingFiles.length === 0) return { text: '', images: [] }
@@ -1938,13 +1957,16 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
     }
     if (isImageFile(file)) {
       try {
+        const resized = await resizeImageIfNeeded(file)
         const reader = new FileReader()
         const dataUrl = await new Promise((resolve, reject) => {
           reader.onload = () => resolve(reader.result)
           reader.onerror = reject
-          reader.readAsDataURL(file)
+          reader.readAsDataURL(resized)
         })
-        pendingFiles.push({ name: file.name, data: dataUrl, isImage: true, thumb: dataUrl })
+        const wasResized = resized !== file
+        const displayName = wasResized ? `${file.name} (resized)` : file.name
+        pendingFiles.push({ name: displayName, data: dataUrl, isImage: true, thumb: dataUrl })
       } catch { pendingFiles.push({ name: file.name, data: `(読み込みエラー: ${file.name})`, isImage: false }) }
     } else {
       try {
